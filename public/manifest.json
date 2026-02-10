@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "TabHub",
+  "description": "A Toby-style new tab experience powered by Chrome native bookmarks.",
+  "version": "0.1.0",
+  "permissions": ["bookmarks", "tabs", "storage", "sessions"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "action": {
+    "default_title": "TabHub"
+  }
+}
