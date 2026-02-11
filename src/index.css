@@ -130,6 +130,21 @@ body {
   cursor: pointer;
 }
 
+.secondary-btn {
+  border: 1px solid var(--input-border);
+  border-radius: 0.75rem;
+  background: var(--panel-bg);
+  color: var(--text);
+  padding: 0.62rem 0.9rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.secondary-btn-active {
+  border-color: color-mix(in srgb, var(--btn-bg) 55%, var(--input-border));
+  background: color-mix(in srgb, var(--btn-bg) 14%, var(--panel-bg));
+}
+
 .primary-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -210,6 +225,7 @@ body {
 .collection-drop-zone {
   border-radius: 0.75rem;
   background: color-mix(in srgb, var(--muted) 10%, transparent);
+  min-height: 3.2rem;
 }
 
 .bookmark-card {
@@ -223,11 +239,57 @@ body {
   color: var(--text);
   padding: 0.72rem;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
+  touch-action: none;
+}
+
+.card-drag-handle {
+  cursor: grab;
+  opacity: 0.55;
+  font-size: 0.85rem;
+  line-height: 1;
+  user-select: none;
 }
 
 .bookmark-card:hover {
   background: var(--hover);
+}
+
+.card-open-btn {
+  margin-left: auto;
+  border: 1px solid var(--input-border);
+  background: color-mix(in srgb, var(--panel-bg) 78%, transparent);
+  color: var(--text);
+  border-radius: 0.5rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.card-open-btn:hover {
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+}
+
+.card-manage-actions {
+  display: inline-flex;
+  gap: 0.3rem;
+  margin-left: 0.35rem;
+}
+
+.card-mini-btn {
+  border: 1px solid var(--input-border);
+  background: color-mix(in srgb, var(--panel-bg) 82%, transparent);
+  color: var(--text);
+  border-radius: 0.45rem;
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 0.24rem 0.38rem;
+  cursor: pointer;
+}
+
+.card-mini-btn-danger {
+  color: #dc2626;
 }
 
 .icon-fallback {
@@ -280,6 +342,74 @@ body {
 
 .context-item-danger {
   color: #dc2626;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 23, 42, 0.38);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-panel {
+  width: min(32rem, 100%);
+  border-radius: 1rem;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.85rem 0.95rem;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.modal-body {
+  padding: 0.9rem 0.95rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.85rem 0.95rem;
+  border-top: 1px solid var(--panel-border);
+}
+
+.folder-list {
+  margin-top: 0.5rem;
+  max-height: 12.5rem;
+  overflow-y: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  padding: 0.25rem;
+}
+
+.folder-item {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text);
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+}
+
+.folder-item:hover {
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+}
+
+.folder-item-active {
+  background: color-mix(in srgb, var(--btn-bg) 20%, transparent);
 }
 
 .muted {
