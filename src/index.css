@@ -95,7 +95,49 @@ body {
   .toolbar {
     flex-direction: row;
     align-items: center;
+    flex-wrap: wrap;
   }
+}
+
+.batch-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin: -0.55rem 0 1rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+}
+
+.batch-count {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-right: 0.25rem;
+}
+
+.quick-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: -0.35rem 0 1rem;
+}
+
+.quick-entry-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.quick-chip {
+  border: 1px solid var(--input-border);
+  border-radius: 999px;
+  padding: 0.18rem 0.52rem;
+  background: color-mix(in srgb, var(--panel-bg) 90%, transparent);
+  color: var(--text);
+  font-size: 0.74rem;
+  cursor: pointer;
 }
 
 .control-label {
@@ -239,8 +281,13 @@ body {
   color: var(--text);
   padding: 0.72rem;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
   touch-action: none;
+}
+
+.bookmark-card-selected {
+  border-color: color-mix(in srgb, var(--btn-bg) 55%, var(--card-border));
+  background: color-mix(in srgb, var(--btn-bg) 10%, var(--card-bg));
 }
 
 .card-drag-handle {
@@ -249,32 +296,22 @@ body {
   font-size: 0.85rem;
   line-height: 1;
   user-select: none;
+  flex-shrink: 0;
+}
+
+.card-select {
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .bookmark-card:hover {
   background: var(--hover);
 }
 
-.card-open-btn {
-  margin-left: auto;
-  border: 1px solid var(--input-border);
-  background: color-mix(in srgb, var(--panel-bg) 78%, transparent);
-  color: var(--text);
-  border-radius: 0.5rem;
-  padding: 0.2rem 0.45rem;
-  font-size: 0.72rem;
-  line-height: 1.1;
-  cursor: pointer;
-}
-
-.card-open-btn:hover {
-  background: color-mix(in srgb, var(--muted) 18%, transparent);
-}
-
 .card-manage-actions {
   display: inline-flex;
   gap: 0.3rem;
-  margin-left: 0.35rem;
+  margin-left: auto;
 }
 
 .card-mini-btn {
@@ -410,6 +447,32 @@ body {
 
 .folder-item-active {
   background: color-mix(in srgb, var(--btn-bg) 20%, transparent);
+}
+
+.undo-toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 0.8rem;
+  background: var(--panel-bg);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  padding: 0.55rem 0.7rem;
+}
+
+.undo-btn {
+  border: 1px solid var(--input-border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 0.5rem;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.78rem;
+  cursor: pointer;
 }
 
 .muted {

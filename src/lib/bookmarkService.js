@@ -1,4 +1,5 @@
 const TABHUB_ROOT_NAME = 'TabHub';
+const TRASH_FOLDER_NAME = '.TabHub Trash';
 
 function promisifyChromeApi(fn) {
   return (...args) =>
@@ -46,10 +47,13 @@ function normalizeCollection(folder, titlePrefix = '') {
   };
 }
 
-function collectNestedCollections(rootFolder, includeEmpty = true) {
+function collectNestedCollections(rootFolder, includeEmpty = true, hiddenFolderIds = new Set()) {
   const result = [];
 
   const walk = (folder, prefix = '') => {
+    if (hiddenFolderIds.has(folder.id)) {
+      return;
+    }
     const collection = normalizeCollection(folder, prefix);
     if (includeEmpty || collection.cards.length > 0) {
       result.push(collection);
@@ -63,6 +67,7 @@ function collectNestedCollections(rootFolder, includeEmpty = true) {
 
   (rootFolder.children || [])
     .filter((node) => !node.url)
+    .filter((folder) => !hiddenFolderIds.has(folder.id))
     .forEach((folder) => walk(folder, ''));
 
   const rootCards = (rootFolder.children || []).filter((node) => !!node.url);
@@ -171,12 +176,18 @@ export async function getCollectionsPayload(preferredSourceId) {
 
   const [activeRoot] = await getSubTreeApi(activeSourceId);
   const fallbackRoot = findNodeById(refreshedTree, activeSourceId);
-  const collections = collectNestedCollections(activeRoot || fallbackRoot || { children: [] }, true);
+  const rootNode = activeRoot || fallbackRoot || { children: [] };
+  const trashFolder = (rootNode.children || []).find(
+    (node) => !node.url && node.title === TRASH_FOLDER_NAME
+  );
+  const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
+  const collections = collectNestedCollections(rootNode, true, hiddenFolderIds);
 
   return {
     tabHubRootId: tabHubRoot.id,
     sources,
     activeSourceId,
+    trashFolderId: trashFolder?.id || '',
     collections
   };
 }
@@ -239,6 +250,20 @@ export async function renameCollectionFolder(collectionId, title) {
 
 export async function removeCollectionFolder(collectionId) {
   return removeTreeApi(collectionId);
+}
+
+export async function ensureTrashFolder(rootId) {
+  const [root] = await getSubTreeApi(rootId);
+  const existing = (root?.children || []).find(
+    (node) => !node.url && node.title === TRASH_FOLDER_NAME
+  );
+  if (existing) {
+    return existing;
+  }
+  return createBookmark({
+    parentId: rootId,
+    title: TRASH_FOLDER_NAME
+  });
 }
 
 export async function openBookmarkInCurrentTab(url) {
