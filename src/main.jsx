@@ -425,24 +425,48 @@ function App() {
           const bookmarkId = evt.item.getAttribute('data-card-id');
           const oldParentId = evt.from.getAttribute('data-parent-id');
           const newParentId = evt.to.getAttribute('data-parent-id');
+          const { oldIndex, newIndex } = evt;
           suppressCardOpenUntilRef.current = Date.now() + 1800;
           suppressNextCardClickRef.current = true;
 
+          // ── CRITICAL: Revert SortableJS's DOM mutation ──
+          // SortableJS has already physically moved evt.item in the DOM.
+          // We MUST put it back before React tries to reconcile, otherwise
+          // React's virtual DOM will be out of sync → removeChild crash → blank page.
+          if (evt.from !== evt.to) {
+            // Cross-container: item was moved from `from` to `to`
+            evt.to.removeChild(evt.item);
+            if (evt.from.children[oldIndex]) {
+              evt.from.insertBefore(evt.item, evt.from.children[oldIndex]);
+            } else {
+              evt.from.appendChild(evt.item);
+            }
+          } else {
+            // Same container reorder: put item back at original position
+            const refNode = evt.from.children[oldIndex];
+            if (refNode) {
+              evt.from.insertBefore(evt.item, refNode);
+            } else {
+              evt.from.appendChild(evt.item);
+            }
+          }
+
           try {
-            if (!bookmarkId || !oldParentId || !newParentId || evt.newIndex == null) {
+            if (!bookmarkId || !oldParentId || !newParentId || newIndex == null) {
               return;
             }
-            if (oldParentId === newParentId && evt.oldIndex === evt.newIndex) {
+            if (oldParentId === newParentId && oldIndex === newIndex) {
               return;
             }
 
-            await moveBookmark(bookmarkId, newParentId, evt.newIndex);
+            await moveBookmark(bookmarkId, newParentId, newIndex);
 
             showUndo(t('movedBookmarks', 1), async () => {
-              await moveBookmark(bookmarkId, oldParentId, evt.oldIndex ?? 0);
+              await moveBookmark(bookmarkId, oldParentId, oldIndex ?? 0);
             });
 
-            // Destroy all card sortable instances before refresh to avoid stale DOM references
+            // React state update triggers re-render; SortableJS instances
+            // will be rebuilt by the useEffect on next render cycle.
             for (const s of cardSortablesRef.current.values()) {
               s.destroy();
             }
