@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import Sortable from 'sortablejs';
 import './index.css';
@@ -13,64 +13,15 @@ import {
   subscribeBookmarksChanges,
   updateBookmark
 } from './lib/bookmarkService';
-
-const THEME_STORAGE_KEY = 'tabhub_theme_mode';
-const HARD_RELOAD_AFTER_CARD_DROP = true;
-
-function storageGet(key) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get([key], (result) => {
-      resolve(result?.[key]);
-    });
-  });
-}
-
-function storageSet(key, value) {
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ [key]: value }, () => resolve());
-  });
-}
-
-function faviconCandidates(url) {
-  const extensionFavicon = `/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
-  return [
-    extensionFavicon,
-    `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(url)}`
-  ];
-}
-
-function BookmarkIcon({ url, title }) {
-  const candidates = useMemo(() => faviconCandidates(url), [url]);
-  const [idx, setIdx] = useState(0);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setIdx(0);
-    setFailed(false);
-  }, [url]);
-
-  const fallbackChar = (title || 'L').trim().charAt(0).toUpperCase();
-
-  if (failed) {
-    return <div className="icon-fallback">{fallbackChar}</div>;
-  }
-
-  return (
-    <img
-      src={candidates[idx]}
-      alt=""
-      className="h-5 w-5 rounded"
-      draggable="false"
-      onError={() => {
-        if (idx < candidates.length - 1) {
-          setIdx((prev) => prev + 1);
-          return;
-        }
-        setFailed(true);
-      }}
-    />
-  );
-}
+import { initLanguage, getLanguageSetting, setLanguage as setI18nLanguage, t } from './lib/i18n';
+import { useTheme } from './hooks/useTheme';
+import Sidebar from './components/Sidebar';
+import Toolbar from './components/Toolbar';
+import CollectionCard from './components/CollectionCard';
+import ContextMenu from './components/ContextMenu';
+import EditBookmarkModal from './components/EditBookmarkModal';
+import BatchMoveModal from './components/BatchMoveModal';
+import UndoToast from './components/UndoToast';
 
 function sortSnapshots(items) {
   return [...items].sort((a, b) => {
@@ -104,11 +55,6 @@ function App() {
   const [activeCollectionId, setActiveCollectionId] = useState('all');
   const [collapsedCollectionIds, setCollapsedCollectionIds] = useState(new Set());
 
-  const [themeMode, setThemeMode] = useState('system');
-  const [systemTheme, setSystemTheme] = useState(
-    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  );
-
   const [contextMenu, setContextMenu] = useState(null);
   const [manageMode, setManageMode] = useState(false);
   const [selectedCardIds, setSelectedCardIds] = useState(new Set());
@@ -119,6 +65,11 @@ function App() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [langReady, setLangReady] = useState(false);
+  const [languageSetting, setLanguageSetting] = useState('auto');
+  const [, forceUpdate] = useState(0);
+
+  const { themeMode, handleThemeModeChange } = useTheme();
 
   const navSortableRef = useRef(null);
   const moduleSortableRef = useRef(null);
@@ -130,14 +81,13 @@ function App() {
   const suppressCardOpenUntilRef = useRef(0);
   const suppressNextCardClickRef = useRef(false);
 
-  const resolvedTheme = themeMode === 'system' ? systemTheme : themeMode;
   const dragEnabled = search.trim() === '';
   const cardDragEnabled = dragEnabled && !manageMode;
   const activeSource = sources.find((source) => source.id === activeSourceId) || null;
   const canSortCollections = dragEnabled && activeCollectionId === 'all';
 
   const topLevelSortableCollections = useMemo(
-    () => collections.filter((collection) => collection.editable && collection.parentId === activeSourceId),
+    () => collections.filter((c) => c.editable && c.parentId === activeSourceId),
     [collections, activeSourceId]
   );
 
@@ -160,23 +110,8 @@ function App() {
     [selectedCardIds, cardById]
   );
 
-  const movableCollections = useMemo(() => collections, [collections]);
-
-  const filteredEditorTargets = useMemo(() => {
-    if (!editorState) return [];
-    const keyword = editorState.folderQuery.trim().toLowerCase();
-    if (!keyword) return movableCollections;
-    return movableCollections.filter((collection) => collection.title.toLowerCase().includes(keyword));
-  }, [editorState, movableCollections]);
-
-  const filteredBatchTargets = useMemo(() => {
-    if (!batchMoveState) return [];
-    const keyword = batchMoveState.folderQuery.trim().toLowerCase();
-    if (!keyword) return movableCollections;
-    return movableCollections.filter((collection) => collection.title.toLowerCase().includes(keyword));
-  }, [batchMoveState, movableCollections]);
-
-  const refresh = async (preferredSourceId = activeSourceRef.current) => {
+  // --- Data refresh ---
+  const refresh = useCallback(async (preferredSourceId = activeSourceRef.current) => {
     try {
       const result = await getCollectionsPayload(preferredSourceId);
       setTabHubRootId(result.tabHubRootId);
@@ -191,9 +126,10 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const showUndo = (message, undo) => {
+  // --- Undo ---
+  const showUndo = useCallback((message, undo) => {
     const id = Date.now();
     if (undoTimerRef.current) {
       clearTimeout(undoTimerRef.current);
@@ -204,9 +140,9 @@ function App() {
       setUndoToast((prev) => (prev?.id === id ? null : prev));
       undoTimerRef.current = null;
     }, 8000);
-  };
+  }, []);
 
-  const handleUndo = async () => {
+  const handleUndo = useCallback(async () => {
     if (!undoToast || undoToast.pending) return;
     const action = undoToast;
     setUndoToast((prev) => (prev ? { ...prev, pending: true } : prev));
@@ -220,21 +156,16 @@ function App() {
         undoTimerRef.current = null;
       }
     }
-  };
+  }, [undoToast, refresh]);
 
+  // --- Init ---
   useEffect(() => {
     (async () => {
-      const savedMode = await storageGet(THEME_STORAGE_KEY);
-      if (savedMode === 'light' || savedMode === 'dark' || savedMode === 'system') {
-        setThemeMode(savedMode);
-      }
+      await initLanguage();
+      const savedLang = await getLanguageSetting();
+      setLanguageSetting(savedLang || 'auto');
+      setLangReady(true);
     })();
-
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const onMediaChange = (event) => {
-      setSystemTheme(event.matches ? 'dark' : 'light');
-    };
-    media.addEventListener('change', onMediaChange);
 
     refresh();
     const unsubscribe = subscribeBookmarksChanges(() => {
@@ -242,15 +173,11 @@ function App() {
     });
 
     return () => {
-      media.removeEventListener('change', onMediaChange);
       unsubscribe();
     };
-  }, []);
+  }, [refresh]);
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', resolvedTheme);
-  }, [resolvedTheme]);
-
+  // --- Context menu close ---
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
     window.addEventListener('click', closeMenu);
@@ -261,6 +188,7 @@ function App() {
     };
   }, []);
 
+  // --- Cleanup timers ---
   useEffect(
     () => () => {
       if (undoTimerRef.current) {
@@ -275,6 +203,7 @@ function App() {
     []
   );
 
+  // --- Suppress card click after drag ---
   useEffect(() => {
     const captureCardClick = (event) => {
       if (!suppressNextCardClickRef.current) return;
@@ -297,6 +226,7 @@ function App() {
     };
   }, []);
 
+  // --- Keyboard shortcuts ---
   useEffect(() => {
     const onKeyDown = (event) => {
       const target = event.target;
@@ -330,6 +260,7 @@ function App() {
     };
   }, [autoOrganizing, activeSourceId, tabHubRootId, collections]);
 
+  // --- Sync selected cards with available cards ---
   useEffect(() => {
     setSelectedCardIds((prev) => {
       const next = new Set(Array.from(prev).filter((id) => cardById.has(id)));
@@ -337,6 +268,7 @@ function App() {
     });
   }, [cardById]);
 
+  // --- Exit manage mode clears selection ---
   useEffect(() => {
     if (!manageMode) {
       setSelectedCardIds(new Set());
@@ -344,9 +276,9 @@ function App() {
     }
   }, [manageMode]);
 
+  // --- Visible collections (filtered by search & active selection) ---
   const visibleCollections = useMemo(() => {
     const keyword = search.trim().toLowerCase();
-
     const filtered = collections
       .map((collection) => ({
         ...collection,
@@ -366,19 +298,20 @@ function App() {
     return filtered.filter((collection) => collection.id === activeCollectionId);
   }, [collections, search, activeCollectionId]);
 
+  // --- Collection order persistence ---
   const persistTopLevelCollectionOrder = async (orderedIds) => {
-    const sortableMap = new Map(topLevelSortableCollections.map((collection) => [collection.id, collection]));
+    const sortableMap = new Map(topLevelSortableCollections.map((c) => [c.id, c]));
     const filteredIds = orderedIds.filter((id) => sortableMap.has(id));
     if (filteredIds.length < 2) return;
 
     const baseIndex = Math.min(...filteredIds.map((id) => sortableMap.get(id).index ?? 0));
     for (let i = 0; i < filteredIds.length; i += 1) {
-      const collectionId = filteredIds[i];
-      await moveBookmark(collectionId, activeSourceId, baseIndex + i);
+      await moveBookmark(filteredIds[i], activeSourceId, baseIndex + i);
     }
     await refresh(activeSourceRef.current);
   };
 
+  // --- SortableJS: Nav sidebar ---
   useEffect(() => {
     const container = document.querySelector('[data-nav-sortable="true"]');
     if (!container) return;
@@ -410,6 +343,7 @@ function App() {
     };
   }, [canSortCollections, topLevelSortableCollections, activeSourceId]);
 
+  // --- SortableJS: Module (collection) sorting ---
   useEffect(() => {
     const container = document.querySelector('[data-module-sortable="true"]');
     if (!container) return;
@@ -441,6 +375,7 @@ function App() {
     };
   }, [canSortCollections, topLevelSortableCollections, activeSourceId, visibleCollections]);
 
+  // --- SortableJS: Card-level drag (FIXED: no hard reload) ---
   useEffect(() => {
     if (!cardDragEnabled) {
       for (const sortable of cardSortablesRef.current.values()) {
@@ -451,7 +386,7 @@ function App() {
     }
 
     const expandedIds = new Set(
-      visibleCollections.filter((collection) => !collapsedCollectionIds.has(collection.id)).map((c) => c.id)
+      visibleCollections.filter((c) => !collapsedCollectionIds.has(c.id)).map((c) => c.id)
     );
 
     visibleCollections.forEach((collection) => {
@@ -502,15 +437,17 @@ function App() {
             }
 
             await moveBookmark(bookmarkId, newParentId, evt.newIndex);
-            if (HARD_RELOAD_AFTER_CARD_DROP) {
-              setTimeout(() => {
-                window.location.reload();
-              }, 60);
-              return;
-            }
-            showUndo('已移动 1 个书签', async () => {
+
+            showUndo(t('movedBookmarks', 1), async () => {
               await moveBookmark(bookmarkId, oldParentId, evt.oldIndex ?? 0);
             });
+
+            // Destroy all card sortable instances before refresh to avoid stale DOM references
+            for (const s of cardSortablesRef.current.values()) {
+              s.destroy();
+            }
+            cardSortablesRef.current.clear();
+
             await refresh(activeSourceRef.current);
           } finally {
             dragReleaseTimerRef.current = setTimeout(() => {
@@ -531,18 +468,14 @@ function App() {
         cardSortablesRef.current.delete(collectionId);
       }
     }
-  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds]);
+  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo, refresh]);
 
+  // --- Actions ---
   const moveCardsWithUndo = async (cards, targetParentId, undoLabel) => {
     if (!cards.length) return;
-    const snapshots = cards.map((card) => ({
-      id: card.id,
-      title: card.title,
-      parentId: card.parentId,
-      index: card.index
-    }));
+    const snapshots = cards.map((c) => ({ id: c.id, title: c.title, parentId: c.parentId, index: c.index }));
 
-    const targetCollection = collections.find((collection) => collection.id === targetParentId);
+    const targetCollection = collections.find((c) => c.id === targetParentId);
     let insertIndex = targetCollection ? targetCollection.cards.length : 0;
 
     for (const card of cards) {
@@ -561,7 +494,6 @@ function App() {
 
   const moveCardsToTrash = async (cards) => {
     if (!cards.length) return;
-
     const rootId = activeSourceId || tabHubRootId;
     if (!rootId) return;
 
@@ -569,12 +501,7 @@ function App() {
       ? { id: trashFolderId }
       : await ensureTrashFolder(rootId);
 
-    const snapshots = cards.map((card) => ({
-      id: card.id,
-      title: card.title,
-      parentId: card.parentId,
-      index: card.index
-    }));
+    const snapshots = cards.map((c) => ({ id: c.id, title: c.title, parentId: c.parentId, index: c.index }));
 
     let insertIndex = 0;
     for (const card of cards) {
@@ -582,7 +509,7 @@ function App() {
       insertIndex += 1;
     }
 
-    showUndo(`已移入回收站 ${cards.length} 项`, async () => {
+    showUndo(t('movedToTrash', cards.length), async () => {
       for (const snapshot of sortSnapshots(snapshots)) {
         await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
       }
@@ -612,21 +539,14 @@ function App() {
 
   const handleAutoOrganize = async () => {
     if (autoOrganizing || !collections.length) return;
-
     const rootId = activeSourceId || tabHubRootId;
     if (!rootId) return;
 
     setAutoOrganizing(true);
     try {
       const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(rootId);
-      const cardsBefore = collections.flatMap((collection) =>
-        collection.cards.map((card) => ({
-          id: card.id,
-          title: card.title,
-          url: card.url,
-          parentId: card.parentId,
-          index: card.index
-        }))
+      const cardsBefore = collections.flatMap((c) =>
+        c.cards.map((card) => ({ id: card.id, title: card.title, url: card.url, parentId: card.parentId, index: card.index }))
       );
 
       const seen = new Set();
@@ -647,9 +567,9 @@ function App() {
         trashInsertIndex += 1;
       }
 
-      const snapshotById = new Map(cardsBefore.map((card) => [card.id, card]));
-      const duplicateIdSet = new Set(duplicates.map((card) => card.id));
-      const keptCards = cardsBefore.filter((card) => !duplicateIdSet.has(card.id));
+      const snapshotById = new Map(cardsBefore.map((c) => [c.id, c]));
+      const duplicateIdSet = new Set(duplicates.map((c) => c.id));
+      const keptCards = cardsBefore.filter((c) => !duplicateIdSet.has(c.id));
       const byCollection = new Map();
       for (const card of keptCards) {
         const list = byCollection.get(card.parentId) || [];
@@ -675,7 +595,7 @@ function App() {
 
       const totalAffected = duplicates.length + sortedMoves;
       if (totalAffected > 0) {
-        showUndo(`自动整理完成：去重 ${duplicates.length}，重排 ${sortedMoves}`, async () => {
+        showUndo(t('autoOrganizeResult', duplicates.length, sortedMoves), async () => {
           for (const snapshot of sortSnapshots(Array.from(snapshotById.values()))) {
             await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
           }
@@ -688,15 +608,16 @@ function App() {
     }
   };
 
-  const handleThemeModeChange = async (mode) => {
-    setThemeMode(mode);
-    await storageSet(THEME_STORAGE_KEY, mode);
-  };
-
   const handleSourceChange = async (sourceId) => {
     setActiveCollectionId('all');
     setCollapsedCollectionIds(new Set());
     await refresh(sourceId);
+  };
+
+  const handleLanguageChange = async (lang) => {
+    setLanguageSetting(lang);
+    await setI18nLanguage(lang);
+    forceUpdate((n) => n + 1);
   };
 
   const toggleCollection = (collectionId) => {
@@ -727,23 +648,13 @@ function App() {
 
   const openCardContextMenu = (event, card) => {
     event.preventDefault();
-    setContextMenu({
-      kind: 'card',
-      x: event.clientX,
-      y: event.clientY,
-      card
-    });
+    setContextMenu({ kind: 'card', x: event.clientX, y: event.clientY, card });
   };
 
   const openCollectionContextMenu = (event, collection) => {
     if (!collection.editable && !collection.deletable) return;
     event.preventDefault();
-    setContextMenu({
-      kind: 'collection',
-      x: event.clientX,
-      y: event.clientY,
-      collection
-    });
+    setContextMenu({ kind: 'collection', x: event.clientX, y: event.clientY, collection });
   };
 
   const handleEditCard = async () => {
@@ -754,9 +665,8 @@ function App() {
   };
 
   const handleDeleteCardByCard = async (card) => {
-    const shouldDelete = window.confirm(`删除书签：${card.title} ?`);
+    const shouldDelete = window.confirm(t('confirmDeleteBookmark', card.title));
     if (!shouldDelete) return;
-
     await moveCardsToTrash([card]);
   };
 
@@ -772,7 +682,7 @@ function App() {
     const current = contextMenu.collection;
     setContextMenu(null);
 
-    const nextTitle = window.prompt('重命名目录', current.folderTitle || current.title);
+    const nextTitle = window.prompt(t('renamePrompt'), current.folderTitle || current.title);
     if (nextTitle == null) return;
     const trimmed = nextTitle.trim();
     if (!trimmed) return;
@@ -786,7 +696,7 @@ function App() {
     const current = contextMenu.collection;
     setContextMenu(null);
 
-    const shouldDelete = window.confirm(`删除目录“${current.title}”及其全部书签？`);
+    const shouldDelete = window.confirm(t('confirmDeleteFolder', current.title));
     if (!shouldDelete) return;
 
     await removeCollectionFolder(current.id);
@@ -826,27 +736,21 @@ function App() {
   const handleEditorSave = async () => {
     if (!editorState || editorState.saving) return;
     const before = cardById.get(editorState.cardId);
-    const targetCollection = collections.find((collection) => collection.id === editorState.targetParentId);
+    const targetCollection = collections.find((c) => c.id === editorState.targetParentId);
     const nextTitle = editorState.title.trim();
     const nextUrl = editorState.url.trim();
     if (!nextTitle || !nextUrl || !before) return;
 
     setEditorState((prev) => (prev ? { ...prev, saving: true } : prev));
     try {
-      await updateBookmark(editorState.cardId, {
-        title: nextTitle,
-        url: nextUrl
-      });
+      await updateBookmark(editorState.cardId, { title: nextTitle, url: nextUrl });
 
       if (editorState.targetParentId !== editorState.currentParentId && targetCollection) {
         await moveBookmark(editorState.cardId, editorState.targetParentId, targetCollection.cards.length);
       }
 
-      showUndo('书签已更新', async () => {
-        await updateBookmark(before.id, {
-          title: before.title,
-          url: before.url
-        });
+      showUndo(t('bookmarkUpdated'), async () => {
+        await updateBookmark(before.id, { title: before.title, url: before.url });
         if (before.parentId !== editorState.targetParentId) {
           await moveBookmark(before.id, before.parentId, before.index ?? 0);
         }
@@ -879,7 +783,7 @@ function App() {
       await moveCardsWithUndo(
         selectedCards,
         batchMoveState.targetParentId,
-        `已移动 ${selectedCards.length} 个书签`
+        t('movedBookmarks', selectedCards.length)
       );
       clearSelections();
       setBatchMoveState(null);
@@ -890,392 +794,106 @@ function App() {
 
   const handleBatchTrash = async () => {
     if (!selectedCards.length) return;
-    const shouldDelete = window.confirm(`将 ${selectedCards.length} 个书签移入回收站？`);
+    const shouldDelete = window.confirm(t('confirmBatchTrash', selectedCards.length));
     if (!shouldDelete) return;
     await moveCardsToTrash(selectedCards);
     clearSelections();
   };
 
+  if (!langReady) return null;
+
   return (
     <div className="app-shell">
       <div className="layout-root">
-        <aside className="sidebar">
-          <div className="mb-5">
-            <div className="text-xl font-semibold tracking-wide">TabHub</div>
-            <div className="text-xs opacity-70 mt-1">My Collections</div>
-          </div>
-
-          <div className="mb-4">
-            <label className="control-label">书签源</label>
-            <select
-              className="input-control"
-              value={activeSourceId}
-              onChange={(e) => handleSourceChange(e.target.value)}
-            >
-              {sources.map((source) => (
-                <option key={source.id} value={source.id}>
-                  {source.isTabHub ? 'TabHub' : source.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mb-4">
-            <label className="control-label">主题</label>
-            <select
-              className="input-control"
-              value={themeMode}
-              onChange={(e) => handleThemeModeChange(e.target.value)}
-            >
-              <option value="system">跟随系统</option>
-              <option value="light">浅色</option>
-              <option value="dark">深色</option>
-            </select>
-          </div>
-
-          <nav className="sidebar-nav space-y-1" data-nav-sortable="true">
-            <button
-              className={`nav-btn ${activeCollectionId === 'all' ? 'nav-btn-active' : ''}`}
-              onClick={() => setActiveCollectionId('all')}
-            >
-              All Collections
-            </button>
-            {collections.map((collection) => (
-              <button
-                key={collection.id}
-                data-collection-id={collection.id}
-                data-draggable={String(canSortCollections && collection.editable && collection.parentId === activeSourceId)}
-                className={`nav-btn ${activeCollectionId === collection.id ? 'nav-btn-active' : ''}`}
-                onClick={() => setActiveCollectionId(collection.id)}
-                onContextMenu={(e) => openCollectionContextMenu(e, collection)}
-                title={collection.editable || collection.deletable ? '右键可编辑目录' : '系统目录，禁止编辑'}
-              >
-                <span className="nav-btn-inner">
-                  <span className="nav-drag-handle" aria-hidden="true">⋮⋮</span>
-                  <span className="truncate">{collection.title}</span>
-                </span>
-              </button>
-            ))}
-          </nav>
-        </aside>
+        <Sidebar
+          sources={sources}
+          activeSourceId={activeSourceId}
+          collections={collections}
+          activeCollectionId={activeCollectionId}
+          canSortCollections={canSortCollections}
+          themeMode={themeMode}
+          languageSetting={languageSetting}
+          onSourceChange={handleSourceChange}
+          onThemeChange={handleThemeModeChange}
+          onLanguageChange={handleLanguageChange}
+          onCollectionSelect={setActiveCollectionId}
+          onCollectionContextMenu={openCollectionContextMenu}
+        />
 
         <main className="content-area">
-          <header className="toolbar">
-            <button
-              onClick={handleSaveTabs}
-              className="primary-btn"
-              disabled={!activeSourceId && !tabHubRootId}
-            >
-              保存当前所有标签页到 {activeSource?.isTabHub ? 'TabHub' : activeSource?.title || '当前书签源'}
-            </button>
-            <button
-              type="button"
-              className={`secondary-btn ${manageMode ? 'secondary-btn-active' : ''}`}
-              onClick={() => setManageMode((prev) => !prev)}
-            >
-              {manageMode ? '退出管理模式' : '进入管理模式'}
-            </button>
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={handleAutoOrganize}
-              disabled={autoOrganizing}
-            >
-              {autoOrganizing ? '自动整理中...' : '自动整理'}
-            </button>
-            <input
-              ref={searchInputRef}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索书签标题或 URL"
-              className="search-input"
-            />
-          </header>
-
-          <div className="quick-entry">
-            <span className="quick-entry-label">效率入口:</span>
-            <button type="button" className="quick-chip" onClick={() => searchInputRef.current?.focus()}>
-              / 搜索
-            </button>
-            <button type="button" className="quick-chip" onClick={handleSaveTabs}>
-              S 保存当前标签
-            </button>
-            <button type="button" className="quick-chip" onClick={handleAutoOrganize}>
-              O 自动整理
-            </button>
-            <button type="button" className="quick-chip" onClick={() => setManageMode((prev) => !prev)}>
-              M 管理模式
-            </button>
-          </div>
-
-          {manageMode && (
-            <div className="batch-toolbar">
-              <div className="batch-count">已选 {selectedCards.length} 项</div>
-              <button
-                type="button"
-                className="secondary-btn"
-                disabled={selectedCards.length === 0}
-                onClick={openBatchMove}
-              >
-                批量移动
-              </button>
-              <button
-                type="button"
-                className="secondary-btn"
-                disabled={selectedCards.length === 0}
-                onClick={handleBatchTrash}
-              >
-                删除到回收站
-              </button>
-              <button type="button" className="secondary-btn" onClick={clearSelections}>
-                清空选择
-              </button>
-            </div>
-          )}
+          <Toolbar
+            activeSource={activeSource}
+            manageMode={manageMode}
+            autoOrganizing={autoOrganizing}
+            search={search}
+            searchInputRef={searchInputRef}
+            selectedCards={selectedCards}
+            onSaveTabs={handleSaveTabs}
+            onToggleManageMode={() => setManageMode((prev) => !prev)}
+            onAutoOrganize={handleAutoOrganize}
+            onSearchChange={setSearch}
+            onBatchMove={openBatchMove}
+            onBatchTrash={handleBatchTrash}
+            onClearSelections={clearSelections}
+            canSave={!!(activeSourceId || tabHubRootId)}
+          />
 
           {loading ? (
-            <div className="muted">Loading...</div>
+            <div className="muted">{t('loading')}</div>
           ) : error ? (
             <div className="error-panel">{error}</div>
           ) : visibleCollections.length === 0 ? (
-            <div className="empty-panel">暂无可显示书签。</div>
+            <div className="empty-panel">{t('noBookmarks')}</div>
           ) : (
             <section className="space-y-5" data-module-sortable="true">
-              {visibleCollections.map((collection) => {
-                const collapsed = collapsedCollectionIds.has(collection.id);
-                const moduleDraggable =
-                  canSortCollections && collection.editable && collection.parentId === activeSourceId;
-                return (
-                  <article
-                    key={collection.id}
-                    className="collection-card"
-                    data-collection-id={collection.id}
-                    data-draggable={String(moduleDraggable)}
-                  >
-                    <button
-                      className="collection-header"
-                      onClick={() => toggleCollection(collection.id)}
-                      type="button"
-                    >
-                      <span className="collection-header-left">
-                        <span className="collection-drag-handle" aria-hidden="true">⋮⋮</span>
-                        <span className="font-semibold">{collection.title}</span>
-                      </span>
-                      <span className="text-xs opacity-70">{collection.cards.length} items {collapsed ? '▸' : '▾'}</span>
-                    </button>
-
-                    {!collapsed && (
-                      <div
-                        data-cards-collection-id={collection.id}
-                        data-parent-id={collection.id}
-                        className={`collection-grid collection-drop-zone p-1 ${!cardDragEnabled ? 'opacity-80' : ''}`}
-                      >
-                        {collection.cards.map((card) => (
-                          <div
-                            key={card.id}
-                            data-card-id={card.id}
-                            className={`bookmark-card ${selectedCardIds.has(card.id) ? 'bookmark-card-selected' : ''}`}
-                            onClick={(e) => handleCardClick(e, card)}
-                            onContextMenu={(e) => openCardContextMenu(e, card)}
-                            title={card.url}
-                          >
-                            <span className="card-drag-handle" aria-hidden="true">⋮⋮</span>
-                            {manageMode && (
-                              <input
-                                type="checkbox"
-                                className="card-select"
-                                checked={selectedCardIds.has(card.id)}
-                                onChange={() => toggleCardSelection(card.id)}
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            )}
-                            <BookmarkIcon url={card.url} title={card.title} />
-                            <span className="truncate text-sm font-medium">{card.title}</span>
-                            {manageMode && (
-                              <div className="card-manage-actions">
-                                <button
-                                  type="button"
-                                  className="card-mini-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openEditorByCard(card);
-                                  }}
-                                >
-                                  编辑
-                                </button>
-                                <button
-                                  type="button"
-                                  className="card-mini-btn card-mini-btn-danger"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteCardByCard(card);
-                                  }}
-                                >
-                                  删除
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
+              {visibleCollections.map((collection) => (
+                <CollectionCard
+                  key={collection.id}
+                  collection={collection}
+                  collapsed={collapsedCollectionIds.has(collection.id)}
+                  moduleDraggable={canSortCollections && collection.editable && collection.parentId === activeSourceId}
+                  selectedCardIds={selectedCardIds}
+                  manageMode={manageMode}
+                  cardDragEnabled={cardDragEnabled}
+                  onToggleCollapse={toggleCollection}
+                  onCardClick={handleCardClick}
+                  onCardContextMenu={openCardContextMenu}
+                  onToggleCardSelect={toggleCardSelection}
+                  onEditCard={openEditorByCard}
+                  onDeleteCard={handleDeleteCardByCard}
+                />
+              ))}
             </section>
           )}
         </main>
       </div>
 
-      {contextMenu && (
-        <div
-          className="context-menu"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {contextMenu.kind === 'card' && (
-            <>
-              <button type="button" className="context-item" onClick={handleEditCard}>
-                编辑书签（含目录）
-              </button>
-              <button type="button" className="context-item context-item-danger" onClick={handleDeleteCard}>
-                删除到回收站
-              </button>
-            </>
-          )}
-          {contextMenu.kind === 'collection' && (
-            <>
-              <button type="button" className="context-item" onClick={handleRenameCollection}>
-                重命名目录
-              </button>
-              <button
-                type="button"
-                className="context-item context-item-danger"
-                onClick={handleDeleteCollection}
-              >
-                删除目录
-              </button>
-            </>
-          )}
-        </div>
-      )}
+      <ContextMenu
+        contextMenu={contextMenu}
+        onEditCard={handleEditCard}
+        onDeleteCard={handleDeleteCard}
+        onRenameCollection={handleRenameCollection}
+        onDeleteCollection={handleDeleteCollection}
+      />
 
-      {editorState && (
-        <div className="modal-backdrop" onClick={handleEditorClose}>
-          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-title">编辑书签</div>
-            <div className="modal-body">
-              <label className="control-label">标题</label>
-              <input
-                className="input-control"
-                value={editorState.title}
-                onChange={(e) =>
-                  setEditorState((prev) => (prev ? { ...prev, title: e.target.value } : prev))
-                }
-              />
-              <label className="control-label mt-3">URL</label>
-              <input
-                className="input-control"
-                value={editorState.url}
-                onChange={(e) =>
-                  setEditorState((prev) => (prev ? { ...prev, url: e.target.value } : prev))
-                }
-              />
-              <label className="control-label mt-3">移动到文件夹</label>
-              <input
-                className="input-control"
-                placeholder="搜索文件夹..."
-                value={editorState.folderQuery}
-                onChange={(e) =>
-                  setEditorState((prev) => (prev ? { ...prev, folderQuery: e.target.value } : prev))
-                }
-              />
-              <div className="folder-list">
-                {filteredEditorTargets.map((collection) => (
-                  <button
-                    type="button"
-                    key={collection.id}
-                    className={`folder-item ${editorState.targetParentId === collection.id ? 'folder-item-active' : ''}`}
-                    onClick={() =>
-                      setEditorState((prev) => (prev ? { ...prev, targetParentId: collection.id } : prev))
-                    }
-                  >
-                    {collection.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="secondary-btn" onClick={handleEditorClose}>
-                取消
-              </button>
-              <button
-                type="button"
-                className="primary-btn"
-                onClick={handleEditorSave}
-                disabled={editorState.saving}
-              >
-                {editorState.saving ? '保存中...' : '保存'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditBookmarkModal
+        editorState={editorState}
+        setEditorState={setEditorState}
+        collections={collections}
+        onSave={handleEditorSave}
+        onClose={handleEditorClose}
+      />
 
-      {batchMoveState && (
-        <div className="modal-backdrop" onClick={closeBatchMove}>
-          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-title">批量移动书签（{selectedCards.length} 项）</div>
-            <div className="modal-body">
-              <label className="control-label">搜索目标文件夹</label>
-              <input
-                className="input-control"
-                placeholder="搜索文件夹..."
-                value={batchMoveState.folderQuery}
-                onChange={(e) =>
-                  setBatchMoveState((prev) => (prev ? { ...prev, folderQuery: e.target.value } : prev))
-                }
-              />
-              <div className="folder-list">
-                {filteredBatchTargets.map((collection) => (
-                  <button
-                    type="button"
-                    key={collection.id}
-                    className={`folder-item ${batchMoveState.targetParentId === collection.id ? 'folder-item-active' : ''}`}
-                    onClick={() =>
-                      setBatchMoveState((prev) => (prev ? { ...prev, targetParentId: collection.id } : prev))
-                    }
-                  >
-                    {collection.title}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="secondary-btn" onClick={closeBatchMove}>
-                取消
-              </button>
-              <button
-                type="button"
-                className="primary-btn"
-                onClick={handleBatchMoveSave}
-                disabled={batchMoveState.moving || !batchMoveState.targetParentId || selectedCards.length === 0}
-              >
-                {batchMoveState.moving ? '移动中...' : '批量移动'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <BatchMoveModal
+        batchMoveState={batchMoveState}
+        setBatchMoveState={setBatchMoveState}
+        selectedCards={selectedCards}
+        collections={collections}
+        onSave={handleBatchMoveSave}
+        onClose={closeBatchMove}
+      />
 
-      {undoToast && (
-        <div className="undo-toast">
-          <span>{undoToast.message}</span>
-          <button type="button" className="undo-btn" onClick={handleUndo}>
-            {undoToast.pending ? 'Undoing...' : 'Undo'}
-          </button>
-        </div>
-      )}
+      <UndoToast toast={undoToast} onUndo={handleUndo} />
     </div>
   );
 }
