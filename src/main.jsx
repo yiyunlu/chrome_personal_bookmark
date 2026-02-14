@@ -385,113 +385,117 @@ function App() {
       return;
     }
 
-    const expandedIds = new Set(
-      visibleCollections.filter((c) => !collapsedCollectionIds.has(c.id)).map((c) => c.id)
-    );
+    // Defer initialization to ensure DOM is fully painted.
+    // Chrome new tab pages may pre-render, causing querySelector to miss elements.
+    const rafId = requestAnimationFrame(() => {
+      const expandedIds = new Set(
+        visibleCollections.filter((c) => !collapsedCollectionIds.has(c.id)).map((c) => c.id)
+      );
 
-    visibleCollections.forEach((collection) => {
-      if (collapsedCollectionIds.has(collection.id)) return;
+      visibleCollections.forEach((collection) => {
+        if (collapsedCollectionIds.has(collection.id)) return;
 
-      const container = document.querySelector(`[data-cards-collection-id=\"${collection.id}\"]`);
-      if (!container || cardSortablesRef.current.has(collection.id)) {
-        return;
-      }
-
-      const sortable = new Sortable(container, {
-        animation: 150,
-        draggable: '[data-card-id]',
-        handle: '.card-drag-handle',
-        forceFallback: true,
-        fallbackOnBody: true,
-        group: {
-          name: 'bookmark-cards',
-          pull: true,
-          put: true
-        },
-        emptyInsertThreshold: 28,
-        ghostClass: 'card-dragging',
-        chosenClass: 'card-dragging',
-        dragClass: 'card-dragging',
-        onStart: () => {
-          cardDragActiveRef.current = true;
-          suppressCardOpenUntilRef.current = Date.now() + 1500;
-          suppressNextCardClickRef.current = true;
-          if (dragReleaseTimerRef.current) {
-            clearTimeout(dragReleaseTimerRef.current);
-            dragReleaseTimerRef.current = null;
-          }
-        },
-        onEnd: async (evt) => {
-          const bookmarkId = evt.item.getAttribute('data-card-id');
-          const oldParentId = evt.from.getAttribute('data-parent-id');
-          const newParentId = evt.to.getAttribute('data-parent-id');
-          const { oldIndex, newIndex } = evt;
-          suppressCardOpenUntilRef.current = Date.now() + 1800;
-          suppressNextCardClickRef.current = true;
-
-          // ── CRITICAL: Revert SortableJS's DOM mutation ──
-          // SortableJS has already physically moved evt.item in the DOM.
-          // We MUST put it back before React tries to reconcile, otherwise
-          // React's virtual DOM will be out of sync → removeChild crash → blank page.
-          if (evt.from !== evt.to) {
-            // Cross-container: item was moved from `from` to `to`
-            evt.to.removeChild(evt.item);
-            if (evt.from.children[oldIndex]) {
-              evt.from.insertBefore(evt.item, evt.from.children[oldIndex]);
-            } else {
-              evt.from.appendChild(evt.item);
-            }
-          } else {
-            // Same container reorder: put item back at original position
-            const refNode = evt.from.children[oldIndex];
-            if (refNode) {
-              evt.from.insertBefore(evt.item, refNode);
-            } else {
-              evt.from.appendChild(evt.item);
-            }
-          }
-
-          try {
-            if (!bookmarkId || !oldParentId || !newParentId || newIndex == null) {
-              return;
-            }
-            if (oldParentId === newParentId && oldIndex === newIndex) {
-              return;
-            }
-
-            await moveBookmark(bookmarkId, newParentId, newIndex);
-
-            showUndo(t('movedBookmarks', 1), async () => {
-              await moveBookmark(bookmarkId, oldParentId, oldIndex ?? 0);
-            });
-
-            // React state update triggers re-render; SortableJS instances
-            // will be rebuilt by the useEffect on next render cycle.
-            for (const s of cardSortablesRef.current.values()) {
-              s.destroy();
-            }
-            cardSortablesRef.current.clear();
-
-            await refresh(activeSourceRef.current);
-          } finally {
-            dragReleaseTimerRef.current = setTimeout(() => {
-              cardDragActiveRef.current = false;
-              suppressNextCardClickRef.current = false;
-              dragReleaseTimerRef.current = null;
-            }, 900);
-          }
+        const container = document.querySelector(`[data-cards-collection-id=\"${collection.id}\"]`);
+        if (!container || cardSortablesRef.current.has(collection.id)) {
+          return;
         }
+
+        const sortable = new Sortable(container, {
+          animation: 150,
+          draggable: '[data-card-id]',
+          handle: '.card-drag-handle',
+          forceFallback: true,
+          fallbackOnBody: true,
+          group: {
+            name: 'bookmark-cards',
+            pull: true,
+            put: true
+          },
+          emptyInsertThreshold: 28,
+          ghostClass: 'card-dragging',
+          chosenClass: 'card-dragging',
+          dragClass: 'card-dragging',
+          onStart: () => {
+            cardDragActiveRef.current = true;
+            suppressCardOpenUntilRef.current = Date.now() + 1500;
+            suppressNextCardClickRef.current = true;
+            if (dragReleaseTimerRef.current) {
+              clearTimeout(dragReleaseTimerRef.current);
+              dragReleaseTimerRef.current = null;
+            }
+          },
+          onEnd: async (evt) => {
+            const bookmarkId = evt.item.getAttribute('data-card-id');
+            const oldParentId = evt.from.getAttribute('data-parent-id');
+            const newParentId = evt.to.getAttribute('data-parent-id');
+            const { oldIndex, newIndex } = evt;
+            suppressCardOpenUntilRef.current = Date.now() + 1800;
+            suppressNextCardClickRef.current = true;
+
+            // ── CRITICAL: Revert SortableJS's DOM mutation ──
+            // SortableJS has already physically moved evt.item in the DOM.
+            // We MUST put it back before React tries to reconcile, otherwise
+            // React's virtual DOM will be out of sync → removeChild crash → blank page.
+            if (evt.from !== evt.to) {
+              evt.to.removeChild(evt.item);
+              if (evt.from.children[oldIndex]) {
+                evt.from.insertBefore(evt.item, evt.from.children[oldIndex]);
+              } else {
+                evt.from.appendChild(evt.item);
+              }
+            } else {
+              const refNode = evt.from.children[oldIndex];
+              if (refNode) {
+                evt.from.insertBefore(evt.item, refNode);
+              } else {
+                evt.from.appendChild(evt.item);
+              }
+            }
+
+            try {
+              if (!bookmarkId || !oldParentId || !newParentId || newIndex == null) {
+                return;
+              }
+              if (oldParentId === newParentId && oldIndex === newIndex) {
+                return;
+              }
+
+              await moveBookmark(bookmarkId, newParentId, newIndex);
+
+              showUndo(t('movedBookmarks', 1), async () => {
+                await moveBookmark(bookmarkId, oldParentId, oldIndex ?? 0);
+              });
+
+              for (const s of cardSortablesRef.current.values()) {
+                s.destroy();
+              }
+              cardSortablesRef.current.clear();
+
+              await refresh(activeSourceRef.current);
+            } finally {
+              dragReleaseTimerRef.current = setTimeout(() => {
+                cardDragActiveRef.current = false;
+                suppressNextCardClickRef.current = false;
+                dragReleaseTimerRef.current = null;
+              }, 900);
+            }
+          }
+        });
+
+        cardSortablesRef.current.set(collection.id, sortable);
       });
 
-      cardSortablesRef.current.set(collection.id, sortable);
+      for (const [collectionId, sortable] of cardSortablesRef.current.entries()) {
+        if (!expandedIds.has(collectionId)) {
+          sortable.destroy();
+          cardSortablesRef.current.delete(collectionId);
+        }
+      }
     });
 
-    for (const [collectionId, sortable] of cardSortablesRef.current.entries()) {
-      if (!expandedIds.has(collectionId)) {
-        sortable.destroy();
-        cardSortablesRef.current.delete(collectionId);
-      }
-    }
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
   }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo, refresh]);
 
   // --- Actions ---
