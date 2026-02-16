@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { t } from '../lib/i18n';
 
 export default function ContextMenu({
@@ -8,12 +8,31 @@ export default function ContextMenu({
     onRenameCollection,
     onDeleteCollection
 }) {
+    const menuRef = useRef(null);
+    const [position, setPosition] = useState({ top: 0, left: 0 });
+
+    useEffect(() => {
+        if (!contextMenu) return;
+        const el = menuRef.current;
+        if (!el) {
+            setPosition({ top: contextMenu.y, left: contextMenu.x });
+            return;
+        }
+        const rect = el.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const top = contextMenu.y + rect.height > vh ? Math.max(0, vh - rect.height - 4) : contextMenu.y;
+        const left = contextMenu.x + rect.width > vw ? Math.max(0, vw - rect.width - 4) : contextMenu.x;
+        setPosition({ top, left });
+    }, [contextMenu]);
+
     if (!contextMenu) return null;
 
     return (
         <div
+            ref={menuRef}
             className="context-menu"
-            style={{ top: contextMenu.y, left: contextMenu.x }}
+            style={{ top: position.top, left: position.left }}
             onClick={(e) => e.stopPropagation()}
         >
             {contextMenu.kind === 'card' && (
