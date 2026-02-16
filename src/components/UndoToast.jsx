@@ -7,7 +7,7 @@ export default function UndoToast({ toast, onUndo }) {
     return (
         <div className="undo-toast">
             <span>{toast.message}</span>
-            <button type="button" className="undo-btn" onClick={onUndo}>
+            <button type="button" className="undo-btn" onClick={onUndo} disabled={toast.pending}>
                 {toast.pending ? t('undoing') : t('undo')}
             </button>
         </div>

@@ -187,7 +187,9 @@ body {
   background: color-mix(in srgb, var(--btn-bg) 14%, var(--panel-bg));
 }
 
-.primary-btn:disabled {
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.undo-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

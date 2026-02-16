@@ -80,6 +80,8 @@ function App() {
   const cardDragActiveRef = useRef(false);
   const suppressCardOpenUntilRef = useRef(0);
   const suppressNextCardClickRef = useRef(false);
+  const handleSaveTabsRef = useRef(null);
+  const handleAutoOrganizeRef = useRef(null);
 
   const dragEnabled = search.trim() === '';
   const cardDragEnabled = dragEnabled && !manageMode;
@@ -242,12 +244,10 @@ function App() {
         searchInputRef.current?.focus();
       } else if (key === 's') {
         event.preventDefault();
-        handleSaveTabs();
+        handleSaveTabsRef.current?.();
       } else if (key === 'o') {
         event.preventDefault();
-        if (!autoOrganizing) {
-          handleAutoOrganize();
-        }
+        handleAutoOrganizeRef.current?.();
       } else if (key === 'm') {
         event.preventDefault();
         setManageMode((prev) => !prev);
@@ -258,7 +258,7 @@ function App() {
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [autoOrganizing, activeSourceId, tabHubRootId, collections]);
+  }, []);
 
   // --- Sync selected cards with available cards ---
   useEffect(() => {
@@ -385,18 +385,21 @@ function App() {
       return;
     }
 
+    // Destroy all existing card Sortable instances before re-creating.
+    // This prevents stale instances from accumulating when the effect re-runs.
+    for (const sortable of cardSortablesRef.current.values()) {
+      sortable.destroy();
+    }
+    cardSortablesRef.current.clear();
+
     // Defer initialization to ensure DOM is fully painted.
     // Chrome new tab pages may pre-render, causing querySelector to miss elements.
     const rafId = requestAnimationFrame(() => {
-      const expandedIds = new Set(
-        visibleCollections.filter((c) => !collapsedCollectionIds.has(c.id)).map((c) => c.id)
-      );
-
       visibleCollections.forEach((collection) => {
         if (collapsedCollectionIds.has(collection.id)) return;
 
         const container = document.querySelector(`[data-cards-collection-id=\"${collection.id}\"]`);
-        if (!container || cardSortablesRef.current.has(collection.id)) {
+        if (!container) {
           return;
         }
 
@@ -484,17 +487,14 @@ function App() {
 
         cardSortablesRef.current.set(collection.id, sortable);
       });
-
-      for (const [collectionId, sortable] of cardSortablesRef.current.entries()) {
-        if (!expandedIds.has(collectionId)) {
-          sortable.destroy();
-          cardSortablesRef.current.delete(collectionId);
-        }
-      }
     });
 
     return () => {
       cancelAnimationFrame(rafId);
+      for (const sortable of cardSortablesRef.current.values()) {
+        sortable.destroy();
+      }
+      cardSortablesRef.current.clear();
     };
   }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo, refresh]);
 
@@ -564,6 +564,7 @@ function App() {
     await saveCurrentWindowTabsToCollection(targetRootId);
     await refresh(activeSourceRef.current);
   };
+  handleSaveTabsRef.current = handleSaveTabs;
 
   const handleAutoOrganize = async () => {
     if (autoOrganizing || !collections.length) return;
@@ -635,6 +636,7 @@ function App() {
       setAutoOrganizing(false);
     }
   };
+  handleAutoOrganizeRef.current = handleAutoOrganize;
 
   const handleSourceChange = async (sourceId) => {
     setActiveCollectionId('all');
