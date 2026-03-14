@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain, CheckSquare, Download, Search, Sparkles, Square } from 'lucide-react';
+import { AlertTriangle, Brain, CheckSquare, Download, Search, Sparkles, Square } from 'lucide-react';
 
 export function Toolbar({
   activeSource,
@@ -11,6 +11,7 @@ export function Toolbar({
   autoOrganizing,
   onAutoOrganize,
   onAICategorize,
+  onCheckDeadLinks,
   search,
   onSearchChange,
   searchInputRef
@@ -86,6 +87,21 @@ export function Toolbar({
         >
           <Brain size={14} style={{ color: 'var(--accent)' }} />
           <span>AI 分类</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onCheckDeadLinks}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
+          style={{
+            background: 'var(--panel-bg)',
+            borderColor: 'var(--input-border)',
+            color: 'var(--text)'
+          }}
+          title="检测失效链接"
+        >
+          <AlertTriangle size={14} style={{ color: 'var(--danger)' }} />
+          <span>失效检测</span>
         </button>
 
         <button
