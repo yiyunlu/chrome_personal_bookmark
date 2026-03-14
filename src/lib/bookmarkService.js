@@ -60,9 +60,7 @@ function collectNestedCollections(rootFolder, includeEmpty = true, hiddenFolderI
     }
 
     const nextPrefix = prefix ? `${prefix} / ${folder.title || 'Untitled'}` : folder.title || 'Untitled';
-    (folder.children || [])
-      .filter((node) => !node.url)
-      .forEach((childFolder) => walk(childFolder, nextPrefix));
+    (folder.children || []).filter((node) => !node.url).forEach((childFolder) => walk(childFolder, nextPrefix));
   };
 
   (rootFolder.children || [])
@@ -120,9 +118,7 @@ export async function ensureTabHubRootFolder() {
   const tree = await getTree();
   const allFolders = collectAllFolders(tree, []);
 
-  const existing = allFolders.find(
-    (folder) => folder.title?.trim().toLowerCase() === TABHUB_ROOT_NAME.toLowerCase()
-  );
+  const existing = allFolders.find((folder) => folder.title?.trim().toLowerCase() === TABHUB_ROOT_NAME.toLowerCase());
   if (existing) {
     return existing;
   }
@@ -171,15 +167,12 @@ export async function getCollectionsPayload(preferredSourceId) {
   const activeSourceId =
     (preferredSourceId && sources.some((source) => source.id === preferredSourceId)
       ? preferredSourceId
-      : defaultSourceId) ||
-    sources[0]?.id;
+      : defaultSourceId) || sources[0]?.id;
 
   const [activeRoot] = await getSubTreeApi(activeSourceId);
   const fallbackRoot = findNodeById(refreshedTree, activeSourceId);
   const rootNode = activeRoot || fallbackRoot || { children: [] };
-  const trashFolder = (rootNode.children || []).find(
-    (node) => !node.url && node.title === TRASH_FOLDER_NAME
-  );
+  const trashFolder = (rootNode.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
   const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
   const collections = collectNestedCollections(rootNode, true, hiddenFolderIds);
 
@@ -254,9 +247,7 @@ export async function removeCollectionFolder(collectionId) {
 
 export async function ensureTrashFolder(rootId) {
   const [root] = await getSubTreeApi(rootId);
-  const existing = (root?.children || []).find(
-    (node) => !node.url && node.title === TRASH_FOLDER_NAME
-  );
+  const existing = (root?.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
   if (existing) {
     return existing;
   }

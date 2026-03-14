@@ -2,7 +2,16 @@ import React from 'react';
 import { BookmarkIcon } from './BookmarkIcon';
 import { ChevronDown, ChevronRight, FolderOpen, GripVertical, Pencil, Trash2 } from 'lucide-react';
 
-export function BookmarkCard({ card, manageMode, isSelected, onCardClick, onContextMenu, onEdit, onDelete, onToggleSelect }) {
+export function BookmarkCard({
+  card,
+  manageMode,
+  isSelected,
+  onCardClick,
+  onContextMenu,
+  onEdit,
+  onDelete,
+  onToggleSelect
+}) {
   let domain = '';
   try {
     domain = new URL(card.url).hostname.replace(/^www\./, '');
@@ -75,7 +84,10 @@ export function BookmarkCard({ card, manageMode, isSelected, onCardClick, onCont
             type="button"
             className="card-mini-btn p-1 rounded-md hover:opacity-80"
             style={{ color: 'var(--muted)' }}
-            onClick={(e) => { e.stopPropagation(); onEdit(card); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(card);
+            }}
             title="编辑"
           >
             <Pencil size={13} />
@@ -84,7 +96,10 @@ export function BookmarkCard({ card, manageMode, isSelected, onCardClick, onCont
             type="button"
             className="card-mini-btn p-1 rounded-md hover:opacity-80"
             style={{ color: 'var(--danger)' }}
-            onClick={(e) => { e.stopPropagation(); onDelete(card); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(card);
+            }}
             title="删除"
           >
             <Trash2 size={13} />
@@ -99,7 +114,7 @@ export function CollectionCard({
   collection,
   collapsed,
   moduleDraggable,
-  cardDragEnabled,
+  cardDragEnabled: _cardDragEnabled,
   manageMode,
   selectedCardIds,
   onToggleCollapse,
@@ -135,10 +150,7 @@ export function CollectionCard({
         </span>
         <FolderOpen size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
         <span className="font-semibold text-sm flex-1 truncate">{collection.title}</span>
-        <span
-          className="text-[0.7rem] tabular-nums mr-1"
-          style={{ color: 'var(--muted)' }}
-        >
+        <span className="text-[0.7rem] tabular-nums mr-1" style={{ color: 'var(--muted)' }}>
           {collection.cards.length}
         </span>
         {collapsed ? (
