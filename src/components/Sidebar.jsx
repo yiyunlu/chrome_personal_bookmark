@@ -1,4 +1,20 @@
 import React from 'react';
+import {
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  FolderOpen,
+  GripVertical,
+  Monitor,
+  Moon,
+  Sun
+} from 'lucide-react';
+
+const themeOptions = [
+  { value: 'system', icon: Monitor, label: '跟随系统' },
+  { value: 'light', icon: Sun, label: '浅色' },
+  { value: 'dark', icon: Moon, label: '深色' }
+];
 
 export function Sidebar({
   sources,
@@ -10,67 +26,153 @@ export function Sidebar({
   activeCollectionId,
   onCollectionSelect,
   canSortCollections,
-  onCollectionContextMenu
+  onCollectionContextMenu,
+  collapsed,
+  onToggleCollapse
 }) {
   return (
-    <aside className="sidebar">
-      <div className="mb-5">
-        <div className="text-xl font-semibold tracking-wide">TabHub</div>
-        <div className="text-xs opacity-70 mt-1">My Collections</div>
-      </div>
-
-      <div className="mb-4">
-        <label className="control-label">书签源</label>
-        <select
-          className="input-control"
-          value={activeSourceId}
-          onChange={(e) => onSourceChange(e.target.value)}
-        >
-          {sources.map((source) => (
-            <option key={source.id} value={source.id}>
-              {source.isTabHub ? 'TabHub' : source.title}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mb-4">
-        <label className="control-label">主题</label>
-        <select
-          className="input-control"
-          value={themeMode}
-          onChange={(e) => onThemeModeChange(e.target.value)}
-        >
-          <option value="system">跟随系统</option>
-          <option value="light">浅色</option>
-          <option value="dark">深色</option>
-        </select>
-      </div>
-
-      <nav className="sidebar-nav space-y-1" data-nav-sortable="true">
+    <aside
+      className="flex flex-col flex-shrink-0 min-h-screen border-r border-[var(--panel-border)] select-none"
+      style={{
+        width: collapsed ? '3.5rem' : '16rem',
+        background: 'var(--sidebar-bg)',
+        color: 'var(--sidebar-text)',
+        transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 pt-4 pb-3">
+        {!collapsed && (
+          <div className="flex items-center gap-2">
+            <div
+              className="flex items-center justify-center w-8 h-8 rounded-lg"
+              style={{ background: 'var(--accent-soft)' }}
+            >
+              <Bookmark size={16} style={{ color: 'var(--accent)' }} />
+            </div>
+            <div>
+              <div className="text-sm font-semibold tracking-wide">TabHub</div>
+            </div>
+          </div>
+        )}
         <button
-          className={`nav-btn ${activeCollectionId === 'all' ? 'nav-btn-active' : ''}`}
-          onClick={() => onCollectionSelect('all')}
+          onClick={onToggleCollapse}
+          className="flex items-center justify-center w-7 h-7 rounded-md hover:opacity-80"
+          style={{ background: 'var(--sidebar-hover)' }}
+          title={collapsed ? '展开侧栏' : '收起侧栏'}
         >
-          All Collections
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
-        {collections.map((collection) => (
-          <button
-            key={collection.id}
-            data-collection-id={collection.id}
-            data-draggable={String(canSortCollections && collection.editable && collection.parentId === activeSourceId)}
-            className={`nav-btn ${activeCollectionId === collection.id ? 'nav-btn-active' : ''}`}
-            onClick={() => onCollectionSelect(collection.id)}
-            onContextMenu={(e) => onCollectionContextMenu(e, collection)}
-            title={collection.editable || collection.deletable ? '右键可编辑目录' : '系统目录，禁止编辑'}
-          >
-            <span className="nav-btn-inner">
-              <span className="nav-drag-handle" aria-hidden="true">⋮⋮</span>
-              <span className="truncate">{collection.title}</span>
-            </span>
-          </button>
-        ))}
-      </nav>
+      </div>
+
+      {!collapsed && (
+        <>
+          {/* Source selector */}
+          <div className="px-3 mb-3">
+            <label className="block text-[0.68rem] uppercase tracking-wider mb-1.5" style={{ color: 'var(--muted)' }}>
+              书签源
+            </label>
+            <select
+              className="w-full text-sm rounded-lg border px-2.5 py-1.5 outline-none"
+              style={{
+                background: 'var(--input-bg)',
+                borderColor: 'var(--input-border)',
+                color: 'var(--text)'
+              }}
+              value={activeSourceId}
+              onChange={(e) => onSourceChange(e.target.value)}
+            >
+              {sources.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.isTabHub ? 'TabHub' : source.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Theme toggle */}
+          <div className="px-3 mb-4">
+            <label className="block text-[0.68rem] uppercase tracking-wider mb-1.5" style={{ color: 'var(--muted)' }}>
+              主题
+            </label>
+            <div
+              className="flex rounded-lg border p-0.5"
+              style={{ borderColor: 'var(--input-border)', background: 'var(--input-bg)' }}
+            >
+              {themeOptions.map(({ value, icon: Icon, label }) => (
+                <button
+                  key={value}
+                  onClick={() => onThemeModeChange(value)}
+                  className="flex-1 flex items-center justify-center gap-1 py-1 rounded-md text-xs"
+                  style={{
+                    background: themeMode === value ? 'var(--accent-soft)' : 'transparent',
+                    color: themeMode === value ? 'var(--accent)' : 'var(--muted)'
+                  }}
+                  title={label}
+                >
+                  <Icon size={13} />
+                  {collapsed ? null : <span className="hidden sm:inline">{label}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="mx-3 mb-2 border-t" style={{ borderColor: 'var(--panel-border)' }} />
+
+          {/* Collections nav */}
+          <nav className="flex-1 min-h-0 overflow-y-auto px-2 pb-3 space-y-0.5" data-nav-sortable="true">
+            <button
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left"
+              style={{
+                background: activeCollectionId === 'all' ? 'var(--sidebar-active)' : 'transparent',
+                color: activeCollectionId === 'all' ? 'var(--accent)' : 'inherit',
+                fontWeight: activeCollectionId === 'all' ? 600 : 400
+              }}
+              onClick={() => onCollectionSelect('all')}
+            >
+              <Bookmark size={15} style={{ opacity: 0.7 }} />
+              <span className="truncate">All Collections</span>
+            </button>
+
+            {collections.map((collection) => {
+              const isActive = activeCollectionId === collection.id;
+              const isDraggable = canSortCollections && collection.editable && collection.parentId === activeSourceId;
+              return (
+                <button
+                  key={collection.id}
+                  data-collection-id={collection.id}
+                  data-draggable={String(isDraggable)}
+                  className="group w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left"
+                  style={{
+                    background: isActive ? 'var(--sidebar-active)' : 'transparent',
+                    color: isActive ? 'var(--accent)' : 'inherit',
+                    fontWeight: isActive ? 600 : 400
+                  }}
+                  onClick={() => onCollectionSelect(collection.id)}
+                  onContextMenu={(e) => onCollectionContextMenu(e, collection)}
+                  title={collection.editable || collection.deletable ? '右键可编辑目录' : ''}
+                >
+                  <span
+                    className="nav-drag-handle flex-shrink-0 opacity-0 group-hover:opacity-40 cursor-grab"
+                    style={{ visibility: isDraggable ? 'visible' : 'hidden' }}
+                  >
+                    <GripVertical size={13} />
+                  </span>
+                  <FolderOpen size={15} style={{ opacity: 0.6, flexShrink: 0 }} />
+                  <span className="truncate flex-1">{collection.title}</span>
+                  <span
+                    className="text-[0.65rem] tabular-nums flex-shrink-0"
+                    style={{ color: 'var(--muted)' }}
+                  >
+                    {collection.cards.length}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </>
+      )}
     </aside>
   );
 }

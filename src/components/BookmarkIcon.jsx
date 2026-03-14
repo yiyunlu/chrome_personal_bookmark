@@ -14,14 +14,21 @@ export function BookmarkIcon({ url, title }) {
   const fallbackChar = (title || 'L').trim().charAt(0).toUpperCase();
 
   if (failed) {
-    return <div className="icon-fallback">{fallbackChar}</div>;
+    return (
+      <div
+        className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-semibold"
+        style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+      >
+        {fallbackChar}
+      </div>
+    );
   }
 
   return (
     <img
       src={candidates[idx]}
       alt=""
-      className="h-5 w-5 rounded"
+      className="w-5 h-5 rounded"
       draggable="false"
       onError={() => {
         if (idx < candidates.length - 1) {

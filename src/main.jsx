@@ -21,7 +21,7 @@ import { useUndoStack } from './hooks/useUndoStack';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 import { Sidebar } from './components/Sidebar';
-import { Toolbar, QuickEntry, BatchToolbar } from './components/Toolbar';
+import { Toolbar, BatchToolbar } from './components/Toolbar';
 import { CollectionCard } from './components/CollectionCard';
 import { ContextMenu } from './components/ContextMenu';
 import { EditBookmarkModal } from './components/EditBookmarkModal';
@@ -51,6 +51,7 @@ function App() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const navSortableRef = useRef(null);
   const moduleSortableRef = useRef(null);
@@ -741,8 +742,8 @@ function App() {
   // --- Render ---
 
   return (
-    <div className="app-shell">
-      <div className="layout-root">
+    <div className="min-h-screen relative" style={{ background: 'var(--bg)' }}>
+      <div className="min-h-screen flex">
         <Sidebar
           sources={sources}
           activeSourceId={activeSourceId}
@@ -754,9 +755,11 @@ function App() {
           onCollectionSelect={setActiveCollectionId}
           canSortCollections={canSortCollections}
           onCollectionContextMenu={openCollectionContextMenu}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
         />
 
-        <main className="content-area">
+        <main className="flex-1 overflow-y-auto px-6 py-5">
           <Toolbar
             activeSource={activeSource}
             activeSourceId={activeSourceId}
@@ -771,13 +774,6 @@ function App() {
             searchInputRef={searchInputRef}
           />
 
-          <QuickEntry
-            searchInputRef={searchInputRef}
-            onSaveTabs={handleSaveTabs}
-            onAutoOrganize={handleAutoOrganize}
-            onToggleManage={onToggleManage}
-          />
-
           {manageMode && (
             <BatchToolbar
               selectedCount={selectedCards.length}
@@ -788,13 +784,39 @@ function App() {
           )}
 
           {loading ? (
-            <div className="muted">Loading...</div>
+            /* Loading skeleton */
+            <div className="space-y-5">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-2xl border p-4" style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)' }}>
+                  <div className="skeleton h-5 w-40 mb-4" />
+                  <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+                    {[1, 2, 3, 4].map((j) => (
+                      <div key={j} className="skeleton h-16 rounded-xl" />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : error ? (
-            <div className="error-panel">{error}</div>
+            <div
+              className="rounded-2xl border p-6 text-center"
+              style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--danger)' }}
+            >
+              {error}
+            </div>
           ) : visibleCollections.length === 0 ? (
-            <div className="empty-panel">暂无可显示书签。</div>
+            <div
+              className="rounded-2xl border p-12 text-center"
+              style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)' }}
+            >
+              <div className="text-4xl mb-3">📑</div>
+              <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>暂无可显示书签</div>
+              <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                点击「保存标签页」将当前打开的网页保存到此处
+              </div>
+            </div>
           ) : (
-            <section className="space-y-5" data-module-sortable="true">
+            <section className="space-y-4" data-module-sortable="true">
               {visibleCollections.map((collection) => (
                 <CollectionCard
                   key={collection.id}

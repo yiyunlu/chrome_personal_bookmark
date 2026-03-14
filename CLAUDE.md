@@ -9,6 +9,7 @@
 - **React 18** (JSX, no TypeScript)
 - **Vite 5** (build tool & dev server, `base: './'` for extension-compatible relative paths)
 - **Tailwind CSS 3** + PostCSS + Autoprefixer
+- **lucide-react** (SVG icons, tree-shakeable)
 - **SortableJS** (drag-and-drop)
 - **Chrome Extensions API** (bookmarks, tabs, storage, favicon)
 - No testing framework, linter, or formatter configured
@@ -70,7 +71,10 @@ The `App` component in `src/main.jsx` owns all state and business logic. Present
 - CRUD: `moveBookmark()`, `updateBookmark()`, `renameCollectionFolder()`
 
 ### Theming
-Managed by `useTheme` hook. CSS custom properties (light/dark) in `index.css`, toggled via `data-theme` attribute on `<html>`. Preference persisted to `chrome.storage.local`.
+Managed by `useTheme` hook. CSS custom properties (light/dark) in `index.css`, toggled via `data-theme` attribute on `<html>`. Preference persisted to `chrome.storage.local`. Theme toggle uses icon buttons (Sun/Moon/Monitor) in the sidebar.
+
+### Styling approach
+Tailwind-first: components use Tailwind utility classes inline. `index.css` contains only CSS custom properties for theming, base resets, scrollbar styles, and keyframe animations. Colors are referenced via `var(--accent)`, `var(--panel-bg)`, etc. for automatic theme support.
 
 ### Drag-and-drop
 SortableJS instances managed in `useRef(Map)` within `main.jsx`. Three scopes: nav sidebar, module (collection cards), and bookmark cards. After card drops, a hard reload is triggered (`HARD_RELOAD_AFTER_CARD_DROP = true`) as a Chrome compatibility workaround.
@@ -100,6 +104,8 @@ HARD_RELOAD_AFTER_CARD_DROP = true
 - **Chinese UI text**: User-facing strings are in Chinese; code identifiers are in English
 - **Component pattern**: Presentational components receive props; App owns state
 - **Hook pattern**: Reusable stateful logic extracted to `src/hooks/`
+- **Icons**: Use `lucide-react` — import individual icons (e.g. `import { Bookmark } from 'lucide-react'`)
+- **Styling**: Tailwind utilities inline + CSS custom properties via `style={{ color: 'var(--accent)' }}`
 - **URL normalization**: `normalizeUrlKey()` strips protocol/trailing slashes for dedup
 
 ## Key Features
