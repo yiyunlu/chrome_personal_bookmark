@@ -7,27 +7,43 @@
 ## Tech Stack
 
 - **React 18** (JSX, no TypeScript)
-- **Vite 5** (build tool & dev server)
+- **Vite 5** (build tool & dev server, `base: './'` for extension-compatible relative paths)
 - **Tailwind CSS 3** + PostCSS + Autoprefixer
 - **SortableJS** (drag-and-drop)
-- **Chrome Extensions API** (bookmarks, tabs, storage, sessions)
+- **Chrome Extensions API** (bookmarks, tabs, storage, favicon)
 - No testing framework, linter, or formatter configured
 
 ## Project Structure
 
 ```
-├── index.html                    # HTML entry point
-├── vite.config.js                # Vite config (output: dist/, no sourcemaps)
-├── tailwind.config.js            # Custom colors (tabhub-bg, tabhub-sidebar), shadow
-├── postcss.config.js             # Tailwind + Autoprefixer
+├── index.html                        # HTML entry point
+├── vite.config.js                    # Vite config (base: './', output: dist/)
+├── tailwind.config.js                # Custom colors, shadow
+├── postcss.config.js                 # Tailwind + Autoprefixer
 ├── public/
-│   ├── manifest.json             # Chrome MV3 manifest (newtab override)
-│   └── background.js             # Service worker (empty placeholder)
+│   ├── manifest.json                 # Chrome MV3 manifest (newtab override)
+│   ├── background.js                 # Service worker
+│   └── icons/                        # Extension icons (16, 48, 128px)
 └── src/
-    ├── main.jsx                  # Entire React app (~1300 lines, single App component)
-    ├── index.css                 # CSS custom properties for theming + component styles
+    ├── main.jsx                      # App component + root render
+    ├── index.css                     # CSS custom properties for theming + component styles
+    ├── components/
+    │   ├── BatchMoveModal.jsx        # Batch move dialog
+    │   ├── BookmarkIcon.jsx          # Favicon loader with fallback
+    │   ├── CollectionCard.jsx        # Collection + BookmarkCard components
+    │   ├── ContextMenu.jsx           # Right-click context menu
+    │   ├── EditBookmarkModal.jsx     # Edit bookmark dialog
+    │   ├── Sidebar.jsx               # Source switcher, theme, collection nav
+    │   ├── Toolbar.jsx               # Toolbar, QuickEntry, BatchToolbar
+    │   └── UndoToast.jsx             # Undo notification
+    ├── hooks/
+    │   ├── useKeyboardShortcuts.js   # Keyboard event handler
+    │   ├── useTheme.js               # Theme detection, persistence, toggling
+    │   └── useUndoStack.js           # Undo snapshot + timer logic
     └── lib/
-        └── bookmarkService.js    # Chrome Bookmarks API wrapper (promisified)
+        ├── bookmarkService.js        # Chrome Bookmarks API wrapper (promisified)
+        ├── storage.js                # chrome.storage.local get/set wrappers
+        └── utils.js                  # faviconCandidates, normalizeUrlKey, sortSnapshots
 ```
 
 ## Development Commands
@@ -42,8 +58,8 @@ To load in Chrome: build, then go to `chrome://extensions` → Developer mode �
 
 ## Architecture & Key Patterns
 
-### Single-component architecture
-All UI lives in `src/main.jsx` as a single `App` component using React hooks (`useState`, `useEffect`, `useMemo`, `useRef`). There is no state management library — all state is local React state.
+### Component architecture
+The `App` component in `src/main.jsx` owns all state and business logic. Presentational components in `src/components/` receive props and callbacks. Custom hooks in `src/hooks/` encapsulate reusable stateful logic (theme, undo, keyboard shortcuts).
 
 ### Service layer
 `src/lib/bookmarkService.js` wraps Chrome Bookmarks API with `promisifyChromeApi()` helper. Key functions:
@@ -54,10 +70,10 @@ All UI lives in `src/main.jsx` as a single `App` component using React hooks (`u
 - CRUD: `moveBookmark()`, `updateBookmark()`, `renameCollectionFolder()`
 
 ### Theming
-CSS custom properties (light/dark) in `index.css`, toggled via `data-theme` attribute. Theme preference persisted to `chrome.storage.local` with key `tabhub_theme_mode`.
+Managed by `useTheme` hook. CSS custom properties (light/dark) in `index.css`, toggled via `data-theme` attribute on `<html>`. Preference persisted to `chrome.storage.local`.
 
 ### Drag-and-drop
-SortableJS instances managed in a `useRef(Map)`. After card drops, a hard reload is triggered (`HARD_RELOAD_AFTER_CARD_DROP = true`) as a Chrome compatibility workaround.
+SortableJS instances managed in `useRef(Map)` within `main.jsx`. Three scopes: nav sidebar, module (collection cards), and bookmark cards. After card drops, a hard reload is triggered (`HARD_RELOAD_AFTER_CARD_DROP = true`) as a Chrome compatibility workaround.
 
 ### Data model
 - **Sources** = top-level bookmark folders under the TabHub root
@@ -67,9 +83,12 @@ SortableJS instances managed in a `useRef(Map)`. After card drops, a hard reload
 
 ### Constants
 ```js
+// bookmarkService.js
 TABHUB_ROOT_NAME = 'TabHub'
 TRASH_FOLDER_NAME = '.TabHub Trash'
-THEME_STORAGE_KEY = 'tabhub_theme_mode'
+
+// main.jsx
+HARD_RELOAD_AFTER_CARD_DROP = true
 ```
 
 ## Code Conventions
@@ -79,7 +98,8 @@ THEME_STORAGE_KEY = 'tabhub_theme_mode'
 - **CSS**: Mix of Tailwind utility classes and custom CSS classes in `index.css`
 - **DOM data attributes**: `data-collection-id`, `data-card-id`, `data-draggable` for query selection
 - **Chinese UI text**: User-facing strings are in Chinese; code identifiers are in English
-- **No component splitting**: All rendering logic is inline in the App component
+- **Component pattern**: Presentational components receive props; App owns state
+- **Hook pattern**: Reusable stateful logic extracted to `src/hooks/`
 - **URL normalization**: `normalizeUrlKey()` strips protocol/trailing slashes for dedup
 
 ## Key Features
