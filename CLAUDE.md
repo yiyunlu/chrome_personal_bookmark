@@ -35,7 +35,7 @@
     │   ├── ContextMenu.jsx           # Right-click context menu
     │   ├── EditBookmarkModal.jsx     # Edit bookmark dialog
     │   ├── Sidebar.jsx               # Source switcher, theme, collection nav
-    │   ├── Toolbar.jsx               # Toolbar, QuickEntry, BatchToolbar
+    │   ├── Toolbar.jsx               # Toolbar + BatchToolbar
     │   └── UndoToast.jsx             # Undo notification
     ├── hooks/
     │   ├── useKeyboardShortcuts.js   # Keyboard event handler
@@ -99,7 +99,6 @@ HARD_RELOAD_AFTER_CARD_DROP = true
 
 - **Plain JavaScript** with JSX — no TypeScript
 - **Async/await** throughout, with try-catch for error handling
-- **CSS**: Mix of Tailwind utility classes and custom CSS classes in `index.css`
 - **DOM data attributes**: `data-collection-id`, `data-card-id`, `data-draggable` for query selection
 - **Chinese UI text**: User-facing strings are in Chinese; code identifiers are in English
 - **Component pattern**: Presentational components receive props; App owns state
@@ -117,3 +116,16 @@ HARD_RELOAD_AFTER_CARD_DROP = true
 - Keyboard shortcuts: `/` (search), `S` (save tabs), `O` (organize), `M` (manage)
 - Real-time bookmark sync across tabs via Chrome API subscription
 - Search filtering across titles and URLs
+- Collapsible sidebar with icon-only rail mode
+- Loading skeletons, empty state illustrations, entrance animations
+
+## CSS Theme Variables
+
+All colors use CSS custom properties for automatic light/dark support:
+- `--bg`, `--text`, `--muted` — base colors
+- `--panel-bg`, `--panel-border` — card/panel surfaces
+- `--card-bg`, `--card-border`, `--hover` — bookmark cards
+- `--input-bg`, `--input-border` — form controls
+- `--accent`, `--accent-soft` — primary blue accent
+- `--danger`, `--danger-soft` — destructive action red
+- `--shadow` — elevation shadow
