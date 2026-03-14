@@ -238,18 +238,21 @@ function App() {
 
   // --- Drag-and-drop: collection sorting ---
 
-  const persistTopLevelCollectionOrder = async (orderedIds) => {
-    const sortableMap = new Map(topLevelSortableCollections.map((collection) => [collection.id, collection]));
-    const filteredIds = orderedIds.filter((id) => sortableMap.has(id));
-    if (filteredIds.length < 2) return;
+  const persistTopLevelCollectionOrder = useCallback(
+    async (orderedIds) => {
+      const sortableMap = new Map(topLevelSortableCollections.map((collection) => [collection.id, collection]));
+      const filteredIds = orderedIds.filter((id) => sortableMap.has(id));
+      if (filteredIds.length < 2) return;
 
-    const baseIndex = Math.min(...filteredIds.map((id) => sortableMap.get(id).index ?? 0));
-    for (let i = 0; i < filteredIds.length; i += 1) {
-      const collectionId = filteredIds[i];
-      await moveBookmark(collectionId, activeSourceId, baseIndex + i);
-    }
-    await refresh(activeSourceRef.current);
-  };
+      const baseIndex = Math.min(...filteredIds.map((id) => sortableMap.get(id).index ?? 0));
+      for (let i = 0; i < filteredIds.length; i += 1) {
+        const collectionId = filteredIds[i];
+        await moveBookmark(collectionId, activeSourceId, baseIndex + i);
+      }
+      await refresh(activeSourceRef.current);
+    },
+    [topLevelSortableCollections, activeSourceId]
+  );
 
   useEffect(() => {
     const container = document.querySelector('[data-nav-sortable="true"]');
@@ -280,7 +283,7 @@ function App() {
         navSortableRef.current = null;
       }
     };
-  }, [canSortCollections, topLevelSortableCollections, activeSourceId]);
+  }, [canSortCollections, topLevelSortableCollections, activeSourceId, persistTopLevelCollectionOrder]);
 
   useEffect(() => {
     const container = document.querySelector('[data-module-sortable="true"]');
@@ -311,7 +314,7 @@ function App() {
         moduleSortableRef.current = null;
       }
     };
-  }, [canSortCollections, topLevelSortableCollections, activeSourceId, visibleCollections]);
+  }, [canSortCollections, topLevelSortableCollections, activeSourceId, visibleCollections, persistTopLevelCollectionOrder]);
 
   // --- Drag-and-drop: card sorting ---
 
@@ -405,65 +408,71 @@ function App() {
         cardSortablesRef.current.delete(collectionId);
       }
     }
-  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds]);
+  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo]);
 
   // --- Business logic ---
 
-  const moveCardsWithUndo = async (cards, targetParentId, undoLabel) => {
-    if (!cards.length) return;
-    const snapshots = cards.map((card) => ({
-      id: card.id,
-      title: card.title,
-      parentId: card.parentId,
-      index: card.index
-    }));
+  const moveCardsWithUndo = useCallback(
+    async (cards, targetParentId, undoLabel) => {
+      if (!cards.length) return;
+      const snapshots = cards.map((card) => ({
+        id: card.id,
+        title: card.title,
+        parentId: card.parentId,
+        index: card.index
+      }));
 
-    const targetCollection = collections.find((collection) => collection.id === targetParentId);
-    let insertIndex = targetCollection ? targetCollection.cards.length : 0;
+      const targetCollection = collections.find((collection) => collection.id === targetParentId);
+      let insertIndex = targetCollection ? targetCollection.cards.length : 0;
 
-    for (const card of cards) {
-      await moveBookmark(card.id, targetParentId, insertIndex);
-      insertIndex += 1;
-    }
-
-    showUndo(undoLabel, async () => {
-      for (const snapshot of sortSnapshots(snapshots)) {
-        await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+      for (const card of cards) {
+        await moveBookmark(card.id, targetParentId, insertIndex);
+        insertIndex += 1;
       }
-    });
 
-    await refresh(activeSourceRef.current);
-  };
+      showUndo(undoLabel, async () => {
+        for (const snapshot of sortSnapshots(snapshots)) {
+          await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+        }
+      });
 
-  const moveCardsToTrash = async (cards) => {
-    if (!cards.length) return;
+      await refresh(activeSourceRef.current);
+    },
+    [collections, showUndo]
+  );
 
-    const rootId = activeSourceId || tabHubRootId;
-    if (!rootId) return;
+  const moveCardsToTrash = useCallback(
+    async (cards) => {
+      if (!cards.length) return;
 
-    const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(rootId);
+      const rootId = activeSourceId || tabHubRootId;
+      if (!rootId) return;
 
-    const snapshots = cards.map((card) => ({
-      id: card.id,
-      title: card.title,
-      parentId: card.parentId,
-      index: card.index
-    }));
+      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(rootId);
 
-    let insertIndex = 0;
-    for (const card of cards) {
-      await moveBookmark(card.id, trashFolder.id, insertIndex);
-      insertIndex += 1;
-    }
+      const snapshots = cards.map((card) => ({
+        id: card.id,
+        title: card.title,
+        parentId: card.parentId,
+        index: card.index
+      }));
 
-    showUndo(`已移入回收站 ${cards.length} 项`, async () => {
-      for (const snapshot of sortSnapshots(snapshots)) {
-        await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+      let insertIndex = 0;
+      for (const card of cards) {
+        await moveBookmark(card.id, trashFolder.id, insertIndex);
+        insertIndex += 1;
       }
-    });
 
-    await refresh(activeSourceRef.current);
-  };
+      showUndo(`已移入回收站 ${cards.length} 项`, async () => {
+        for (const snapshot of sortSnapshots(snapshots)) {
+          await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+        }
+      });
+
+      await refresh(activeSourceRef.current);
+    },
+    [activeSourceId, tabHubRootId, trashFolderId, showUndo]
+  );
 
   const openEditorByCard = (card) => {
     setEditorState({
@@ -694,7 +703,7 @@ function App() {
         return { ...prev, results: prev.results.filter((r) => r.bookmarkId !== bookmarkId) };
       });
     },
-    [allCards]
+    [allCards, moveCardsToTrash]
   );
 
   const handleChatMessage = useCallback(
@@ -744,7 +753,7 @@ function App() {
 
       setChatMessages((prev) => [...prev, assistantMsg]);
     },
-    [collections, allCards]
+    [collections, allCards, moveCardsWithUndo, moveCardsToTrash]
   );
 
   const onToggleManage = useCallback(() => setManageMode((prev) => !prev), []);
