@@ -20,12 +20,15 @@ import { useTheme } from './hooks/useTheme';
 import { useUndoStack } from './hooks/useUndoStack';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
+import { categorizeBookmarks } from './lib/aiService';
+
 import { Sidebar } from './components/Sidebar';
 import { Toolbar, BatchToolbar } from './components/Toolbar';
 import { CollectionCard } from './components/CollectionCard';
 import { ContextMenu } from './components/ContextMenu';
 import { EditBookmarkModal } from './components/EditBookmarkModal';
 import { BatchMoveModal } from './components/BatchMoveModal';
+import { AICategorizeModal } from './components/AICategorizeModal';
 import { UndoToast } from './components/UndoToast';
 
 const HARD_RELOAD_AFTER_CARD_DROP = true;
@@ -48,6 +51,7 @@ function App() {
   const [editorState, setEditorState] = useState(null);
   const [batchMoveState, setBatchMoveState] = useState(null);
   const [autoOrganizing, setAutoOrganizing] = useState(false);
+  const [aiCategorizeState, setAICategorizeState] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -543,6 +547,109 @@ function App() {
     }
   }, [autoOrganizing, collections, activeSourceId, tabHubRootId, trashFolderId, showUndo]);
 
+  const handleAICategorize = useCallback(async () => {
+    if (!collections.length) return;
+
+    // Build bookmarks list with current collection info
+    const bookmarks = collections.flatMap((collection) =>
+      collection.cards.map((card) => ({
+        id: card.id,
+        title: card.title,
+        url: card.url,
+        currentCollection: collection.title
+      }))
+    );
+
+    if (bookmarks.length === 0) return;
+
+    const existingCols = collections.map((c) => ({ id: c.id, title: c.title }));
+
+    // Open modal in loading state
+    setAICategorizeState({ loading: true, suggestions: [], newCollections: [], error: null });
+
+    try {
+      const result = await categorizeBookmarks(bookmarks, existingCols);
+
+      // Enrich suggestions with bookmark titles and add status
+      const enriched = (result.suggestions || []).map((s) => {
+        const card = bookmarks.find((b) => b.id === s.bookmarkId);
+        return {
+          ...s,
+          bookmarkTitle: card?.title || s.bookmarkId,
+          status: 'pending'
+        };
+      });
+
+      setAICategorizeState({
+        loading: false,
+        suggestions: enriched,
+        newCollections: result.newCollections || [],
+        error: null
+      });
+    } catch (err) {
+      setAICategorizeState({
+        loading: false,
+        suggestions: [],
+        newCollections: [],
+        error: err?.message || 'AI 分类失败'
+      });
+    }
+  }, [collections]);
+
+  const handleAcceptSuggestion = useCallback((idx) => {
+    setAICategorizeState((prev) => {
+      if (!prev) return prev;
+      const next = [...prev.suggestions];
+      next[idx] = { ...next[idx], status: 'accepted' };
+      return { ...prev, suggestions: next };
+    });
+  }, []);
+
+  const handleRejectSuggestion = useCallback((idx) => {
+    setAICategorizeState((prev) => {
+      if (!prev) return prev;
+      const next = [...prev.suggestions];
+      next[idx] = { ...next[idx], status: 'rejected' };
+      return { ...prev, suggestions: next };
+    });
+  }, []);
+
+  const handleApplyAISuggestions = useCallback(async () => {
+    if (!aiCategorizeState) return;
+
+    const accepted = aiCategorizeState.suggestions.filter((s) => s.status === 'accepted');
+    if (accepted.length === 0) return;
+
+    // Snapshot for undo
+    const snapshots = [];
+    for (const suggestion of accepted) {
+      const card = allCards.find((c) => c.id === suggestion.bookmarkId);
+      if (card) {
+        snapshots.push({ id: card.id, parentId: card.parentId, index: card.index });
+      }
+    }
+
+    // Find or create target collections
+    const collectionByTitle = new Map(collections.map((c) => [c.title.toLowerCase(), c]));
+
+    for (const suggestion of accepted) {
+      const target = collectionByTitle.get(suggestion.targetCollectionTitle.toLowerCase());
+      if (target) {
+        await moveBookmark(suggestion.bookmarkId, target.id, target.cards.length);
+      }
+      // Skip suggestions targeting non-existent collections (new collection creation not supported in mock)
+    }
+
+    showUndo(`AI 分类完成：移动了 ${accepted.length} 个书签`, async () => {
+      for (const snapshot of sortSnapshots(snapshots)) {
+        await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+      }
+    });
+
+    setAICategorizeState(null);
+    await refresh(activeSourceRef.current);
+  }, [aiCategorizeState, allCards, collections, showUndo]);
+
   const onToggleManage = useCallback(() => setManageMode((prev) => !prev), []);
 
   useKeyboardShortcuts({
@@ -759,6 +866,7 @@ function App() {
             onToggleManage={onToggleManage}
             autoOrganizing={autoOrganizing}
             onAutoOrganize={handleAutoOrganize}
+            onAICategorize={handleAICategorize}
             search={search}
             onSearchChange={setSearch}
             searchInputRef={searchInputRef}
@@ -858,6 +966,14 @@ function App() {
         selectedCount={selectedCards.length}
         onSave={handleBatchMoveSave}
         onClose={() => setBatchMoveState(null)}
+      />
+
+      <AICategorizeModal
+        aiState={aiCategorizeState}
+        onAcceptSuggestion={handleAcceptSuggestion}
+        onRejectSuggestion={handleRejectSuggestion}
+        onApplyAll={handleApplyAISuggestions}
+        onClose={() => setAICategorizeState(null)}
       />
 
       <UndoToast undoToast={undoToast} onUndo={() => handleUndo(() => refresh(activeSourceRef.current))} />

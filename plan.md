@@ -15,16 +15,20 @@
 - Modals with fade+scale animations, X close button, folder icons in picker
 - Context menu with icons, loading skeletons, empty states, undo slide-in toast
 
+### Phase 3a: Linting & Formatting (done)
+- ESLint 9 flat config with react/react-hooks plugins
+- Prettier with `.prettierrc` (single quotes, 120 width, no trailing commas)
+- `npm run lint` and `npm run format` scripts
+
+### Phase 4a + 4b: AI Service + Smart Auto-Categorize (done)
+- `src/lib/aiService.js` — mock categorization by domain/title patterns + Claude API integration
+- `src/components/AICategorizeModal.jsx` — review modal with accept/reject per suggestion
+- "AI 分类" button in Toolbar triggers categorization flow
+- Accepted suggestions applied via `moveBookmark()` with undo support
+
 ---
 
 ## Next Steps
-
-### Phase 3: Developer Tooling
-
-#### 3a. Linting & formatting
-- Add ESLint with `eslint-plugin-react` + `eslint-plugin-react-hooks`
-- Add Prettier with `.prettierrc`
-- Add `npm run lint` and `npm run format` scripts
 
 #### 3b. Testing
 - Add Vitest (pairs naturally with Vite)
@@ -32,18 +36,7 @@
 - Component tests with React Testing Library for key interactions
 - Add `npm run test` script
 
-### Phase 4: AI Bookmark Management
-
-#### 4a. AI service layer
-- `src/lib/aiService.js` — abstraction for AI API calls
-- Use Claude API (Anthropic SDK) via a lightweight proxy or direct API key stored in `chrome.storage.local`
-- Consider a simple backend (Cloudflare Worker / Vercel Edge Function) to keep API keys server-side
-
-#### 4b. Smart auto-categorize
-- Analyze bookmark URLs + titles via Claude to suggest collection assignments
-- UI: "AI Organize" button that shows proposed moves before applying
-- Bulk mode: categorize all unfiled bookmarks at once
-- Incremental mode: suggest a collection when a new bookmark is added
+### Phase 4: AI Bookmark Management (continued)
 
 #### 4c. Smart search
 - Natural language search across bookmarks ("that article about React performance I saved last week")
