@@ -22,6 +22,7 @@ import { useUndoStack } from './hooks/useUndoStack';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 import { categorizeBookmarks } from './lib/aiService';
+import { checkDeadLinks } from './lib/enrichmentService';
 
 import { Sidebar } from './components/Sidebar';
 import { Toolbar, BatchToolbar } from './components/Toolbar';
@@ -30,6 +31,7 @@ import { ContextMenu } from './components/ContextMenu';
 import { EditBookmarkModal } from './components/EditBookmarkModal';
 import { BatchMoveModal } from './components/BatchMoveModal';
 import { AICategorizeModal } from './components/AICategorizeModal';
+import { DeadLinkModal } from './components/DeadLinkModal';
 import { UndoToast } from './components/UndoToast';
 
 const HARD_RELOAD_AFTER_CARD_DROP = true;
@@ -53,6 +55,7 @@ function App() {
   const [batchMoveState, setBatchMoveState] = useState(null);
   const [autoOrganizing, setAutoOrganizing] = useState(false);
   const [aiCategorizeState, setAICategorizeState] = useState(null);
+  const [deadLinkState, setDeadLinkState] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -658,6 +661,38 @@ function App() {
     await refresh(activeSourceRef.current);
   }, [aiCategorizeState, allCards, collections, showUndo]);
 
+  const handleCheckDeadLinks = useCallback(async () => {
+    const allBookmarks = collections.flatMap((c) => c.cards);
+    if (allBookmarks.length === 0) return;
+
+    setDeadLinkState({ loading: true, progress: null, results: null, error: null });
+
+    try {
+      const results = await checkDeadLinks(allBookmarks, (progress) => {
+        setDeadLinkState((prev) => (prev ? { ...prev, progress } : prev));
+      });
+      setDeadLinkState({ loading: false, progress: null, results, error: null });
+    } catch (err) {
+      setDeadLinkState({ loading: false, progress: null, results: null, error: err?.message || '检测失败' });
+    }
+  }, [collections]);
+
+  const handleDeleteDeadLink = useCallback(
+    async (bookmarkId, title) => {
+      const card = allCards.find((c) => c.id === bookmarkId);
+      if (!card) return;
+      const shouldDelete = window.confirm(`删除书签：${title} ?`);
+      if (!shouldDelete) return;
+      await moveCardsToTrash([card]);
+      // Remove from dead link results
+      setDeadLinkState((prev) => {
+        if (!prev?.results) return prev;
+        return { ...prev, results: prev.results.filter((r) => r.bookmarkId !== bookmarkId) };
+      });
+    },
+    [allCards]
+  );
+
   const onToggleManage = useCallback(() => setManageMode((prev) => !prev), []);
 
   useKeyboardShortcuts({
@@ -875,6 +910,7 @@ function App() {
             autoOrganizing={autoOrganizing}
             onAutoOrganize={handleAutoOrganize}
             onAICategorize={handleAICategorize}
+            onCheckDeadLinks={handleCheckDeadLinks}
             search={search}
             onSearchChange={setSearch}
             searchInputRef={searchInputRef}
@@ -974,6 +1010,12 @@ function App() {
         selectedCount={selectedCards.length}
         onSave={handleBatchMoveSave}
         onClose={() => setBatchMoveState(null)}
+      />
+
+      <DeadLinkModal
+        deadLinkState={deadLinkState}
+        onDeleteBookmark={handleDeleteDeadLink}
+        onClose={() => setDeadLinkState(null)}
       />
 
       <AICategorizeModal
