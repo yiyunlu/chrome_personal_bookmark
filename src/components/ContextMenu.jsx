@@ -22,8 +22,12 @@ export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCol
             type="button"
             className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
             style={{ color: 'var(--text)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
             onClick={onEditCard}
           >
             <Pencil size={14} style={{ color: 'var(--muted)' }} />
@@ -33,8 +37,12 @@ export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCol
             type="button"
             className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
             style={{ color: 'var(--danger)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--danger-soft)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--danger-soft)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
             onClick={onDeleteCard}
           >
             <Trash2 size={14} />
@@ -48,8 +56,12 @@ export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCol
             type="button"
             className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
             style={{ color: 'var(--text)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
             onClick={onRenameCollection}
           >
             <FolderPen size={14} style={{ color: 'var(--muted)' }} />
@@ -59,8 +71,12 @@ export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCol
             type="button"
             className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
             style={{ color: 'var(--danger)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--danger-soft)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--danger-soft)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
             onClick={onDeleteCollection}
           >
             <Trash2 size={14} />

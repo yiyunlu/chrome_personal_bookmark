@@ -1,14 +1,5 @@
 import React from 'react';
-import {
-  Bookmark,
-  ChevronLeft,
-  ChevronRight,
-  FolderOpen,
-  GripVertical,
-  Monitor,
-  Moon,
-  Sun
-} from 'lucide-react';
+import { Bookmark, ChevronLeft, ChevronRight, FolderOpen, GripVertical, Monitor, Moon, Sun } from 'lucide-react';
 
 const themeOptions = [
   { value: 'system', icon: Monitor, label: '跟随系统' },
@@ -161,10 +152,7 @@ export function Sidebar({
                   </span>
                   <FolderOpen size={15} style={{ opacity: 0.6, flexShrink: 0 }} />
                   <span className="truncate flex-1">{collection.title}</span>
-                  <span
-                    className="text-[0.65rem] tabular-nums flex-shrink-0"
-                    style={{ color: 'var(--muted)' }}
-                  >
+                  <span className="text-[0.65rem] tabular-nums flex-shrink-0" style={{ color: 'var(--muted)' }}>
                     {collection.cards.length}
                   </span>
                 </button>

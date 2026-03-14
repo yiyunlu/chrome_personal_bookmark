@@ -90,7 +90,10 @@ function App() {
   const cardById = useMemo(() => new Map(allCards.map((card) => [card.id, card])), [allCards]);
 
   const selectedCards = useMemo(
-    () => Array.from(selectedCardIds).map((id) => cardById.get(id)).filter(Boolean),
+    () =>
+      Array.from(selectedCardIds)
+        .map((id) => cardById.get(id))
+        .filter(Boolean),
     [selectedCardIds, cardById]
   );
 
@@ -203,10 +206,7 @@ function App() {
         ...collection,
         cards: collection.cards.filter((card) => {
           if (!keyword) return true;
-          return (
-            card.title.toLowerCase().includes(keyword) ||
-            card.url.toLowerCase().includes(keyword)
-          );
+          return card.title.toLowerCase().includes(keyword) || card.url.toLowerCase().includes(keyword);
         })
       }))
       .filter((collection) => collection.cards.length > 0 || !keyword);
@@ -422,9 +422,7 @@ function App() {
     const rootId = activeSourceId || tabHubRootId;
     if (!rootId) return;
 
-    const trashFolder = trashFolderId
-      ? { id: trashFolderId }
-      : await ensureTrashFolder(rootId);
+    const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(rootId);
 
     const snapshots = cards.map((card) => ({
       id: card.id,
@@ -653,11 +651,7 @@ function App() {
     if (event.defaultPrevented) return;
     const target = event.target;
     if (target instanceof Element) {
-      if (
-        target.closest('.card-drag-handle') ||
-        target.closest('.card-mini-btn') ||
-        target.closest('.card-select')
-      ) {
+      if (target.closest('.card-drag-handle') || target.closest('.card-mini-btn') || target.closest('.card-select')) {
         return;
       }
     }
@@ -719,11 +713,7 @@ function App() {
 
     setBatchMoveState((prev) => (prev ? { ...prev, moving: true } : prev));
     try {
-      await moveCardsWithUndo(
-        selectedCards,
-        batchMoveState.targetParentId,
-        `已移动 ${selectedCards.length} 个书签`
-      );
+      await moveCardsWithUndo(selectedCards, batchMoveState.targetParentId, `已移动 ${selectedCards.length} 个书签`);
       clearSelections();
       setBatchMoveState(null);
     } finally {
@@ -787,7 +777,11 @@ function App() {
             /* Loading skeleton */
             <div className="space-y-5">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="rounded-2xl border p-4" style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)' }}>
+                <div
+                  key={i}
+                  className="rounded-2xl border p-4"
+                  style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)' }}
+                >
                   <div className="skeleton h-5 w-40 mb-4" />
                   <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
                     {[1, 2, 3, 4].map((j) => (
@@ -810,7 +804,9 @@ function App() {
               style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)' }}
             >
               <div className="text-4xl mb-3">📑</div>
-              <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>暂无可显示书签</div>
+              <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                暂无可显示书签
+              </div>
               <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
                 点击「保存标签页」将当前打开的网页保存到此处
               </div>
@@ -864,10 +860,7 @@ function App() {
         onClose={() => setBatchMoveState(null)}
       />
 
-      <UndoToast
-        undoToast={undoToast}
-        onUndo={() => handleUndo(() => refresh(activeSourceRef.current))}
-      />
+      <UndoToast undoToast={undoToast} onUndo={() => handleUndo(() => refresh(activeSourceRef.current))} />
     </div>
   );
 }

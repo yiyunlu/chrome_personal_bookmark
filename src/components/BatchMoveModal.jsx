@@ -27,11 +27,7 @@ export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTarg
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
             批量移动书签（{selectedCount} 项）
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-md hover:opacity-70"
-            style={{ color: 'var(--muted)' }}
-          >
+          <button onClick={onClose} className="p-1 rounded-md hover:opacity-70" style={{ color: 'var(--muted)' }}>
             <X size={16} />
           </button>
         </div>
@@ -71,10 +67,7 @@ export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTarg
         </div>
 
         {/* Footer */}
-        <div
-          className="flex justify-end gap-2 px-5 py-3 border-t"
-          style={{ borderColor: 'var(--panel-border)' }}
-        >
+        <div className="flex justify-end gap-2 px-5 py-3 border-t" style={{ borderColor: 'var(--panel-border)' }}>
           <button
             type="button"
             onClick={onClose}

@@ -24,12 +24,10 @@ export function EditBookmarkModal({ editorState, setEditorState, filteredTargets
           className="flex items-center justify-between px-5 py-3.5 border-b"
           style={{ borderColor: 'var(--panel-border)' }}
         >
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>编辑书签</h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-md hover:opacity-70"
-            style={{ color: 'var(--muted)' }}
-          >
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            编辑书签
+          </h2>
+          <button onClick={onClose} className="p-1 rounded-md hover:opacity-70" style={{ color: 'var(--muted)' }}>
             <X size={16} />
           </button>
         </div>
@@ -37,7 +35,9 @@ export function EditBookmarkModal({ editorState, setEditorState, filteredTargets
         {/* Body */}
         <div className="px-5 py-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>标题</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
+              标题
+            </label>
             <input
               className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
               style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
@@ -46,7 +46,9 @@ export function EditBookmarkModal({ editorState, setEditorState, filteredTargets
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>URL</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
+              URL
+            </label>
             <input
               className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
               style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
@@ -55,7 +57,9 @@ export function EditBookmarkModal({ editorState, setEditorState, filteredTargets
             />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>移动到文件夹</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
+              移动到文件夹
+            </label>
             <input
               className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
               style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
@@ -87,10 +91,7 @@ export function EditBookmarkModal({ editorState, setEditorState, filteredTargets
         </div>
 
         {/* Footer */}
-        <div
-          className="flex justify-end gap-2 px-5 py-3 border-t"
-          style={{ borderColor: 'var(--panel-border)' }}
-        >
+        <div className="flex justify-end gap-2 px-5 py-3 border-t" style={{ borderColor: 'var(--panel-border)' }}>
           <button
             type="button"
             onClick={onClose}
