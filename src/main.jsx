@@ -23,6 +23,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 import { categorizeBookmarks } from './lib/aiService';
 import { checkDeadLinks } from './lib/enrichmentService';
+import { processChat } from './lib/chatService';
 
 import { Sidebar } from './components/Sidebar';
 import { Toolbar, BatchToolbar } from './components/Toolbar';
@@ -32,6 +33,7 @@ import { EditBookmarkModal } from './components/EditBookmarkModal';
 import { BatchMoveModal } from './components/BatchMoveModal';
 import { AICategorizeModal } from './components/AICategorizeModal';
 import { DeadLinkModal } from './components/DeadLinkModal';
+import { ChatPanel, ChatToggle } from './components/ChatPanel';
 import { UndoToast } from './components/UndoToast';
 
 const HARD_RELOAD_AFTER_CARD_DROP = true;
@@ -56,6 +58,8 @@ function App() {
   const [autoOrganizing, setAutoOrganizing] = useState(false);
   const [aiCategorizeState, setAICategorizeState] = useState(null);
   const [deadLinkState, setDeadLinkState] = useState(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -693,6 +697,56 @@ function App() {
     [allCards]
   );
 
+  const handleChatMessage = useCallback(
+    async (text) => {
+      // Add user message
+      setChatMessages((prev) => [...prev, { role: 'user', text }]);
+
+      const context = { collections, allCards };
+      const result = await processChat(text, context);
+
+      // Build assistant message
+      const assistantMsg = {
+        role: 'assistant',
+        text: result.message,
+        results: result.results,
+        action: result.action
+      };
+
+      // Add confirm handler for actionable results
+      if (result.action === 'move' && result.results?.length && result.targetCollectionId) {
+        assistantMsg.onConfirm = async () => {
+          const cards = result.results
+            .map((r) => allCards.find((c) => c.id === r.id))
+            .filter(Boolean);
+          if (cards.length > 0) {
+            await moveCardsWithUndo(cards, result.targetCollectionId, `已移动 ${cards.length} 个书签`);
+            setChatMessages((prev) => [
+              ...prev,
+              { role: 'assistant', text: `已移动 ${cards.length} 个书签到「${result.targetCollectionTitle}」。` }
+            ]);
+          }
+        };
+      } else if (result.action === 'delete' && result.results?.length) {
+        assistantMsg.onConfirm = async () => {
+          const cards = result.results
+            .map((r) => allCards.find((c) => c.id === r.id))
+            .filter(Boolean);
+          if (cards.length > 0) {
+            await moveCardsToTrash(cards);
+            setChatMessages((prev) => [
+              ...prev,
+              { role: 'assistant', text: `已删除 ${cards.length} 个书签。` }
+            ]);
+          }
+        };
+      }
+
+      setChatMessages((prev) => [...prev, assistantMsg]);
+    },
+    [collections, allCards]
+  );
+
   const onToggleManage = useCallback(() => setManageMode((prev) => !prev), []);
 
   useKeyboardShortcuts({
@@ -1025,6 +1079,17 @@ function App() {
         onApplyAll={handleApplyAISuggestions}
         onClose={() => setAICategorizeState(null)}
       />
+
+      {chatOpen ? (
+        <ChatPanel
+          open={chatOpen}
+          onClose={() => setChatOpen(false)}
+          onSendMessage={handleChatMessage}
+          messages={chatMessages}
+        />
+      ) : (
+        <ChatToggle onClick={() => setChatOpen(true)} />
+      )}
 
       <UndoToast undoToast={undoToast} onUndo={() => handleUndo(() => refresh(activeSourceRef.current))} />
     </div>
