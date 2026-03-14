@@ -20,42 +20,43 @@
 - Prettier with `.prettierrc` (single quotes, 120 width, no trailing commas)
 - `npm run lint` and `npm run format` scripts
 
+### Phase 3b: Testing (done)
+- Vitest with jsdom environment, Chrome API mocks
+- 72 tests: utils, storage, aiService, searchService, enrichmentService, chatService, AICategorizeModal
+- `npm test` and `npm run test:watch` scripts
+
 ### Phase 4a + 4b: AI Service + Smart Auto-Categorize (done)
 - `src/lib/aiService.js` — mock categorization by domain/title patterns + Claude API integration
 - `src/components/AICategorizeModal.jsx` — review modal with accept/reject per suggestion
 - "AI 分类" button in Toolbar triggers categorization flow
 - Accepted suggestions applied via `moveBookmark()` with undo support
 
----
+### Phase 4c: Smart Search (done)
+- `src/lib/searchService.js` — fuzzy matching + category keyword expansion
+- Replaces simple keyword filter in visibleCollections
+- Natural language queries like "social media", "dev tools" expand to related keywords
+- Falls back to Claude API semantic search when API key is configured
 
-## Next Steps
+### Phase 4d: Bookmark Enrichment (done)
+- `src/lib/enrichmentService.js` — dead link detection, auto-tag generation, domain extraction
+- `src/components/DeadLinkModal.jsx` — progress bar, dead link list with delete actions
+- "失效检测" button in Toolbar
+- Batch link checking (5 concurrent) with progress callback
 
-#### 3b. Testing
-- Add Vitest (pairs naturally with Vite)
-- Unit tests for `bookmarkService.js` and utility functions (mock Chrome APIs)
-- Component tests with React Testing Library for key interactions
-- Add `npm run test` script
-
-### Phase 4: AI Bookmark Management (continued)
-
-#### 4c. Smart search
-- Natural language search across bookmarks ("that article about React performance I saved last week")
-- Semantic matching beyond keyword search using Claude
-
-#### 4d. Bookmark enrichment
-- Auto-generate descriptions/tags for bookmarks using page titles and URLs
-- Detect dead links and suggest removal
-
-#### 4e. AI chat interface
-- Small chat panel or command palette for natural language bookmark operations
-- Examples: "move all React articles to the Frontend collection", "find duplicates"
+### Phase 4e: AI Chat Interface (done)
+- `src/lib/chatService.js` — NL command parsing (search, move, delete, find duplicates, organize, stats)
+- `src/components/ChatPanel.jsx` — floating chat panel with message history
+- Chat toggle button (bottom-right FAB)
+- Actionable results with confirm buttons for move/delete operations
+- Falls back to Claude API for NLU when API key is configured
 
 ---
 
-## Priority Order
+## Potential Future Work
 
-1. **Phase 3a** — Linting (catch issues, enforce consistency)
-2. **Phase 4a + 4b** — AI service + auto-categorize (highest-value AI feature)
-3. **Phase 3b** — Testing (stabilize before more features)
-4. **Phase 4c** — Smart search
-5. **Phase 4d + 4e** — Enrichment + chat (polish features)
+- **Settings panel**: API key management UI, preferences
+- **Import/export**: Backup bookmarks as JSON, sync across browsers
+- **Keyboard navigation**: Arrow key navigation through bookmarks
+- **Bookmark previews**: Thumbnail screenshots of bookmarked pages
+- **Collection sharing**: Export collection as shareable link
+- **Browser sync**: Cross-browser bookmark sync via cloud storage

@@ -13,6 +13,7 @@
 - **SortableJS** (drag-and-drop)
 - **Chrome Extensions API** (bookmarks, tabs, storage, favicon)
 - **ESLint 9** (flat config) + **Prettier**
+- **Vitest** (unit + component testing)
 
 ## Project Structure
 
@@ -36,6 +37,8 @@
     │   ├── EditBookmarkModal.jsx     # Edit bookmark dialog
     │   ├── Sidebar.jsx               # Source switcher, theme, collection nav
     │   ├── AICategorizeModal.jsx     # AI suggestion review modal
+    │   ├── ChatPanel.jsx             # AI chat panel + toggle button
+    │   ├── DeadLinkModal.jsx         # Dead link detection results
     │   ├── Toolbar.jsx               # Toolbar + BatchToolbar
     │   └── UndoToast.jsx             # Undo notification
     ├── hooks/
@@ -45,6 +48,9 @@
     └── lib/
         ├── aiService.js              # AI categorization (mock + Claude API)
         ├── bookmarkService.js        # Chrome Bookmarks API wrapper (promisified)
+        ├── chatService.js            # NL command parsing + execution
+        ├── enrichmentService.js      # Dead link detection + auto-tagging
+        ├── searchService.js          # Smart search with fuzzy + category matching
         ├── storage.js                # chrome.storage.local get/set wrappers
         └── utils.js                  # faviconCandidates, normalizeUrlKey, sortSnapshots
 ```
@@ -55,6 +61,8 @@
 npm run dev       # Start Vite dev server
 npm run build     # Production build to dist/
 npm run preview   # Preview production build
+npm test          # Run all tests (vitest run)
+npm run test:watch  # Watch mode
 ```
 
 To load in Chrome: build, then go to `chrome://extensions` → Developer mode → Load unpacked → select `dist/`.
@@ -80,6 +88,15 @@ The `App` component in `src/main.jsx` owns all state and business logic. Present
 Key exports: `categorizeBookmarks(bookmarks, existingCollections)`, `getApiKey()`, `setApiKey(key)`
 
 Returns `{suggestions: [{bookmarkId, targetCollectionTitle, reason}], newCollections: string[]}`
+
+### Smart search
+`src/lib/searchService.js` enhances search with fuzzy matching and category keyword expansion (e.g., "social media" → twitter, reddit). Falls back to Claude API semantic search when API key is set.
+
+### Enrichment service
+`src/lib/enrichmentService.js` provides dead link detection (batch HEAD requests with timeout), auto-tag generation from URL/title patterns, and domain extraction.
+
+### Chat service
+`src/lib/chatService.js` parses natural language commands (search, move, delete, find duplicates, organize, info/stats) and executes them against bookmark data. Falls back to Claude API for NLU when API key is set.
 
 ### Theming
 Managed by `useTheme` hook. CSS custom properties (light/dark) in `index.css`, toggled via `data-theme` attribute on `<html>`. Preference persisted to `chrome.storage.local`. Theme toggle uses icon buttons (Sun/Moon/Monitor) in the sidebar.
@@ -122,6 +139,9 @@ HARD_RELOAD_AFTER_CARD_DROP = true
 
 - Bookmark CRUD with drag-and-drop reordering (within/between collections)
 - AI smart categorize: analyzes bookmarks and suggests collection moves (mock + Claude API)
+- Smart search: fuzzy matching + category expansion + optional Claude semantic search
+- Dead link detection: batch URL checking with progress indicator
+- AI chat assistant: natural language commands (search, move, delete, find duplicates, stats)
 - Auto-organize: URL deduplication + alphabetical sort
 - Manage mode: batch select, move, delete
 - Soft delete to trash folder with undo (8-second toast)
