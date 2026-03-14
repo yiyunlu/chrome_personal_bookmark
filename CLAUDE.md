@@ -12,7 +12,7 @@
 - **lucide-react** (SVG icons, tree-shakeable)
 - **SortableJS** (drag-and-drop)
 - **Chrome Extensions API** (bookmarks, tabs, storage, favicon)
-- No testing framework, linter, or formatter configured
+- **ESLint 9** (flat config) + **Prettier**
 
 ## Project Structure
 
@@ -35,6 +35,7 @@
     │   ├── ContextMenu.jsx           # Right-click context menu
     │   ├── EditBookmarkModal.jsx     # Edit bookmark dialog
     │   ├── Sidebar.jsx               # Source switcher, theme, collection nav
+    │   ├── AICategorizeModal.jsx     # AI suggestion review modal
     │   ├── Toolbar.jsx               # Toolbar + BatchToolbar
     │   └── UndoToast.jsx             # Undo notification
     ├── hooks/
@@ -42,6 +43,7 @@
     │   ├── useTheme.js               # Theme detection, persistence, toggling
     │   └── useUndoStack.js           # Undo snapshot + timer logic
     └── lib/
+        ├── aiService.js              # AI categorization (mock + Claude API)
         ├── bookmarkService.js        # Chrome Bookmarks API wrapper (promisified)
         ├── storage.js                # chrome.storage.local get/set wrappers
         └── utils.js                  # faviconCandidates, normalizeUrlKey, sortSnapshots
@@ -69,6 +71,15 @@ The `App` component in `src/main.jsx` owns all state and business logic. Present
 - `subscribeBookmarksChanges()` — real-time sync listener
 - `saveCurrentWindowTabsToCollection()` — bulk save tabs
 - CRUD: `moveBookmark()`, `updateBookmark()`, `renameCollectionFolder()`
+
+### AI service
+`src/lib/aiService.js` provides bookmark categorization. Two modes:
+- **Mock mode** (default): Categorizes by domain patterns and title keywords with simulated delay
+- **Claude API mode**: Activates when API key is stored (`tabhub_ai_api_key` in chrome.storage.local)
+
+Key exports: `categorizeBookmarks(bookmarks, existingCollections)`, `getApiKey()`, `setApiKey(key)`
+
+Returns `{suggestions: [{bookmarkId, targetCollectionTitle, reason}], newCollections: string[]}`
 
 ### Theming
 Managed by `useTheme` hook. CSS custom properties (light/dark) in `index.css`, toggled via `data-theme` attribute on `<html>`. Preference persisted to `chrome.storage.local`. Theme toggle uses icon buttons (Sun/Moon/Monitor) in the sidebar.
@@ -110,6 +121,7 @@ HARD_RELOAD_AFTER_CARD_DROP = true
 ## Key Features
 
 - Bookmark CRUD with drag-and-drop reordering (within/between collections)
+- AI smart categorize: analyzes bookmarks and suggests collection moves (mock + Claude API)
 - Auto-organize: URL deduplication + alphabetical sort
 - Manage mode: batch select, move, delete
 - Soft delete to trash folder with undo (8-second toast)
