@@ -15,6 +15,7 @@ import {
   updateBookmark
 } from './lib/bookmarkService';
 import { normalizeUrlKey, sortSnapshots } from './lib/utils';
+import { smartSearch } from './lib/searchService';
 
 import { useTheme } from './hooks/useTheme';
 import { useUndoStack } from './hooks/useUndoStack';
@@ -205,12 +206,19 @@ function App() {
   const visibleCollections = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
+    let matchedCardIds = null;
+    if (keyword) {
+      // Use smart search for fuzzy + category matching
+      const searchResults = smartSearch(keyword, allCards);
+      matchedCardIds = new Set(searchResults.map((r) => r.bookmark.id));
+    }
+
     const filtered = collections
       .map((collection) => ({
         ...collection,
         cards: collection.cards.filter((card) => {
-          if (!keyword) return true;
-          return card.title.toLowerCase().includes(keyword) || card.url.toLowerCase().includes(keyword);
+          if (!matchedCardIds) return true;
+          return matchedCardIds.has(card.id);
         })
       }))
       .filter((collection) => collection.cards.length > 0 || !keyword);
@@ -219,7 +227,7 @@ function App() {
       return filtered;
     }
     return filtered.filter((collection) => collection.id === activeCollectionId);
-  }, [collections, search, activeCollectionId]);
+  }, [collections, search, activeCollectionId, allCards]);
 
   // --- Drag-and-drop: collection sorting ---
 
