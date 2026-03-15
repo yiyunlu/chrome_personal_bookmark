@@ -361,11 +361,13 @@ function App() {
         if (collapsedCollectionIds.has(collection.id)) return;
 
       const container = document.querySelector(`[data-cards-collection-id="${collection.id}"]`);
-      if (!container) {
+      if (!container || !container.parentNode) {
         return;
       }
 
-      const sortable = new Sortable(container, {
+      let sortable;
+      try {
+        sortable = new Sortable(container, {
           animation: 150,
           draggable: '[data-card-id]',
           handle: '.card-drag-handle',
@@ -446,6 +448,10 @@ function App() {
             }
           }
         });
+      } catch {
+        // SortableJS can throw if DOM elements are detached during pre-render
+        return;
+      }
 
         cardSortablesRef.current.set(collection.id, sortable);
       });
