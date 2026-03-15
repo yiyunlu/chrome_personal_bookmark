@@ -337,20 +337,22 @@ function App() {
 
   // --- SortableJS: Card-level drag (FIXED: no hard reload) ---
   useEffect(() => {
-    if (!cardDragEnabled) {
-      for (const sortable of cardSortablesRef.current.values()) {
-        sortable.destroy();
+    // Safe destroy helper — SortableJS may throw if DOM elements are already gone
+    const safeDestroyAll = () => {
+      for (const s of cardSortablesRef.current.values()) {
+        try { s.destroy(); } catch {}
       }
       cardSortablesRef.current.clear();
+    };
+
+    if (!cardDragEnabled) {
+      safeDestroyAll();
       return;
     }
 
     // Destroy all existing card Sortable instances before re-creating.
     // This prevents stale instances from accumulating when the effect re-runs.
-    for (const sortable of cardSortablesRef.current.values()) {
-      sortable.destroy();
-    }
-    cardSortablesRef.current.clear();
+    safeDestroyAll();
 
     // Defer initialization to ensure DOM is fully painted.
     // Chrome new tab pages may pre-render, causing querySelector to miss elements.
@@ -430,7 +432,7 @@ function App() {
               });
 
               for (const s of cardSortablesRef.current.values()) {
-                s.destroy();
+                try { s.destroy(); } catch {}
               }
               cardSortablesRef.current.clear();
 
@@ -451,10 +453,8 @@ function App() {
 
     return () => {
       cancelAnimationFrame(rafId);
-      for (const sortable of cardSortablesRef.current.values()) {
-        sortable.destroy();
-      }
-    }
+      safeDestroyAll();
+    };
   }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo]);
 
   // --- Business logic ---
