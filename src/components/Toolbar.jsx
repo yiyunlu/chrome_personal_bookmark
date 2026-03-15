@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, Brain, CheckSquare, Download, Search, Sparkles, Square } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function Toolbar({
   activeSource,
@@ -29,7 +30,7 @@ export function Toolbar({
           ref={searchInputRef}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="搜索书签标题或 URL…"
+          placeholder={t('searchPlaceholder')}
           className="w-full max-w-2xl pl-9 pr-16 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
           style={{
             background: 'var(--input-bg)',
@@ -52,10 +53,10 @@ export function Toolbar({
           disabled={!activeSourceId && !tabHubRootId}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'var(--btn-primary)', color: 'var(--btn-primary-text)' }}
-          title="快捷键: S"
+          title={t('shortcutSaveKey')}
         >
           <Download size={14} />
-          <span>保存标签页</span>
+          <span>{t('saveTabs')}</span>
         </button>
 
         <button
@@ -68,10 +69,10 @@ export function Toolbar({
             borderColor: 'var(--input-border)',
             color: 'var(--text)'
           }}
-          title="快捷键: O"
+          title={t('shortcutOrganizeKey')}
         >
           <Sparkles size={14} style={{ color: 'var(--accent)' }} />
-          <span>{autoOrganizing ? '整理中…' : '自动整理'}</span>
+          <span>{autoOrganizing ? t('autoOrganizing') : t('autoOrganize')}</span>
         </button>
 
         <button
@@ -83,10 +84,10 @@ export function Toolbar({
             borderColor: 'var(--input-border)',
             color: 'var(--text)'
           }}
-          title="AI 智能分类"
+          title={t('shortcutAICategorize')}
         >
           <Brain size={14} style={{ color: 'var(--accent)' }} />
-          <span>AI 分类</span>
+          <span>{t('aiCategorize')}</span>
         </button>
 
         <button
@@ -98,10 +99,10 @@ export function Toolbar({
             borderColor: 'var(--input-border)',
             color: 'var(--text)'
           }}
-          title="检测失效链接"
+          title={t('shortcutDeadLink')}
         >
           <AlertTriangle size={14} style={{ color: 'var(--danger)' }} />
-          <span>失效检测</span>
+          <span>{t('deadLinkCheck')}</span>
         </button>
 
         <button
@@ -113,15 +114,15 @@ export function Toolbar({
             borderColor: manageMode ? 'var(--accent)' : 'var(--input-border)',
             color: manageMode ? 'var(--accent)' : 'var(--text)'
           }}
-          title="快捷键: M"
+          title={t('shortcutManageKey')}
         >
           {manageMode ? <CheckSquare size={14} /> : <Square size={14} />}
-          <span>{manageMode ? '退出管理' : '管理模式'}</span>
+          <span>{manageMode ? t('exitManageMode') : t('enterManageMode')}</span>
         </button>
 
         {activeSource && (
           <span className="text-xs ml-1" style={{ color: 'var(--muted)' }}>
-            当前: {activeSource.isTabHub ? 'TabHub' : activeSource.title}
+            {t('current')}: {activeSource.isTabHub ? 'TabHub' : activeSource.title}
           </span>
         )}
       </div>
@@ -139,7 +140,7 @@ export function BatchToolbar({ selectedCount, onBatchMove, onBatchTrash, onClear
       }}
     >
       <span className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
-        已选 {selectedCount} 项
+        {t('selectedCount', selectedCount)}
       </span>
       <div className="flex-1" />
       <button
@@ -149,7 +150,7 @@ export function BatchToolbar({ selectedCount, onBatchMove, onBatchTrash, onClear
         className="px-2.5 py-1 rounded-lg border text-xs font-medium disabled:opacity-40"
         style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
       >
-        批量移动
+        {t('batchMove')}
       </button>
       <button
         type="button"
@@ -158,7 +159,7 @@ export function BatchToolbar({ selectedCount, onBatchMove, onBatchTrash, onClear
         className="px-2.5 py-1 rounded-lg text-xs font-medium"
         style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}
       >
-        删除
+        {t('delete')}
       </button>
       <button
         type="button"
@@ -166,7 +167,7 @@ export function BatchToolbar({ selectedCount, onBatchMove, onBatchTrash, onClear
         className="px-2.5 py-1 rounded-lg border text-xs"
         style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--muted)' }}
       >
-        清空
+        {t('clearSelection')}
       </button>
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { ExternalLink, MessageCircle, Send, X } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function ChatPanel({ open, onClose, onSendMessage, messages }) {
   const [input, setInput] = useState('');
@@ -55,7 +56,7 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
         <div className="flex items-center gap-2">
           <MessageCircle size={16} style={{ color: 'var(--accent)' }} />
           <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-            AI 助手
+            {t('chatTitle')}
           </span>
         </div>
         <button onClick={onClose} className="p-1 rounded-md hover:opacity-70" style={{ color: 'var(--muted)' }}>
@@ -69,13 +70,13 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
           <div className="text-center py-6">
             <MessageCircle size={24} className="mx-auto mb-2" style={{ color: 'var(--muted)', opacity: 0.5 }} />
             <div className="text-xs" style={{ color: 'var(--muted)' }}>
-              试试输入：
+              {t('chatHint')}
             </div>
             <div className="text-xs mt-1 space-y-1" style={{ color: 'var(--muted)' }}>
-              <div>「搜索 React」</div>
-              <div>「查找重复」</div>
-              <div>「统计」</div>
-              <div>「移动 GitHub 到 Development」</div>
+              <div>{t('chatExample1')}</div>
+              <div>{t('chatExample2')}</div>
+              <div>{t('chatExample3')}</div>
+              <div>{t('chatExample4')}</div>
             </div>
           </div>
         )}
@@ -117,7 +118,7 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
                       className="px-2 py-0.5 rounded text-xs font-medium"
                       style={{ background: 'var(--accent)', color: 'var(--btn-primary-text)' }}
                     >
-                      确认执行
+                      {t('chatConfirm')}
                     </button>
                   )}
                 </div>
@@ -139,7 +140,7 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="输入指令或问题…"
+          placeholder={t('chatPlaceholder')}
           className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
           style={{
             background: 'var(--input-bg)',
@@ -171,7 +172,7 @@ export function ChatToggle({ onClick, hasUnread }) {
         color: 'var(--btn-primary-text)',
         boxShadow: 'var(--shadow)'
       }}
-      title="AI 助手"
+      title={t('chatTitle')}
     >
       <MessageCircle size={20} />
       {hasUnread && (

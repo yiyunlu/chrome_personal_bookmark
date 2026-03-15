@@ -17,6 +17,7 @@ import {
 import { normalizeUrlKey, sortSnapshots } from './lib/utils';
 import { smartSearch } from './lib/searchService';
 
+import { initLanguage, getLanguageSetting, setLanguage as setI18nLanguage, t } from './lib/i18n';
 import { useTheme } from './hooks/useTheme';
 import { useUndoStack } from './hooks/useUndoStack';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -35,8 +36,6 @@ import { AICategorizeModal } from './components/AICategorizeModal';
 import { DeadLinkModal } from './components/DeadLinkModal';
 import { ChatPanel, ChatToggle } from './components/ChatPanel';
 import { UndoToast } from './components/UndoToast';
-
-const HARD_RELOAD_AFTER_CARD_DROP = true;
 
 function App() {
   const [tabHubRootId, setTabHubRootId] = useState('');
@@ -64,6 +63,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [langReady, setLangReady] = useState(false);
+  const [languageSetting, setLanguageSetting] = useState('auto');
+  const [, forceUpdate] = useState(0);
 
   const navSortableRef = useRef(null);
   const moduleSortableRef = useRef(null);
@@ -133,6 +135,13 @@ function App() {
 
   // --- Init ---
   useEffect(() => {
+    (async () => {
+      await initLanguage();
+      const savedLang = await getLanguageSetting();
+      setLanguageSetting(savedLang || 'auto');
+      setLangReady(true);
+    })();
+
     refresh();
     const unsubscribe = subscribeBookmarksChanges(() => {
       refresh(activeSourceRef.current);
@@ -336,70 +345,11 @@ function App() {
         if (collapsedCollectionIds.has(collection.id)) return;
 
       const container = document.querySelector(`[data-cards-collection-id="${collection.id}"]`);
-      if (!container || cardSortablesRef.current.has(collection.id)) {
+      if (!container) {
         return;
       }
 
       const sortable = new Sortable(container, {
-        animation: 150,
-        draggable: '[data-card-id]',
-        handle: '.card-drag-handle',
-        forceFallback: true,
-        fallbackOnBody: true,
-        group: {
-          name: 'bookmark-cards',
-          pull: true,
-          put: true
-        },
-        emptyInsertThreshold: 28,
-        ghostClass: 'card-dragging',
-        chosenClass: 'card-dragging',
-        dragClass: 'card-dragging',
-        onStart: () => {
-          cardDragActiveRef.current = true;
-          suppressCardOpenUntilRef.current = Date.now() + 1500;
-          suppressNextCardClickRef.current = true;
-          if (dragReleaseTimerRef.current) {
-            clearTimeout(dragReleaseTimerRef.current);
-            dragReleaseTimerRef.current = null;
-          }
-        },
-        onEnd: async (evt) => {
-          const bookmarkId = evt.item.getAttribute('data-card-id');
-          const oldParentId = evt.from.getAttribute('data-parent-id');
-          const newParentId = evt.to.getAttribute('data-parent-id');
-          suppressCardOpenUntilRef.current = Date.now() + 1800;
-          suppressNextCardClickRef.current = true;
-
-          try {
-            if (!bookmarkId || !oldParentId || !newParentId || evt.newIndex == null) {
-              return;
-            }
-            if (oldParentId === newParentId && evt.oldIndex === evt.newIndex) {
-              return;
-            }
-
-            await moveBookmark(bookmarkId, newParentId, evt.newIndex);
-            if (HARD_RELOAD_AFTER_CARD_DROP) {
-              setTimeout(() => {
-                window.location.reload();
-              }, 60);
-              return;
-            }
-            showUndo('已移动 1 个书签', async () => {
-              await moveBookmark(bookmarkId, oldParentId, evt.oldIndex ?? 0);
-            });
-            await refresh(activeSourceRef.current);
-          } finally {
-            dragReleaseTimerRef.current = setTimeout(() => {
-              cardDragActiveRef.current = false;
-              suppressNextCardClickRef.current = false;
-              dragReleaseTimerRef.current = null;
-            }, 900);
-          }
-        }
-
-        const sortable = new Sortable(container, {
           animation: 150,
           draggable: '[data-card-id]',
           handle: '.card-drag-handle',
@@ -546,7 +496,7 @@ function App() {
         insertIndex += 1;
       }
 
-      showUndo(`已移入回收站 ${cards.length} 项`, async () => {
+      showUndo(t('movedToTrash', cards.length), async () => {
         for (const snapshot of sortSnapshots(snapshots)) {
           await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
         }
@@ -691,7 +641,7 @@ function App() {
         loading: false,
         suggestions: [],
         newCollections: [],
-        error: err?.message || 'AI 分类失败'
+        error: err?.message || t('aiCategorizeFailed')
       });
     }
   }, [collections]);
@@ -740,7 +690,7 @@ function App() {
       // Skip suggestions targeting non-existent collections (new collection creation not supported in mock)
     }
 
-    showUndo(`AI 分类完成：移动了 ${accepted.length} 个书签`, async () => {
+    showUndo(t('aiCategorizeComplete', accepted.length), async () => {
       for (const snapshot of sortSnapshots(snapshots)) {
         await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
       }
@@ -762,7 +712,7 @@ function App() {
       });
       setDeadLinkState({ loading: false, progress: null, results, error: null });
     } catch (err) {
-      setDeadLinkState({ loading: false, progress: null, results: null, error: err?.message || '检测失败' });
+      setDeadLinkState({ loading: false, progress: null, results: null, error: err?.message || t('deadLinkCheckFailed') });
     }
   }, [collections]);
 
@@ -770,7 +720,7 @@ function App() {
     async (bookmarkId, title) => {
       const card = allCards.find((c) => c.id === bookmarkId);
       if (!card) return;
-      const shouldDelete = window.confirm(`删除书签：${title} ?`);
+      const shouldDelete = window.confirm(t('confirmDeleteBookmark', title));
       if (!shouldDelete) return;
       await moveCardsToTrash([card]);
       // Remove from dead link results
@@ -805,10 +755,10 @@ function App() {
             .map((r) => allCards.find((c) => c.id === r.id))
             .filter(Boolean);
           if (cards.length > 0) {
-            await moveCardsWithUndo(cards, result.targetCollectionId, `已移动 ${cards.length} 个书签`);
+            await moveCardsWithUndo(cards, result.targetCollectionId, t('movedBookmarks', cards.length));
             setChatMessages((prev) => [
               ...prev,
-              { role: 'assistant', text: `已移动 ${cards.length} 个书签到「${result.targetCollectionTitle}」。` }
+              { role: 'assistant', text: t('chatMovedBookmarks', cards.length, result.targetCollectionTitle) }
             ]);
           }
         };
@@ -821,7 +771,7 @@ function App() {
             await moveCardsToTrash(cards);
             setChatMessages((prev) => [
               ...prev,
-              { role: 'assistant', text: `已删除 ${cards.length} 个书签。` }
+              { role: 'assistant', text: t('chatDeletedBookmarks', cards.length) }
             ]);
           }
         };
@@ -932,7 +882,7 @@ function App() {
     const current = contextMenu.collection;
     setContextMenu(null);
 
-    const shouldDelete = window.confirm(`删除目录"${current.title}"及其全部书签？`);
+    const shouldDelete = window.confirm(t('confirmDeleteFolder', current.title));
     if (!shouldDelete) return;
 
     await removeCollectionFolder(current.id);
@@ -979,7 +929,7 @@ function App() {
         await moveBookmark(editorState.cardId, editorState.targetParentId, targetCollection.cards.length);
       }
 
-      showUndo('书签已更新', async () => {
+      showUndo(t('bookmarkUpdated'), async () => {
         await updateBookmark(before.id, { title: before.title, url: before.url });
         if (before.parentId !== editorState.targetParentId) {
           await moveBookmark(before.id, before.parentId, before.index ?? 0);
@@ -1008,7 +958,7 @@ function App() {
 
     setBatchMoveState((prev) => (prev ? { ...prev, moving: true } : prev));
     try {
-      await moveCardsWithUndo(selectedCards, batchMoveState.targetParentId, `已移动 ${selectedCards.length} 个书签`);
+      await moveCardsWithUndo(selectedCards, batchMoveState.targetParentId, t('movedBookmarks', selectedCards.length));
       clearSelections();
       setBatchMoveState(null);
     } finally {
@@ -1026,6 +976,8 @@ function App() {
 
   // --- Render ---
 
+  if (!langReady) return null;
+
   return (
     <div className="min-h-screen relative" style={{ background: 'var(--bg)' }}>
       <div className="min-h-screen flex">
@@ -1035,6 +987,8 @@ function App() {
           onSourceChange={handleSourceChange}
           themeMode={themeMode}
           onThemeModeChange={handleThemeModeChange}
+          languageSetting={languageSetting}
+          onLanguageChange={handleLanguageChange}
           collections={collections}
           activeCollectionId={activeCollectionId}
           onCollectionSelect={setActiveCollectionId}
@@ -1102,10 +1056,10 @@ function App() {
             >
               <div className="text-4xl mb-3">📑</div>
               <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                暂无可显示书签
+                {t('noBookmarks')}
               </div>
               <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                点击「保存标签页」将当前打开的网页保存到此处
+                {t('noBookmarksHint')}
               </div>
             </div>
           ) : (

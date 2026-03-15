@@ -1,6 +1,7 @@
 import React from 'react';
 import { BookmarkIcon } from './BookmarkIcon';
 import { ChevronDown, ChevronRight, FolderOpen, GripVertical, Pencil, Trash2 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function BookmarkCard({
   card,
@@ -88,7 +89,7 @@ export function BookmarkCard({
               e.stopPropagation();
               onEdit(card);
             }}
-            title="编辑"
+            title={t('edit')}
           >
             <Pencil size={13} />
           </button>
@@ -100,7 +101,7 @@ export function BookmarkCard({
               e.stopPropagation();
               onDelete(card);
             }}
-            title="删除"
+            title={t('delete')}
           >
             <Trash2 size={13} />
           </button>
@@ -173,7 +174,7 @@ export function CollectionCard({
               className="flex items-center justify-center py-6 rounded-xl border-2 border-dashed text-sm"
               style={{ borderColor: 'var(--panel-border)', color: 'var(--muted)' }}
             >
-              拖拽书签到此处
+              {t('dragHere')}
             </div>
           ) : (
             <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>

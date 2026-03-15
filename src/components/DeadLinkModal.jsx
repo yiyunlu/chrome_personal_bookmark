@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, CheckCircle, ExternalLink, Trash2, X } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function DeadLinkModal({ deadLinkState, onDeleteBookmark, onClose }) {
   if (!deadLinkState) return null;
@@ -31,7 +32,7 @@ export function DeadLinkModal({ deadLinkState, onDeleteBookmark, onClose }) {
           <div className="flex items-center gap-2">
             <AlertTriangle size={16} style={{ color: 'var(--danger)' }} />
             <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-              失效链接检测
+              {t('deadLinkTitle')}
             </h2>
           </div>
           <button onClick={onClose} className="p-1 rounded-md hover:opacity-70" style={{ color: 'var(--muted)' }}>
@@ -48,7 +49,7 @@ export function DeadLinkModal({ deadLinkState, onDeleteBookmark, onClose }) {
                 style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
               />
               <span className="text-sm" style={{ color: 'var(--muted)' }}>
-                正在检测链接… {progress ? `${progress.checked}/${progress.total}` : ''}
+                {t('deadLinkChecking')} {progress ? t('deadLinkProgress', progress.checked, progress.total) : ''}
               </span>
               {progress && (
                 <div className="w-full max-w-xs rounded-full h-1.5" style={{ background: 'var(--input-bg)' }}>
@@ -72,16 +73,16 @@ export function DeadLinkModal({ deadLinkState, onDeleteBookmark, onClose }) {
             <div className="flex flex-col items-center py-8 gap-2">
               <CheckCircle size={32} style={{ color: 'var(--accent)' }} />
               <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                所有链接均有效
+                {t('deadLinkAllGood')}
               </div>
               <div className="text-xs" style={{ color: 'var(--muted)' }}>
-                已检测 {aliveCount} 个书签，未发现失效链接
+                {t('deadLinkAllGoodDetail', aliveCount)}
               </div>
             </div>
           ) : (
             <div className="space-y-2">
               <div className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
-                发现 {deadLinks.length} 个失效链接（共检测 {(results || []).length} 个）
+                {t('deadLinkFound', deadLinks.length, (results || []).length)}
               </div>
 
               {deadLinks.map((item) => (
@@ -109,7 +110,7 @@ export function DeadLinkModal({ deadLinkState, onDeleteBookmark, onClose }) {
                     onClick={() => onDeleteBookmark(item.bookmarkId, item.title)}
                     className="flex-shrink-0 p-1 rounded-md hover:opacity-80"
                     style={{ color: 'var(--danger)' }}
-                    title="删除此书签"
+                    title={t('deadLinkDeleteTitle')}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -127,7 +128,7 @@ export function DeadLinkModal({ deadLinkState, onDeleteBookmark, onClose }) {
             className="px-3.5 py-1.5 rounded-lg border text-sm"
             style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
           >
-            关闭
+            {t('close')}
           </button>
         </div>
       </div>
