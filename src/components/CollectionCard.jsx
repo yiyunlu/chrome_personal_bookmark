@@ -163,21 +163,23 @@ export function CollectionCard({
 
       {/* Cards grid */}
       {!collapsed && (
-        <div
-          data-cards-collection-id={collection.id}
-          data-parent-id={collection.id}
-          className="px-3 pb-3"
-          style={{ minHeight: '2.5rem' }}
-        >
+        <div className="px-3 pb-3" style={{ minHeight: '2.5rem' }}>
           {collection.cards.length === 0 ? (
             <div
+              data-cards-collection-id={collection.id}
+              data-parent-id={collection.id}
               className="flex items-center justify-center py-6 rounded-xl border-2 border-dashed text-sm"
               style={{ borderColor: 'var(--panel-border)', color: 'var(--muted)' }}
             >
               {t('dragHere')}
             </div>
           ) : (
-            <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+            <div
+              data-cards-collection-id={collection.id}
+              data-parent-id={collection.id}
+              className="grid gap-2"
+              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}
+            >
               {collection.cards.map((card) => (
                 <BookmarkCard
                   key={card.id}
