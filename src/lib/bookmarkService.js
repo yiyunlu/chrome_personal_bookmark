@@ -60,9 +60,7 @@ function collectNestedCollections(rootFolder, includeEmpty = true, hiddenFolderI
     }
 
     const nextPrefix = prefix ? `${prefix} / ${folder.title || 'Untitled'}` : folder.title || 'Untitled';
-    (folder.children || [])
-      .filter((node) => !node.url)
-      .forEach((childFolder) => walk(childFolder, nextPrefix));
+    (folder.children || []).filter((node) => !node.url).forEach((childFolder) => walk(childFolder, nextPrefix));
   };
 
   (rootFolder.children || [])
@@ -120,9 +118,7 @@ export async function ensureTabHubRootFolder() {
   const tree = await getTree();
   const allFolders = collectAllFolders(tree, []);
 
-  const existing = allFolders.find(
-    (folder) => folder.title?.trim().toLowerCase() === TABHUB_ROOT_NAME.toLowerCase()
-  );
+  const existing = allFolders.find((folder) => folder.title?.trim().toLowerCase() === TABHUB_ROOT_NAME.toLowerCase());
   if (existing) {
     return existing;
   }
@@ -137,17 +133,17 @@ export async function ensureTabHubRootFolder() {
 }
 
 export async function getCollectionsPayload(preferredSourceId) {
-  const tree = await getTree();
+  let tree = await getTree();
   let tabHubRoot = collectAllFolders(tree, []).find(
     (folder) => folder.title?.trim().toLowerCase() === TABHUB_ROOT_NAME.toLowerCase()
   );
 
   if (!tabHubRoot) {
     tabHubRoot = await ensureTabHubRootFolder();
+    tree = await getTree();
   }
 
-  const refreshedTree = await getTree();
-  const roots = (refreshedTree[0]?.children || []).filter((node) => !node.url);
+  const roots = (tree[0]?.children || []).filter((node) => !node.url);
   const sources = roots.map((node) => ({
     id: node.id,
     title: node.title || 'Untitled Root',
@@ -171,15 +167,12 @@ export async function getCollectionsPayload(preferredSourceId) {
   const activeSourceId =
     (preferredSourceId && sources.some((source) => source.id === preferredSourceId)
       ? preferredSourceId
-      : defaultSourceId) ||
-    sources[0]?.id;
+      : defaultSourceId) || sources[0]?.id;
 
   const [activeRoot] = await getSubTreeApi(activeSourceId);
-  const fallbackRoot = findNodeById(refreshedTree, activeSourceId);
+  const fallbackRoot = findNodeById(tree, activeSourceId);
   const rootNode = activeRoot || fallbackRoot || { children: [] };
-  const trashFolder = (rootNode.children || []).find(
-    (node) => !node.url && node.title === TRASH_FOLDER_NAME
-  );
+  const trashFolder = (rootNode.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
   const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
   const collections = collectNestedCollections(rootNode, true, hiddenFolderIds);
 
@@ -254,9 +247,7 @@ export async function removeCollectionFolder(collectionId) {
 
 export async function ensureTrashFolder(rootId) {
   const [root] = await getSubTreeApi(rootId);
-  const existing = (root?.children || []).find(
-    (node) => !node.url && node.title === TRASH_FOLDER_NAME
-  );
+  const existing = (root?.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
   if (existing) {
     return existing;
   }
