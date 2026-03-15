@@ -113,6 +113,20 @@ function App() {
     [selectedCardIds, cardById]
   );
 
+  const filteredEditorTargets = useMemo(() => {
+    if (!editorState) return [];
+    const keyword = editorState.folderQuery.trim().toLowerCase();
+    if (!keyword) return collections;
+    return collections.filter((c) => c.title.toLowerCase().includes(keyword));
+  }, [editorState, collections]);
+
+  const filteredBatchTargets = useMemo(() => {
+    if (!batchMoveState) return [];
+    const keyword = batchMoveState.folderQuery.trim().toLowerCase();
+    if (!keyword) return collections;
+    return collections.filter((c) => c.title.toLowerCase().includes(keyword));
+  }, [batchMoveState, collections]);
+
   // --- Data refresh ---
   const refresh = useCallback(async (preferredSourceId = activeSourceRef.current) => {
     try {
