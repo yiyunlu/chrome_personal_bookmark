@@ -133,17 +133,17 @@ export async function ensureTabHubRootFolder() {
 }
 
 export async function getCollectionsPayload(preferredSourceId) {
-  const tree = await getTree();
+  let tree = await getTree();
   let tabHubRoot = collectAllFolders(tree, []).find(
     (folder) => folder.title?.trim().toLowerCase() === TABHUB_ROOT_NAME.toLowerCase()
   );
 
   if (!tabHubRoot) {
     tabHubRoot = await ensureTabHubRootFolder();
+    tree = await getTree();
   }
 
-  const refreshedTree = await getTree();
-  const roots = (refreshedTree[0]?.children || []).filter((node) => !node.url);
+  const roots = (tree[0]?.children || []).filter((node) => !node.url);
   const sources = roots.map((node) => ({
     id: node.id,
     title: node.title || 'Untitled Root',
@@ -170,7 +170,7 @@ export async function getCollectionsPayload(preferredSourceId) {
       : defaultSourceId) || sources[0]?.id;
 
   const [activeRoot] = await getSubTreeApi(activeSourceId);
-  const fallbackRoot = findNodeById(refreshedTree, activeSourceId);
+  const fallbackRoot = findNodeById(tree, activeSourceId);
   const rootNode = activeRoot || fallbackRoot || { children: [] };
   const trashFolder = (rootNode.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
   const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
