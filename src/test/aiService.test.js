@@ -15,17 +15,17 @@ describe('aiService', () => {
     });
 
     it('returns stored key', async () => {
-      chrome.storage.local.get = vi.fn((_keys, cb) => cb({ tabhub_ai_api_key: 'sk-test-123' }));
+      chrome.storage.local.get = vi.fn((_keys, cb) => cb({ tabhub_ai_api_key: 'test-api-key-123' }));
       const key = await getApiKey();
-      expect(key).toBe('sk-test-123');
+      expect(key).toBe('test-api-key-123');
     });
   });
 
   describe('setApiKey', () => {
     it('stores the key via chrome.storage.local', async () => {
-      await setApiKey('sk-new-key');
+      await setApiKey('test-api-key-new');
       expect(chrome.storage.local.set).toHaveBeenCalledWith(
-        { tabhub_ai_api_key: 'sk-new-key' },
+        { tabhub_ai_api_key: 'test-api-key-new' },
         expect.any(Function)
       );
     });
