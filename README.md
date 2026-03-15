@@ -33,9 +33,6 @@ No standalone backend is required; data is read and written directly through `ch
   - `O`: auto-organize
   - `M`: toggle manage mode
 
-## Compatibility Note
-- For Chrome new-tab drag/drop stability, single-bookmark drag currently triggers a hard page reload after drop as a compatibility fallback.
-
 ## Development
 1. Install dependencies:
    ```bash
@@ -49,4 +46,4 @@ No standalone backend is required; data is read and written directly through `ch
    - Open `chrome://extensions`
    - Enable Developer mode
    - Click **Load unpacked**
-   - Select `/Volumes/Lexar_2T/Canada_DEV/chrome_personal_bookmark/dist`
+   - Select the `dist/` folder
