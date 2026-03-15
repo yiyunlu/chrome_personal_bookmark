@@ -73,6 +73,8 @@ function App() {
   const cardDragActiveRef = useRef(false);
   const suppressCardOpenUntilRef = useRef(0);
   const suppressNextCardClickRef = useRef(false);
+  const handleSaveTabsRef = useRef(null);
+  const handleAutoOrganizeRef = useRef(null);
 
   const { themeMode, handleThemeModeChange } = useTheme();
   const { undoToast, showUndo, handleUndo } = useUndoStack();
@@ -83,7 +85,7 @@ function App() {
   const canSortCollections = dragEnabled && activeCollectionId === 'all';
 
   const topLevelSortableCollections = useMemo(
-    () => collections.filter((collection) => collection.editable && collection.parentId === activeSourceId),
+    () => collections.filter((c) => c.editable && c.parentId === activeSourceId),
     [collections, activeSourceId]
   );
 
@@ -109,23 +111,8 @@ function App() {
     [selectedCardIds, cardById]
   );
 
-  const movableCollections = useMemo(() => collections, [collections]);
-
-  const filteredEditorTargets = useMemo(() => {
-    if (!editorState) return [];
-    const keyword = editorState.folderQuery.trim().toLowerCase();
-    if (!keyword) return movableCollections;
-    return movableCollections.filter((collection) => collection.title.toLowerCase().includes(keyword));
-  }, [editorState, movableCollections]);
-
-  const filteredBatchTargets = useMemo(() => {
-    if (!batchMoveState) return [];
-    const keyword = batchMoveState.folderQuery.trim().toLowerCase();
-    if (!keyword) return movableCollections;
-    return movableCollections.filter((collection) => collection.title.toLowerCase().includes(keyword));
-  }, [batchMoveState, movableCollections]);
-
-  const refresh = async (preferredSourceId = activeSourceRef.current) => {
+  // --- Data refresh ---
+  const refresh = useCallback(async (preferredSourceId = activeSourceRef.current) => {
     try {
       const result = await getCollectionsPayload(preferredSourceId);
       setTabHubRootId(result.tabHubRootId);
@@ -140,10 +127,11 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // --- Initialization & subscriptions ---
 
+  // --- Init ---
   useEffect(() => {
     refresh();
     const unsubscribe = subscribeBookmarksChanges(() => {
@@ -162,6 +150,7 @@ function App() {
     };
   }, []);
 
+  // --- Cleanup timers ---
   useEffect(
     () => () => {
       if (dragReleaseTimerRef.current) {
@@ -172,6 +161,7 @@ function App() {
     []
   );
 
+  // --- Suppress card click after drag ---
   useEffect(() => {
     const captureCardClick = (event) => {
       if (!suppressNextCardClickRef.current) return;
@@ -194,6 +184,7 @@ function App() {
     };
   }, []);
 
+  // --- Keyboard shortcuts ---
   useEffect(() => {
     setSelectedCardIds((prev) => {
       const next = new Set(Array.from(prev).filter((id) => cardById.has(id)));
@@ -201,6 +192,7 @@ function App() {
     });
   }, [cardById]);
 
+  // --- Exit manage mode clears selection ---
   useEffect(() => {
     if (!manageMode) {
       setSelectedCardIds(new Set());
@@ -254,6 +246,7 @@ function App() {
     [topLevelSortableCollections, activeSourceId]
   );
 
+  // --- SortableJS: Nav sidebar ---
   useEffect(() => {
     const container = document.querySelector('[data-nav-sortable="true"]');
     if (!container) return;
@@ -285,6 +278,7 @@ function App() {
     };
   }, [canSortCollections, topLevelSortableCollections, activeSourceId, persistTopLevelCollectionOrder]);
 
+  // --- SortableJS: Module (collection) sorting ---
   useEffect(() => {
     const container = document.querySelector('[data-module-sortable="true"]');
     if (!container) return;
@@ -318,6 +312,7 @@ function App() {
 
   // --- Drag-and-drop: card sorting ---
 
+  // --- SortableJS: Card-level drag (FIXED: no hard reload) ---
   useEffect(() => {
     if (!cardDragEnabled) {
       for (const sortable of cardSortablesRef.current.values()) {
@@ -327,12 +322,18 @@ function App() {
       return;
     }
 
-    const expandedIds = new Set(
-      visibleCollections.filter((collection) => !collapsedCollectionIds.has(collection.id)).map((c) => c.id)
-    );
+    // Destroy all existing card Sortable instances before re-creating.
+    // This prevents stale instances from accumulating when the effect re-runs.
+    for (const sortable of cardSortablesRef.current.values()) {
+      sortable.destroy();
+    }
+    cardSortablesRef.current.clear();
 
-    visibleCollections.forEach((collection) => {
-      if (collapsedCollectionIds.has(collection.id)) return;
+    // Defer initialization to ensure DOM is fully painted.
+    // Chrome new tab pages may pre-render, causing querySelector to miss elements.
+    const rafId = requestAnimationFrame(() => {
+      visibleCollections.forEach((collection) => {
+        if (collapsedCollectionIds.has(collection.id)) return;
 
       const container = document.querySelector(`[data-cards-collection-id="${collection.id}"]`);
       if (!container || cardSortablesRef.current.has(collection.id)) {
@@ -397,15 +398,97 @@ function App() {
             }, 900);
           }
         }
-      });
 
-      cardSortablesRef.current.set(collection.id, sortable);
+        const sortable = new Sortable(container, {
+          animation: 150,
+          draggable: '[data-card-id]',
+          handle: '.card-drag-handle',
+          forceFallback: true,
+          fallbackOnBody: true,
+          group: {
+            name: 'bookmark-cards',
+            pull: true,
+            put: true
+          },
+          emptyInsertThreshold: 28,
+          ghostClass: 'card-dragging',
+          chosenClass: 'card-dragging',
+          dragClass: 'card-dragging',
+          onStart: () => {
+            cardDragActiveRef.current = true;
+            suppressCardOpenUntilRef.current = Date.now() + 1500;
+            suppressNextCardClickRef.current = true;
+            if (dragReleaseTimerRef.current) {
+              clearTimeout(dragReleaseTimerRef.current);
+              dragReleaseTimerRef.current = null;
+            }
+          },
+          onEnd: async (evt) => {
+            const bookmarkId = evt.item.getAttribute('data-card-id');
+            const oldParentId = evt.from.getAttribute('data-parent-id');
+            const newParentId = evt.to.getAttribute('data-parent-id');
+            const { oldIndex, newIndex } = evt;
+            suppressCardOpenUntilRef.current = Date.now() + 1800;
+            suppressNextCardClickRef.current = true;
+
+            // ── CRITICAL: Revert SortableJS's DOM mutation ──
+            // SortableJS has already physically moved evt.item in the DOM.
+            // We MUST put it back before React tries to reconcile, otherwise
+            // React's virtual DOM will be out of sync → removeChild crash → blank page.
+            if (evt.from !== evt.to) {
+              evt.to.removeChild(evt.item);
+              if (evt.from.children[oldIndex]) {
+                evt.from.insertBefore(evt.item, evt.from.children[oldIndex]);
+              } else {
+                evt.from.appendChild(evt.item);
+              }
+            } else {
+              const refNode = evt.from.children[oldIndex];
+              if (refNode) {
+                evt.from.insertBefore(evt.item, refNode);
+              } else {
+                evt.from.appendChild(evt.item);
+              }
+            }
+
+            try {
+              if (!bookmarkId || !oldParentId || !newParentId || newIndex == null) {
+                return;
+              }
+              if (oldParentId === newParentId && oldIndex === newIndex) {
+                return;
+              }
+
+              await moveBookmark(bookmarkId, newParentId, newIndex);
+
+              showUndo(t('movedBookmarks', 1), async () => {
+                await moveBookmark(bookmarkId, oldParentId, oldIndex ?? 0);
+              });
+
+              for (const s of cardSortablesRef.current.values()) {
+                s.destroy();
+              }
+              cardSortablesRef.current.clear();
+
+              await refresh(activeSourceRef.current);
+            } finally {
+              dragReleaseTimerRef.current = setTimeout(() => {
+                cardDragActiveRef.current = false;
+                suppressNextCardClickRef.current = false;
+                dragReleaseTimerRef.current = null;
+              }, 900);
+            }
+          }
+        });
+
+        cardSortablesRef.current.set(collection.id, sortable);
+      });
     });
 
-    for (const [collectionId, sortable] of cardSortablesRef.current.entries()) {
-      if (!expandedIds.has(collectionId)) {
+    return () => {
+      cancelAnimationFrame(rafId);
+      for (const sortable of cardSortablesRef.current.values()) {
         sortable.destroy();
-        cardSortablesRef.current.delete(collectionId);
       }
     }
   }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo]);
@@ -495,21 +578,14 @@ function App() {
 
   const handleAutoOrganize = useCallback(async () => {
     if (autoOrganizing || !collections.length) return;
-
     const rootId = activeSourceId || tabHubRootId;
     if (!rootId) return;
 
     setAutoOrganizing(true);
     try {
       const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(rootId);
-      const cardsBefore = collections.flatMap((collection) =>
-        collection.cards.map((card) => ({
-          id: card.id,
-          title: card.title,
-          url: card.url,
-          parentId: card.parentId,
-          index: card.index
-        }))
+      const cardsBefore = collections.flatMap((c) =>
+        c.cards.map((card) => ({ id: card.id, title: card.title, url: card.url, parentId: card.parentId, index: card.index }))
       );
 
       const seen = new Set();
@@ -558,7 +634,7 @@ function App() {
       const snapshotById = new Map(cardsBefore.map((card) => [card.id, card]));
       const totalAffected = duplicates.length + sortedMoves;
       if (totalAffected > 0) {
-        showUndo(`自动整理完成：去重 ${duplicates.length}，重排 ${sortedMoves}`, async () => {
+        showUndo(t('autoOrganizeResult', duplicates.length, sortedMoves), async () => {
           for (const snapshot of sortSnapshots(Array.from(snapshotById.values()))) {
             await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
           }
@@ -774,6 +850,12 @@ function App() {
     await refresh(sourceId);
   };
 
+  const handleLanguageChange = async (lang) => {
+    setLanguageSetting(lang);
+    await setI18nLanguage(lang);
+    forceUpdate((n) => n + 1);
+  };
+
   const toggleCollection = (collectionId) => {
     setCollapsedCollectionIds((prev) => {
       const next = new Set(prev);
@@ -819,7 +901,7 @@ function App() {
   };
 
   const handleDeleteCardByCard = async (card) => {
-    const shouldDelete = window.confirm(`删除书签：${card.title} ?`);
+    const shouldDelete = window.confirm(t('confirmDeleteBookmark', card.title));
     if (!shouldDelete) return;
     await moveCardsToTrash([card]);
   };
@@ -836,7 +918,7 @@ function App() {
     const current = contextMenu.collection;
     setContextMenu(null);
 
-    const nextTitle = window.prompt('重命名目录', current.folderTitle || current.title);
+    const nextTitle = window.prompt(t('renamePrompt'), current.folderTitle || current.title);
     if (nextTitle == null) return;
     const trimmed = nextTitle.trim();
     if (!trimmed) return;
@@ -884,7 +966,7 @@ function App() {
   const handleEditorSave = async () => {
     if (!editorState || editorState.saving) return;
     const before = cardById.get(editorState.cardId);
-    const targetCollection = collections.find((collection) => collection.id === editorState.targetParentId);
+    const targetCollection = collections.find((c) => c.id === editorState.targetParentId);
     const nextTitle = editorState.title.trim();
     const nextUrl = editorState.url.trim();
     if (!nextTitle || !nextUrl || !before) return;
@@ -936,7 +1018,7 @@ function App() {
 
   const handleBatchTrash = async () => {
     if (!selectedCards.length) return;
-    const shouldDelete = window.confirm(`将 ${selectedCards.length} 个书签移入回收站？`);
+    const shouldDelete = window.confirm(t('confirmBatchTrash', selectedCards.length));
     if (!shouldDelete) return;
     await moveCardsToTrash(selectedCards);
     clearSelections();
