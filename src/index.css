@@ -100,9 +100,22 @@ body {
   opacity: 0.5;
 }
 
+/* ── Bookmark card hover ── */
+[data-card-id] {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+[data-card-id]:hover {
+  background: var(--hover) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
 /* ── Drag states ── */
 .card-dragging {
   opacity: 0.5;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* ── Shimmer for loading skeletons ── */
