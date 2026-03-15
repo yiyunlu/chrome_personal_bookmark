@@ -1,5 +1,6 @@
 import React from 'react';
 import { FolderPen, Pencil, Trash2 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCollection, onDeleteCollection }) {
   if (!contextMenu) return null;
@@ -31,7 +32,7 @@ export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCol
             onClick={onEditCard}
           >
             <Pencil size={14} style={{ color: 'var(--muted)' }} />
-            编辑书签
+            {t('editBookmark')}
           </button>
           <button
             type="button"
@@ -46,7 +47,7 @@ export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCol
             onClick={onDeleteCard}
           >
             <Trash2 size={14} />
-            删除到回收站
+            {t('deleteToTrash')}
           </button>
         </>
       )}
@@ -65,7 +66,7 @@ export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCol
             onClick={onRenameCollection}
           >
             <FolderPen size={14} style={{ color: 'var(--muted)' }} />
-            重命名目录
+            {t('renameFolder')}
           </button>
           <button
             type="button"
@@ -80,7 +81,7 @@ export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCol
             onClick={onDeleteCollection}
           >
             <Trash2 size={14} />
-            删除目录
+            {t('deleteFolder')}
           </button>
         </>
       )}

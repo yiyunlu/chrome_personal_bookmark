@@ -1,11 +1,6 @@
 import React from 'react';
-import { Bookmark, ChevronLeft, ChevronRight, FolderOpen, GripVertical, Monitor, Moon, Sun } from 'lucide-react';
-
-const themeOptions = [
-  { value: 'system', icon: Monitor, label: '跟随系统' },
-  { value: 'light', icon: Sun, label: '浅色' },
-  { value: 'dark', icon: Moon, label: '深色' }
-];
+import { Bookmark, ChevronLeft, ChevronRight, FolderOpen, Globe, GripVertical, Monitor, Moon, Sun } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function Sidebar({
   sources,
@@ -13,6 +8,8 @@ export function Sidebar({
   onSourceChange,
   themeMode,
   onThemeModeChange,
+  languageSetting,
+  onLanguageChange,
   collections,
   activeCollectionId,
   onCollectionSelect,
@@ -21,6 +18,11 @@ export function Sidebar({
   collapsed,
   onToggleCollapse
 }) {
+  const themeOptions = [
+    { value: 'system', icon: Monitor, label: t('themeSystem') },
+    { value: 'light', icon: Sun, label: t('themeLight') },
+    { value: 'dark', icon: Moon, label: t('themeDark') }
+  ];
   return (
     <aside
       className="flex flex-col flex-shrink-0 min-h-screen border-r border-[var(--panel-border)] select-none"
@@ -50,7 +52,7 @@ export function Sidebar({
           onClick={onToggleCollapse}
           className="flex items-center justify-center w-7 h-7 rounded-md hover:opacity-80"
           style={{ background: 'var(--sidebar-hover)' }}
-          title={collapsed ? '展开侧栏' : '收起侧栏'}
+          title={collapsed ? t('expandSidebar') : t('collapseSidebar')}
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -61,7 +63,7 @@ export function Sidebar({
           {/* Source selector */}
           <div className="px-3 mb-3">
             <label className="block text-[0.68rem] uppercase tracking-wider mb-1.5" style={{ color: 'var(--muted)' }}>
-              书签源
+              {t('bookmarkSource')}
             </label>
             <select
               className="w-full text-sm rounded-lg border px-2.5 py-1.5 outline-none"
@@ -84,7 +86,7 @@ export function Sidebar({
           {/* Theme toggle */}
           <div className="px-3 mb-4">
             <label className="block text-[0.68rem] uppercase tracking-wider mb-1.5" style={{ color: 'var(--muted)' }}>
-              主题
+              {t('theme')}
             </label>
             <div
               className="flex rounded-lg border p-0.5"
@@ -108,6 +110,27 @@ export function Sidebar({
             </div>
           </div>
 
+          {/* Language selector */}
+          <div className="px-3 mb-4">
+            <label className="block text-[0.68rem] uppercase tracking-wider mb-1.5" style={{ color: 'var(--muted)' }}>
+              {t('language')}
+            </label>
+            <select
+              className="w-full text-sm rounded-lg border px-2.5 py-1.5 outline-none"
+              style={{
+                background: 'var(--input-bg)',
+                borderColor: 'var(--input-border)',
+                color: 'var(--text)'
+              }}
+              value={languageSetting}
+              onChange={(e) => onLanguageChange(e.target.value)}
+            >
+              <option value="auto">{t('langAuto')}</option>
+              <option value="zh-CN">{t('langZh')}</option>
+              <option value="en">{t('langEn')}</option>
+            </select>
+          </div>
+
           {/* Divider */}
           <div className="mx-3 mb-2 border-t" style={{ borderColor: 'var(--panel-border)' }} />
 
@@ -123,7 +146,7 @@ export function Sidebar({
               onClick={() => onCollectionSelect('all')}
             >
               <Bookmark size={15} style={{ opacity: 0.7 }} />
-              <span className="truncate">All Collections</span>
+              <span className="truncate">{t('allCollections')}</span>
             </button>
 
             {collections.map((collection) => {
@@ -142,7 +165,7 @@ export function Sidebar({
                   }}
                   onClick={() => onCollectionSelect(collection.id)}
                   onContextMenu={(e) => onCollectionContextMenu(e, collection)}
-                  title={collection.editable || collection.deletable ? '右键可编辑目录' : ''}
+                  title={collection.editable || collection.deletable ? t('rightClickHint') : ''}
                 >
                   <span
                     className="nav-drag-handle flex-shrink-0 opacity-0 group-hover:opacity-40 cursor-grab"

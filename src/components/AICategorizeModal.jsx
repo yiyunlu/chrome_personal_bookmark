@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check, FolderOpen, Sparkles, X } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggestion, onApplyAll, onClose }) {
   if (!aiState) return null;
@@ -31,7 +32,7 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
           <div className="flex items-center gap-2">
             <Sparkles size={16} style={{ color: 'var(--accent)' }} />
             <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-              AI 智能分类
+              {t('aiCategorizeTitle')}
             </h2>
           </div>
           <button onClick={onClose} className="p-1 rounded-md hover:opacity-70" style={{ color: 'var(--muted)' }}>
@@ -48,7 +49,7 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
                 style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
               />
               <span className="text-sm" style={{ color: 'var(--muted)' }}>
-                正在分析书签…
+                {t('aiAnalyzing')}
               </span>
             </div>
           ) : error ? (
@@ -60,14 +61,14 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
           ) : suggestions.length === 0 ? (
             <div className="py-6 text-center">
               <div className="text-sm" style={{ color: 'var(--muted)' }}>
-                所有书签已在合适的分类中，无需调整。
+                {t('aiNoSuggestions')}
               </div>
             </div>
           ) : (
             <div className="space-y-3">
               {newCollections.length > 0 && (
                 <div className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
-                  建议新建分类：
+                  {t('aiSuggestNewCollections')}
                   {newCollections.map((name) => (
                     <span
                       key={name}
@@ -106,7 +107,7 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
                         onClick={() => onAcceptSuggestion(idx)}
                         className="p-1 rounded-md hover:opacity-80"
                         style={{ color: 'var(--accent)' }}
-                        title="接受"
+                        title={t('aiAccept')}
                       >
                         <Check size={14} />
                       </button>
@@ -114,7 +115,7 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
                         onClick={() => onRejectSuggestion(idx)}
                         className="p-1 rounded-md hover:opacity-80"
                         style={{ color: 'var(--muted)' }}
-                        title="拒绝"
+                        title={t('aiReject')}
                       >
                         <X size={14} />
                       </button>
@@ -122,12 +123,12 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
                   )}
                   {suggestion.status === 'accepted' && (
                     <span className="text-xs flex-shrink-0 px-1.5 py-0.5 rounded" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
-                      已接受
+                      {t('aiAccepted')}
                     </span>
                   )}
                   {suggestion.status === 'rejected' && (
                     <span className="text-xs flex-shrink-0" style={{ color: 'var(--muted)' }}>
-                      已忽略
+                      {t('aiRejected')}
                     </span>
                   )}
                 </div>
@@ -140,7 +141,7 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
         {!loading && suggestions.length > 0 && (
           <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: 'var(--panel-border)' }}>
             <span className="text-xs" style={{ color: 'var(--muted)' }}>
-              {accepted.length} 项已接受，{pending.length} 项待确认
+              {t('aiSummary', accepted.length, pending.length)}
             </span>
             <div className="flex gap-2">
               <button
@@ -149,7 +150,7 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
                 className="px-3.5 py-1.5 rounded-lg border text-sm"
                 style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
               >
-                取消
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -158,7 +159,7 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
                 className="px-3.5 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
                 style={{ background: 'var(--btn-primary)', color: 'var(--btn-primary-text)' }}
               >
-                应用 {accepted.length} 项
+                {t('aiApply', accepted.length)}
               </button>
             </div>
           </div>

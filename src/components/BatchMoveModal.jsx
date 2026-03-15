@@ -1,5 +1,6 @@
 import React from 'react';
 import { FolderOpen, X } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTargets, selectedCount, onSave, onClose }) {
   if (!batchMoveState) return null;
@@ -25,7 +26,7 @@ export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTarg
           style={{ borderColor: 'var(--panel-border)' }}
         >
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-            批量移动书签（{selectedCount} 项）
+            {t('batchMoveTitle', selectedCount)}
           </h2>
           <button onClick={onClose} className="p-1 rounded-md hover:opacity-70" style={{ color: 'var(--muted)' }}>
             <X size={16} />
@@ -35,12 +36,12 @@ export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTarg
         {/* Body */}
         <div className="px-5 py-4">
           <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
-            选择目标文件夹
+            {t('selectTargetFolder')}
           </label>
           <input
             className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
             style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
-            placeholder="搜索文件夹…"
+            placeholder={t('searchFolder')}
             value={batchMoveState.folderQuery}
             onChange={(e) => setBatchMoveState((prev) => (prev ? { ...prev, folderQuery: e.target.value } : prev))}
           />
@@ -74,7 +75,7 @@ export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTarg
             className="px-3.5 py-1.5 rounded-lg border text-sm"
             style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
           >
-            取消
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -83,7 +84,7 @@ export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTarg
             className="px-3.5 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
             style={{ background: 'var(--btn-primary)', color: 'var(--btn-primary-text)' }}
           >
-            {batchMoveState.moving ? '移动中…' : '批量移动'}
+            {batchMoveState.moving ? t('moving') : t('batchMove')}
           </button>
         </div>
       </div>

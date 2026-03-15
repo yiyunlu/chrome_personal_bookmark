@@ -1,5 +1,6 @@
 import React from 'react';
 import { Undo2 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function UndoToast({ undoToast, onUndo }) {
   if (!undoToast) return null;
@@ -22,7 +23,7 @@ export function UndoToast({ undoToast, onUndo }) {
         style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
       >
         <Undo2 size={12} />
-        {undoToast.pending ? '撤销中…' : '撤销'}
+        {undoToast.pending ? t('undoing') : t('undo')}
       </button>
     </div>
   );
