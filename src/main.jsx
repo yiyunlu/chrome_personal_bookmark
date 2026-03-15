@@ -371,8 +371,6 @@ function App() {
           animation: 150,
           draggable: '[data-card-id]',
           handle: '.card-drag-handle',
-          forceFallback: true,
-          fallbackOnBody: true,
           group: {
             name: 'bookmark-cards',
             pull: true,
@@ -380,8 +378,6 @@ function App() {
           },
           emptyInsertThreshold: 28,
           ghostClass: 'card-dragging',
-          chosenClass: 'card-dragging',
-          dragClass: 'card-dragging',
           onStart: () => {
             cardDragActiveRef.current = true;
             suppressCardOpenUntilRef.current = Date.now() + 1500;

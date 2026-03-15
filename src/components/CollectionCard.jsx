@@ -24,20 +24,7 @@ export function BookmarkCard({
       className="group relative flex items-center gap-3 w-full rounded-xl border p-3 text-left cursor-pointer"
       style={{
         background: isSelected ? 'var(--accent-soft)' : 'var(--card-bg)',
-        borderColor: isSelected ? 'var(--accent)' : 'var(--card-border)',
-        transition: 'transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease'
-      }}
-      onMouseEnter={(e) => {
-        if (!isSelected) {
-          e.currentTarget.style.background = 'var(--hover)';
-          e.currentTarget.style.transform = 'translateY(-1px)';
-          e.currentTarget.style.boxShadow = 'var(--shadow)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = isSelected ? 'var(--accent-soft)' : 'var(--card-bg)';
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = 'none';
+        borderColor: isSelected ? 'var(--accent)' : 'var(--card-border)'
       }}
       onClick={(e) => onCardClick(e, card)}
       onContextMenu={(e) => onContextMenu(e, card)}
