@@ -27,28 +27,62 @@ function buildTree(barChildren = []) {
   ];
 }
 
+// Utility: recursively find a node by id in the mock tree
+function findById(nodes, id) {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findById(node.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// bookmarkService.js binds Chrome API functions at module load time via
+// promisifyChromeApi(fn.bind(...)). Because .bind() captures the function
+// reference, reassigning chrome.bookmarks.getTree in tests has no effect.
+// Instead, setup.js uses a _impl dispatch pattern: calling
+// chrome.bookmarks.getTree(...) delegates to chrome.bookmarks.getTree._impl(...).
+// Tests swap _impl to change behavior.
+
 describe('bookmarkService', () => {
   let idCounter;
+  let createCalls;
 
   beforeEach(() => {
     idCounter = 100;
+    createCalls = [];
     chrome.runtime.lastError = null;
 
-    // Default mocks — individual tests override as needed
-    chrome.bookmarks.getTree = vi.fn((cb) => cb(buildTree([])));
-    chrome.bookmarks.getSubTree = vi.fn((id, cb) => {
-      const emptyTree = buildTree([]);
-      const found = findById(emptyTree, id);
-      cb(found ? [found] : [{ id, children: [] }]);
-    });
-    chrome.bookmarks.create = vi.fn((props, cb) => {
+    // Default _impl: getTree returns an empty bookmarks bar
+    chrome.bookmarks.getTree._impl = (cb) => cb(buildTree([]));
+
+    // Default _impl: getSubTree returns a stub
+    chrome.bookmarks.getSubTree._impl = (id, cb) => {
+      cb([{ id, children: [] }]);
+    };
+
+    // Default _impl: create returns a new node with an auto-incremented id
+    chrome.bookmarks.create._impl = (props, cb) => {
+      createCalls.push(props);
       const node = { id: String(++idCounter), ...props, children: [] };
       cb(node);
-    });
-    chrome.bookmarks.move = vi.fn((id, dest, cb) => cb({ id, ...dest }));
-    chrome.bookmarks.update = vi.fn((id, changes, cb) => cb({ id, ...changes }));
-    chrome.bookmarks.removeTree = vi.fn((_id, cb) => cb());
+    };
+
+    chrome.bookmarks.move._impl = (id, dest, cb) => cb({ id, ...dest });
+    chrome.bookmarks.update._impl = (id, changes, cb) => cb({ id, ...changes });
+    chrome.bookmarks.removeTree._impl = (_id, cb) => cb();
   });
+
+  // Helper: set up both getTree and getSubTree to serve a given tree
+  function setMockTree(tree) {
+    chrome.bookmarks.getTree._impl = (cb) => cb(tree);
+    chrome.bookmarks.getSubTree._impl = (id, cb) => {
+      const node = findById(tree, id);
+      cb(node ? [node] : [{ id, children: [] }]);
+    };
+  }
 
   // ── getCollectionsPayload ────────────────────────────────────
 
@@ -78,22 +112,16 @@ describe('bookmarkService', () => {
         }
       ]);
 
-      chrome.bookmarks.getTree = vi.fn((cb) => cb(tree));
-      chrome.bookmarks.getSubTree = vi.fn((id, cb) => {
-        const node = findById(tree, id);
-        cb(node ? [node] : [{ id, children: [] }]);
-      });
+      setMockTree(tree);
 
       const result = await getCollectionsPayload();
 
-      // Sources should contain the bookmark-bar level folders
       expect(result.sources).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ id: '10', title: 'TabHub', isTabHub: true })
         ])
       );
 
-      // Should include an entry for Bookmarks Bar (id '1')
       expect(result.sources).toEqual(
         expect.arrayContaining([expect.objectContaining({ id: '1' })])
       );
@@ -102,7 +130,7 @@ describe('bookmarkService', () => {
       expect(result.activeSourceId).toBeDefined();
     });
 
-    it('returns collections with cards', async () => {
+    it('returns collections with cards when a preferred source is specified', async () => {
       const tree = buildTree([
         {
           id: '10',
@@ -119,18 +147,13 @@ describe('bookmarkService', () => {
         }
       ]);
 
-      chrome.bookmarks.getTree = vi.fn((cb) => cb(tree));
-      chrome.bookmarks.getSubTree = vi.fn((id, cb) => {
-        const node = findById(tree, id);
-        cb(node ? [node] : [{ id, children: [] }]);
-      });
+      setMockTree(tree);
 
-      // Request with the Bookmarks Bar as preferred source (id '1')
       const result = await getCollectionsPayload('1');
 
-      // Collections under the Bookmarks Bar should include TabHub as a subfolder collection
       expect(result.collections).toBeDefined();
       expect(Array.isArray(result.collections)).toBe(true);
+      expect(result.activeSourceId).toBe('1');
     });
 
     it('hides the trash folder from collections', async () => {
@@ -155,48 +178,73 @@ describe('bookmarkService', () => {
         }
       ]);
 
-      chrome.bookmarks.getTree = vi.fn((cb) => cb(tree));
-      chrome.bookmarks.getSubTree = vi.fn((id, cb) => {
-        const node = findById(tree, id);
-        cb(node ? [node] : [{ id, children: [] }]);
-      });
+      setMockTree(tree);
 
       const result = await getCollectionsPayload('10');
 
       expect(result.trashFolderId).toBe('99');
 
-      // The trash folder should NOT appear in the collections list
       const trashCollection = result.collections.find((c) => c.folderTitle === '.TabHub Trash');
       expect(trashCollection).toBeUndefined();
     });
 
     it('creates the TabHub root if it does not exist', async () => {
-      // First call: no TabHub folder
       const emptyTree = buildTree([]);
-      // After creation: TabHub folder exists
       const populatedTree = buildTree([
         { id: '101', title: 'TabHub', children: [] }
       ]);
 
       let callCount = 0;
-      chrome.bookmarks.getTree = vi.fn((cb) => {
+      chrome.bookmarks.getTree._impl = (cb) => {
         callCount++;
-        // Calls 1 & 2 (getCollectionsPayload + ensureTabHubRootFolder): no TabHub
-        // Call 3 (getCollectionsPayload retry after creation): TabHub exists
         cb(callCount <= 2 ? emptyTree : populatedTree);
-      });
-      chrome.bookmarks.getSubTree = vi.fn((id, cb) => {
+      };
+      chrome.bookmarks.getSubTree._impl = (id, cb) => {
         const node = findById(populatedTree, id);
         cb(node ? [node] : [{ id, children: [] }]);
-      });
+      };
 
       const result = await getCollectionsPayload();
 
-      expect(chrome.bookmarks.create).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'TabHub' }),
-        expect.any(Function)
+      expect(createCalls).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ title: 'TabHub' })
+        ])
       );
       expect(result.tabHubRootId).toBeDefined();
+    });
+
+    it('includes collections with their bookmark cards', async () => {
+      const tree = buildTree([
+        {
+          id: '10',
+          title: 'TabHub',
+          children: [
+            {
+              id: '20',
+              title: 'Development',
+              children: [
+                { id: '30', title: 'GitHub', url: 'https://github.com', parentId: '20', index: 0 },
+                { id: '31', title: 'MDN', url: 'https://developer.mozilla.org', parentId: '20', index: 1 }
+              ]
+            }
+          ]
+        }
+      ]);
+
+      setMockTree(tree);
+
+      const result = await getCollectionsPayload('10');
+
+      const devCollection = result.collections.find((c) => c.folderTitle === 'Development');
+      expect(devCollection).toBeDefined();
+      expect(devCollection.cards).toHaveLength(2);
+      expect(devCollection.cards[0]).toEqual(
+        expect.objectContaining({ id: '30', title: 'GitHub', url: 'https://github.com' })
+      );
+      expect(devCollection.cards[1]).toEqual(
+        expect.objectContaining({ id: '31', title: 'MDN', url: 'https://developer.mozilla.org' })
+      );
     });
   });
 
@@ -296,10 +344,8 @@ describe('bookmarkService', () => {
       expect(result.collectionsCreated).toBe(2);
       expect(result.bookmarksCreated).toBe(3);
 
-      // First call creates "Development" folder
-      expect(chrome.bookmarks.create).toHaveBeenCalledWith(
-        expect.objectContaining({ parentId: 'root-parent', title: 'Development' }),
-        expect.any(Function)
+      expect(createCalls[0]).toEqual(
+        expect.objectContaining({ parentId: 'root-parent', title: 'Development' })
       );
     });
 
@@ -319,9 +365,8 @@ describe('bookmarkService', () => {
 
       await importCollections(input, 'parent');
 
-      expect(chrome.bookmarks.create).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Untitled' }),
-        expect.any(Function)
+      expect(createCalls[0]).toEqual(
+        expect.objectContaining({ title: 'Untitled' })
       );
     });
 
@@ -362,7 +407,7 @@ describe('bookmarkService', () => {
 
   describe('ensureTrashFolder', () => {
     it('returns existing trash folder if found', async () => {
-      chrome.bookmarks.getSubTree = vi.fn((_id, cb) =>
+      chrome.bookmarks.getSubTree._impl = (_id, cb) =>
         cb([
           {
             id: 'root',
@@ -371,18 +416,16 @@ describe('bookmarkService', () => {
               { id: '51', title: 'Dev', children: [] }
             ]
           }
-        ])
-      );
+        ]);
 
       const result = await ensureTrashFolder('root');
       expect(result.id).toBe('50');
       expect(result.title).toBe('.TabHub Trash');
-      // Should NOT create a new folder
-      expect(chrome.bookmarks.create).not.toHaveBeenCalled();
+      expect(createCalls).toHaveLength(0);
     });
 
     it('creates a new trash folder if not found', async () => {
-      chrome.bookmarks.getSubTree = vi.fn((_id, cb) =>
+      chrome.bookmarks.getSubTree._impl = (_id, cb) =>
         cb([
           {
             id: 'root',
@@ -390,32 +433,28 @@ describe('bookmarkService', () => {
               { id: '51', title: 'Dev', children: [] }
             ]
           }
-        ])
-      );
+        ]);
 
       const result = await ensureTrashFolder('root');
-      expect(chrome.bookmarks.create).toHaveBeenCalledWith(
-        { parentId: 'root', title: '.TabHub Trash' },
-        expect.any(Function)
-      );
+      expect(createCalls).toEqual([
+        { parentId: 'root', title: '.TabHub Trash' }
+      ]);
       expect(result.title).toBe('.TabHub Trash');
     });
 
     it('ignores url nodes when searching for trash folder', async () => {
-      chrome.bookmarks.getSubTree = vi.fn((_id, cb) =>
+      chrome.bookmarks.getSubTree._impl = (_id, cb) =>
         cb([
           {
             id: 'root',
             children: [
-              { id: '60', title: '.TabHub Trash', url: 'https://trash.com' } // bookmark, not folder
+              { id: '60', title: '.TabHub Trash', url: 'https://trash.com' }
             ]
           }
-        ])
-      );
+        ]);
 
       await ensureTrashFolder('root');
-      // Should create because the existing node has a url (it's a bookmark, not a folder)
-      expect(chrome.bookmarks.create).toHaveBeenCalled();
+      expect(createCalls.length).toBeGreaterThan(0);
     });
   });
 
@@ -424,32 +463,31 @@ describe('bookmarkService', () => {
   describe('ensureTabHubRootFolder', () => {
     it('returns existing TabHub folder if found', async () => {
       const tree = buildTree([{ id: '10', title: 'TabHub', children: [] }]);
-      chrome.bookmarks.getTree = vi.fn((cb) => cb(tree));
+      chrome.bookmarks.getTree._impl = (cb) => cb(tree);
 
       const result = await ensureTabHubRootFolder();
       expect(result.id).toBe('10');
-      expect(chrome.bookmarks.create).not.toHaveBeenCalled();
+      expect(createCalls).toHaveLength(0);
     });
 
     it('creates TabHub folder under bookmarks bar if not found', async () => {
       const tree = buildTree([]);
-      chrome.bookmarks.getTree = vi.fn((cb) => cb(tree));
+      chrome.bookmarks.getTree._impl = (cb) => cb(tree);
 
       const result = await ensureTabHubRootFolder();
-      expect(chrome.bookmarks.create).toHaveBeenCalledWith(
-        { parentId: '1', title: 'TabHub' },
-        expect.any(Function)
-      );
+      expect(createCalls).toEqual([
+        { parentId: '1', title: 'TabHub' }
+      ]);
       expect(result.title).toBe('TabHub');
     });
 
     it('finds TabHub folder case-insensitively', async () => {
       const tree = buildTree([{ id: '10', title: '  tabhub  ', children: [] }]);
-      chrome.bookmarks.getTree = vi.fn((cb) => cb(tree));
+      chrome.bookmarks.getTree._impl = (cb) => cb(tree);
 
       const result = await ensureTabHubRootFolder();
       expect(result.id).toBe('10');
-      expect(chrome.bookmarks.create).not.toHaveBeenCalled();
+      expect(createCalls).toHaveLength(0);
     });
   });
 
@@ -495,15 +533,3 @@ describe('bookmarkService', () => {
     });
   });
 });
-
-// Utility: recursively find a node by id in the mock tree
-function findById(nodes, id) {
-  for (const node of nodes) {
-    if (node.id === id) return node;
-    if (node.children) {
-      const found = findById(node.children, id);
-      if (found) return found;
-    }
-  }
-  return null;
-}
