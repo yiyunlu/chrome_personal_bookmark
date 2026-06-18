@@ -22,6 +22,7 @@ import {
 } from './lib/bookmarkService';
 import { logError, normalizeUrlKey, sortSnapshots } from './lib/utils';
 import { smartSearch } from './lib/searchService';
+import { storageGet, storageSet } from './lib/storage';
 
 import { initLanguage, getLanguageSetting, setLanguage as setI18nLanguage, t } from './lib/i18n';
 import { useTheme } from './hooks/useTheme';
@@ -80,6 +81,8 @@ function App() {
   const [langReady, setLangReady] = useState(false);
   const [languageSetting, setLanguageSetting] = useState('auto');
   const [, forceUpdate] = useState(0);
+
+  const initialLoadDoneRef = useRef(false);
 
   const navSortableRef = useRef(null);
   const moduleSortableRef = useRef(null);
@@ -170,12 +173,48 @@ function App() {
       setLangReady(true);
     })();
 
-    refresh();
+    (async () => {
+      const [savedSource, savedCollection, savedCollapsed] = await Promise.all([
+        storageGet('tabhub_active_source').catch(() => undefined),
+        storageGet('tabhub_active_collection').catch(() => undefined),
+        storageGet('tabhub_sidebar_collapsed').catch(() => undefined)
+      ]);
+
+      if (typeof savedCollapsed === 'boolean') {
+        setSidebarCollapsed(savedCollapsed);
+      }
+      if (savedCollection) {
+        setActiveCollectionId(savedCollection);
+      }
+
+      await refresh(savedSource || undefined);
+      initialLoadDoneRef.current = true;
+    })();
+
     const unsubscribe = subscribeBookmarksChanges(() => {
       refresh(activeSourceRef.current);
     });
     return () => unsubscribe();
   }, [refresh]);
+
+  // --- Persist active state to storage ---
+  useEffect(() => {
+    if (initialLoadDoneRef.current && activeSourceId) {
+      storageSet('tabhub_active_source', activeSourceId).catch(logError);
+    }
+  }, [activeSourceId]);
+
+  useEffect(() => {
+    if (initialLoadDoneRef.current && activeCollectionId) {
+      storageSet('tabhub_active_collection', activeCollectionId).catch(logError);
+    }
+  }, [activeCollectionId]);
+
+  useEffect(() => {
+    if (initialLoadDoneRef.current) {
+      storageSet('tabhub_sidebar_collapsed', sidebarCollapsed).catch(logError);
+    }
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
@@ -1296,6 +1335,7 @@ function App() {
         onDeleteCard={handleDeleteCard}
         onRenameCollection={handleRenameCollection}
         onDeleteCollection={handleDeleteCollection}
+        onClose={() => setContextMenu(null)}
       />
 
       <EditBookmarkModal
