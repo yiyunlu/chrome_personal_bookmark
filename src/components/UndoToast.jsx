@@ -7,6 +7,8 @@ export function UndoToast({ undoToast, onUndo }) {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
       className="fixed right-4 bottom-4 z-[80] flex items-center gap-3 rounded-xl border px-4 py-2.5 animate-slide-in-right"
       style={{
         background: 'var(--panel-bg)',
