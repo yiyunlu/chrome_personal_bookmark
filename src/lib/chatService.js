@@ -5,7 +5,6 @@
  * Mock mode uses pattern matching; Claude API mode uses AI.
  */
 
-import { getApiKey } from './aiService';
 import { normalizeUrlKey } from './utils';
 import { smartSearch } from './searchService';
 
@@ -222,16 +221,11 @@ export function executeCommand(command, context) {
  * @returns {Promise<{message: string, results?: Array, action?: string}>}
  */
 export async function processChat(message, context) {
-  const apiKey = await getApiKey();
+  try {
+    const { callClaude, extractJsonObject } = await import('./claudeClient');
+    const { collections, allCards } = context;
 
-  if (!apiKey) {
-    const command = parseCommand(message);
-    return executeCommand(command, context);
-  }
-
-  // Claude-powered chat
-  const { collections, allCards } = context;
-  const prompt = `You are a bookmark management assistant. The user has ${allCards.length} bookmarks in ${collections.length} collections.
+    const prompt = `You are a bookmark management assistant. The user has ${allCards.length} bookmarks in ${collections.length} collections.
 
 Collections: ${collections.map((c) => `"${c.title}" (${c.cards.length} bookmarks)`).join(', ')}
 
@@ -240,55 +234,33 @@ User message: "${message}"
 Respond with a JSON object:
 {
   "type": "search|move|delete|find_duplicates|organize|info|response",
-  "message": "Chinese response to user",
-  "params": {} // optional parameters for the action
+  "params": {}
 }
 
 For search: params.query = search terms
 For move: params.bookmarkQuery, params.targetCollection
 For delete: params.bookmarkQuery
-For response: just a helpful message`;
+For response: just a helpful message, no params needed`;
 
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
+    const text = await callClaude({ prompt });
 
-    if (!response.ok) {
+    if (!text) {
       const command = parseCommand(message);
       return executeCommand(command, context);
     }
 
-    const data = await response.json();
-    const text = data.content?.[0]?.text || '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    const parsed = extractJsonObject(text);
+    if (!parsed) {
       const command = parseCommand(message);
       return executeCommand(command, context);
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    // If Claude returned a direct response, return it
     if (parsed.type === 'response' || !parsed.type) {
       return { message: parsed.message || '我理解了。' };
     }
 
-    // Otherwise execute the structured command
     const command = { type: parsed.type, params: parsed.params || {} };
-    const result = executeCommand(command, context);
-    return result;
+    return executeCommand(command, context);
   } catch {
     const command = parseCommand(message);
     return executeCommand(command, context);
