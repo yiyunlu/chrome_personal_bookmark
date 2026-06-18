@@ -37,7 +37,7 @@ export function Sidebar({
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 pt-4 pb-3">
+      <div className={`flex items-center px-3 pt-4 pb-3 ${collapsed ? 'justify-center' : 'justify-between'}`}>
         {!collapsed && (
           <div className="flex items-center gap-2">
             <div
@@ -61,7 +61,71 @@ export function Sidebar({
         </button>
       </div>
 
-      {!collapsed && (
+      {collapsed ? (
+        <>
+          {/* Collapsed rail: logo */}
+          <div className="flex items-center justify-center py-2">
+            <button
+              className="flex items-center justify-center w-8 h-8 rounded-lg"
+              style={{
+                background: activeCollectionId === 'all' ? 'var(--accent-soft)' : 'transparent',
+                color: activeCollectionId === 'all' ? 'var(--accent)' : 'var(--muted)'
+              }}
+              title={t('allCollections')}
+              onClick={() => onCollectionSelect('all')}
+            >
+              <Bookmark size={16} />
+            </button>
+          </div>
+
+          {/* Collapsed rail: divider */}
+          <div className="mx-2 mb-1 border-t" style={{ borderColor: 'var(--panel-border)' }} />
+
+          {/* Collapsed rail: collection icons */}
+          <nav className="flex-1 min-h-0 overflow-y-auto px-1.5 pb-2 space-y-0.5">
+            {collections.map((collection) => {
+              const isActive = activeCollectionId === collection.id;
+              return (
+                <button
+                  key={collection.id}
+                  className="w-full flex items-center justify-center py-1.5 rounded-lg"
+                  style={{
+                    background: isActive ? 'var(--sidebar-active)' : 'transparent',
+                    color: isActive ? 'var(--accent)' : 'inherit'
+                  }}
+                  title={collection.title}
+                  onClick={() => onCollectionSelect(collection.id)}
+                >
+                  <FolderOpen size={16} style={{ opacity: isActive ? 1 : 0.6 }} />
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Collapsed rail: bottom icons */}
+          <div className="px-1.5 pb-3 mt-auto space-y-0.5">
+            <div className="mx-0.5 mb-1 border-t" style={{ borderColor: 'var(--panel-border)' }} />
+            {hasTrash && (
+              <button
+                className="w-full flex items-center justify-center py-1.5 rounded-lg hover:opacity-80"
+                style={{ color: 'var(--muted)' }}
+                title={t('trash')}
+                onClick={onViewTrash}
+              >
+                <Trash2 size={16} style={{ opacity: 0.6 }} />
+              </button>
+            )}
+            <button
+              className="w-full flex items-center justify-center py-1.5 rounded-lg hover:opacity-80"
+              style={{ color: 'var(--muted)' }}
+              title={t('settings')}
+              onClick={onOpenSettings}
+            >
+              <Settings size={16} style={{ opacity: 0.6 }} />
+            </button>
+          </div>
+        </>
+      ) : (
         <>
           {/* Source selector */}
           <div className="px-3 mb-3">
@@ -107,7 +171,7 @@ export function Sidebar({
                   title={label}
                 >
                   <Icon size={13} />
-                  {collapsed ? null : <span className="hidden sm:inline">{label}</span>}
+                  <span className="hidden sm:inline">{label}</span>
                 </button>
               ))}
             </div>

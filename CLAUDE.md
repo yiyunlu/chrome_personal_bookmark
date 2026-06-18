@@ -19,6 +19,7 @@
 
 ```
 ├── index.html                        # HTML entry point
+├── jsconfig.json                     # JS project config (path aliases, compiler options)
 ├── vite.config.js                    # Vite config (base: './', output: dist/)
 ├── tailwind.config.js                # Custom colors, shadow
 ├── postcss.config.js                 # Tailwind + Autoprefixer
@@ -30,15 +31,19 @@
     ├── main.jsx                      # App component + root render
     ├── index.css                     # CSS custom properties for theming + component styles
     ├── components/
+    │   ├── AICategorizeModal.jsx     # AI suggestion review modal
     │   ├── BatchMoveModal.jsx        # Batch move dialog
     │   ├── BookmarkIcon.jsx          # Favicon loader with fallback
-    │   ├── CollectionCard.jsx        # Collection + BookmarkCard components
-    │   ├── ContextMenu.jsx           # Right-click context menu
-    │   ├── EditBookmarkModal.jsx     # Edit bookmark dialog
-    │   ├── Sidebar.jsx               # Source switcher, theme, collection nav
-    │   ├── AICategorizeModal.jsx     # AI suggestion review modal
     │   ├── ChatPanel.jsx             # AI chat panel + toggle button
+    │   ├── CollectionCard.jsx        # Collection + BookmarkCard components
+    │   ├── ConfirmModal.jsx          # Confirmation dialog
+    │   ├── ContextMenu.jsx           # Right-click context menu
     │   ├── DeadLinkModal.jsx         # Dead link detection results
+    │   ├── EditBookmarkModal.jsx     # Edit bookmark dialog
+    │   ├── Modal.jsx                 # Reusable modal shell
+    │   ├── PromptModal.jsx           # Prompt input dialog
+    │   ├── SettingsModal.jsx          # Settings dialog (API key, preferences)
+    │   ├── Sidebar.jsx               # Source switcher, theme, collection nav
     │   ├── Toolbar.jsx               # Toolbar + BatchToolbar
     │   └── UndoToast.jsx             # Undo notification
     ├── hooks/
@@ -49,9 +54,13 @@
         ├── aiService.js              # AI categorization (mock + Claude API)
         ├── bookmarkService.js        # Chrome Bookmarks API wrapper (promisified)
         ├── chatService.js            # NL command parsing + execution
+        ├── claudeClient.js           # Claude API HTTP client
         ├── enrichmentService.js      # Dead link detection + auto-tagging
+        ├── i18n.js                   # Internationalization (zh-CN, en) + language detection
         ├── searchService.js          # Smart search with fuzzy + category matching
         ├── storage.js                # chrome.storage.local get/set wrappers
+        ├── taxonomy.js               # Category taxonomy for AI categorization
+        ├── types.js                  # Shared type definitions / constants
         └── utils.js                  # faviconCandidates, normalizeUrlKey, sortSnapshots
 ```
 
