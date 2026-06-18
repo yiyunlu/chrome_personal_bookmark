@@ -232,6 +232,20 @@ export async function updateBookmark(bookmarkId, changes) {
   return updateBookmarkApi(bookmarkId, changes);
 }
 
+export async function createCollectionFolder(parentId, title) {
+  return createBookmark({ parentId, title });
+}
+
+export async function getTrashContents(rootId) {
+  const [root] = await getSubTreeApi(rootId);
+  const trashFolder = (root?.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
+  if (!trashFolder) return { trashId: null, items: [] };
+  const items = (trashFolder.children || [])
+    .filter((node) => !!node.url)
+    .map((b) => ({ id: b.id, title: b.title || b.url, url: b.url, parentId: b.parentId, index: b.index }));
+  return { trashId: trashFolder.id, items };
+}
+
 export async function renameCollectionFolder(collectionId, title) {
   return updateBookmarkApi(collectionId, { title });
 }

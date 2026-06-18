@@ -110,7 +110,29 @@ const dictionaries = {
     shortcutOrganizeKey: '快捷键: O',
     shortcutManageKey: '快捷键: M',
     shortcutAICategorize: 'AI 智能分类',
-    shortcutDeadLink: '检测失效链接'
+    shortcutDeadLink: '检测失效链接',
+    // New collection
+    newCollection: '新建分类',
+    newCollectionPrompt: '分类名称',
+    // Trash
+    trash: '回收站',
+    trashEmpty: '回收站为空',
+    restore: '恢复',
+    emptyTrash: '清空回收站',
+    confirmEmptyTrash: '确认清空回收站？此操作不可撤销。',
+    restoredBookmark: '已恢复书签',
+    trashEmptied: '回收站已清空',
+    // Settings
+    settings: '设置',
+    apiKeyLabel: 'Claude API Key',
+    apiKeyPlaceholder: '输入你的 Claude API Key…',
+    apiKeySaved: 'API Key 已保存',
+    apiKeyCleared: 'API Key 已清除',
+    aiModeActive: 'AI 模式',
+    aiModeMock: '演示模式',
+    testConnection: '测试连接',
+    testConnectionSuccess: '连接成功！',
+    testConnectionFailed: '连接失败'
   },
   en: {
     appTitle: 'TabHub',
@@ -221,7 +243,29 @@ const dictionaries = {
     shortcutOrganizeKey: 'Shortcut: O',
     shortcutManageKey: 'Shortcut: M',
     shortcutAICategorize: 'AI Smart Categorize',
-    shortcutDeadLink: 'Check dead links'
+    shortcutDeadLink: 'Check dead links',
+    // New collection
+    newCollection: 'New Collection',
+    newCollectionPrompt: 'Collection name',
+    // Trash
+    trash: 'Trash',
+    trashEmpty: 'Trash is empty',
+    restore: 'Restore',
+    emptyTrash: 'Empty Trash',
+    confirmEmptyTrash: 'Empty trash? This cannot be undone.',
+    restoredBookmark: 'Bookmark restored',
+    trashEmptied: 'Trash emptied',
+    // Settings
+    settings: 'Settings',
+    apiKeyLabel: 'Claude API Key',
+    apiKeyPlaceholder: 'Enter your Claude API Key...',
+    apiKeySaved: 'API Key saved',
+    apiKeyCleared: 'API Key cleared',
+    aiModeActive: 'AI Mode',
+    aiModeMock: 'Demo Mode',
+    testConnection: 'Test Connection',
+    testConnectionSuccess: 'Connection successful!',
+    testConnectionFailed: 'Connection failed'
   }
 };
 

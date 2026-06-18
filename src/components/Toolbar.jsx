@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Brain, CheckSquare, Download, Search, Sparkles, Square } from 'lucide-react';
+import { AlertTriangle, Brain, CheckSquare, Download, Plus, Search, Sparkles, Square } from 'lucide-react';
 import { t } from '../lib/i18n';
 
 export function Toolbar({
@@ -13,6 +13,7 @@ export function Toolbar({
   onAutoOrganize,
   onAICategorize,
   onCheckDeadLinks,
+  onNewCollection,
   search,
   onSearchChange,
   searchInputRef
@@ -103,6 +104,20 @@ export function Toolbar({
         >
           <AlertTriangle size={14} style={{ color: 'var(--danger)' }} />
           <span>{t('deadLinkCheck')}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onNewCollection}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
+          style={{
+            background: 'var(--panel-bg)',
+            borderColor: 'var(--input-border)',
+            color: 'var(--text)'
+          }}
+        >
+          <Plus size={14} style={{ color: 'var(--accent)' }} />
+          <span>{t('newCollection')}</span>
         </button>
 
         <button

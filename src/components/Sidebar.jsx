@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bookmark, ChevronLeft, ChevronRight, FolderOpen, GripVertical, Monitor, Moon, Sun } from 'lucide-react';
+import { Bookmark, ChevronLeft, ChevronRight, FolderOpen, GripVertical, Monitor, Moon, Settings, Sun, Trash2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 
 export function Sidebar({
@@ -16,7 +16,10 @@ export function Sidebar({
   canSortCollections,
   onCollectionContextMenu,
   collapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  onViewTrash,
+  onOpenSettings,
+  hasTrash
 }) {
   const themeOptions = [
     { value: 'system', icon: Monitor, label: t('themeSystem') },
@@ -182,6 +185,29 @@ export function Sidebar({
               );
             })}
           </nav>
+
+          {/* Bottom actions */}
+          <div className="px-3 pb-3 mt-auto space-y-1">
+            <div className="border-t mb-2" style={{ borderColor: 'var(--panel-border)' }} />
+            {hasTrash && (
+              <button
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left hover:opacity-80"
+                style={{ color: 'var(--muted)' }}
+                onClick={onViewTrash}
+              >
+                <Trash2 size={15} style={{ opacity: 0.6 }} />
+                <span>{t('trash')}</span>
+              </button>
+            )}
+            <button
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left hover:opacity-80"
+              style={{ color: 'var(--muted)' }}
+              onClick={onOpenSettings}
+            >
+              <Settings size={15} style={{ opacity: 0.6 }} />
+              <span>{t('settings')}</span>
+            </button>
+          </div>
         </>
       )}
     </aside>

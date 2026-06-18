@@ -4,8 +4,10 @@ import Sortable from 'sortablejs';
 import './index.css';
 
 import {
+  createCollectionFolder,
   ensureTrashFolder,
   getCollectionsPayload,
+  getTrashContents,
   moveBookmark,
   openBookmarkInCurrentTab,
   removeCollectionFolder,
@@ -36,6 +38,7 @@ import { AICategorizeModal } from './components/AICategorizeModal';
 import { DeadLinkModal } from './components/DeadLinkModal';
 import { ChatPanel, ChatToggle } from './components/ChatPanel';
 import { UndoToast } from './components/UndoToast';
+import { SettingsModal } from './components/SettingsModal';
 
 function App() {
   const [tabHubRootId, setTabHubRootId] = useState('');
@@ -59,6 +62,9 @@ function App() {
   const [deadLinkState, setDeadLinkState] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [trashItems, setTrashItems] = useState(null);
+  const [showTrash, setShowTrash] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -770,6 +776,46 @@ function App() {
     [allCards, moveCardsToTrash]
   );
 
+  const handleNewCollection = useCallback(async () => {
+    const rootId = activeSourceId || tabHubRootId;
+    if (!rootId) return;
+    const title = window.prompt(t('newCollectionPrompt'));
+    if (!title?.trim()) return;
+    await createCollectionFolder(rootId, title.trim());
+    await refresh(activeSourceRef.current);
+  }, [activeSourceId, tabHubRootId, refresh]);
+
+  const handleViewTrash = useCallback(async () => {
+    if (!tabHubRootId) return;
+    const { items } = await getTrashContents(tabHubRootId);
+    setTrashItems(items);
+    setShowTrash(true);
+  }, [tabHubRootId]);
+
+  const handleRestoreFromTrash = useCallback(async (item) => {
+    const rootId = activeSourceId || tabHubRootId;
+    if (!rootId) return;
+    await moveBookmark(item.id, rootId, 0);
+    showUndo(t('restoredBookmark'), async () => {
+      if (trashFolderId) await moveBookmark(item.id, trashFolderId, 0);
+    });
+    const { items } = await getTrashContents(tabHubRootId);
+    setTrashItems(items);
+    await refresh(activeSourceRef.current);
+  }, [activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]);
+
+  const handleEmptyTrash = useCallback(async () => {
+    if (!trashFolderId) return;
+    const ok = window.confirm(t('confirmEmptyTrash'));
+    if (!ok) return;
+    await removeCollectionFolder(trashFolderId);
+    setTrashFolderId('');
+    setTrashItems([]);
+    setShowTrash(false);
+    showUndo(t('trashEmptied'), null);
+    await refresh(activeSourceRef.current);
+  }, [trashFolderId, showUndo, refresh]);
+
   const handleChatMessage = useCallback(
     async (text) => {
       // Add user message
@@ -1036,6 +1082,9 @@ function App() {
           onCollectionContextMenu={openCollectionContextMenu}
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed((prev) => !prev)}
+          onViewTrash={handleViewTrash}
+          onOpenSettings={() => setSettingsOpen(true)}
+          hasTrash={!!trashFolderId}
         />
 
         <main className="flex-1 overflow-y-auto px-6 py-5">
@@ -1050,6 +1099,7 @@ function App() {
             onAutoOrganize={handleAutoOrganize}
             onAICategorize={handleAICategorize}
             onCheckDeadLinks={handleCheckDeadLinks}
+            onNewCollection={handleNewCollection}
             search={search}
             onSearchChange={setSearch}
             searchInputRef={searchInputRef}
@@ -1174,6 +1224,64 @@ function App() {
         />
       ) : (
         <ChatToggle onClick={() => setChatOpen(true)} />
+      )}
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {showTrash && trashItems && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.4)' }}
+          onClick={(e) => e.target === e.currentTarget && setShowTrash(false)}
+        >
+          <div
+            className="rounded-2xl border shadow-xl w-full max-w-lg mx-4 max-h-[70vh] flex flex-col animate-fade-in"
+            style={{ background: 'var(--panel-bg)', borderColor: 'var(--panel-border)' }}
+          >
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b" style={{ borderColor: 'var(--panel-border)' }}>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{t('trash')}</h2>
+              <div className="flex gap-2">
+                {trashItems.length > 0 && (
+                  <button
+                    onClick={handleEmptyTrash}
+                    className="px-2.5 py-1 rounded-lg text-xs font-medium"
+                    style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}
+                  >
+                    {t('emptyTrash')}
+                  </button>
+                )}
+                <button onClick={() => setShowTrash(false)} className="text-sm" style={{ color: 'var(--muted)' }}>{t('close')}</button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-3">
+              {trashItems.length === 0 ? (
+                <p className="text-sm text-center py-6" style={{ color: 'var(--muted)' }}>{t('trashEmpty')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {trashItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg border"
+                      style={{ borderColor: 'var(--card-border)', background: 'var(--card-bg)' }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm truncate" style={{ color: 'var(--text)' }}>{item.title}</div>
+                        <div className="text-xs truncate" style={{ color: 'var(--muted)' }}>{item.url}</div>
+                      </div>
+                      <button
+                        onClick={() => handleRestoreFromTrash(item)}
+                        className="px-2 py-1 rounded text-xs font-medium flex-shrink-0"
+                        style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+                      >
+                        {t('restore')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       <UndoToast undoToast={undoToast} onUndo={() => handleUndo(() => refresh(activeSourceRef.current))} />
