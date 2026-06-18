@@ -8,6 +8,10 @@
  * The service accepts bookmarks and returns categorization suggestions.
  */
 
+import { getDomainCategory, TITLE_KEYWORDS } from './taxonomy';
+import { logError } from './utils';
+import { t, getCurrentLang } from './i18n';
+
 const AI_API_KEY_STORAGE = 'tabhub_ai_api_key';
 
 /**
@@ -52,6 +56,8 @@ async function callClaudeAPI(bookmarks, existingCollections) {
   const { callClaude, extractJsonObject } = await import('./claudeClient');
   const collectionNames = existingCollections.map((c) => c.title);
 
+  const lang = getCurrentLang();
+  const responseLang = lang === 'zh-CN' ? 'Write reasons in Chinese.' : 'Write reasons in English.';
   const prompt = `You are a bookmark organizer. Given these bookmarks and existing collections, suggest which collection each bookmark should belong to.
 
 Existing collections: ${JSON.stringify(collectionNames)}
@@ -71,7 +77,8 @@ Rules:
 - Prefer existing collections when possible
 - Only suggest new collections if bookmarks truly don't fit existing ones
 - Group by topic/domain (dev tools, reading, social, shopping, etc.)
-- Keep reasons under 10 words`;
+- Keep reasons under 10 words
+- ${responseLang}`;
 
   const text = await callClaude({ prompt, maxTokens: 2048 });
   if (!text) throw new Error('No API key set');
@@ -90,41 +97,6 @@ async function mockCategorize(bookmarks, existingCollections) {
 
   const collectionMap = new Map(existingCollections.map((c) => [c.title.toLowerCase(), c.title]));
 
-  const domainCategories = {
-    'github.com': 'Development',
-    'stackoverflow.com': 'Development',
-    'npmjs.com': 'Development',
-    'developer.mozilla.org': 'Development',
-    'medium.com': 'Reading',
-    'dev.to': 'Reading',
-    'news.ycombinator.com': 'Reading',
-    'reddit.com': 'Social',
-    'twitter.com': 'Social',
-    'x.com': 'Social',
-    'youtube.com': 'Media',
-    'spotify.com': 'Media',
-    'amazon.com': 'Shopping',
-    'docs.google.com': 'Productivity',
-    'notion.so': 'Productivity',
-    'figma.com': 'Design',
-    'dribbble.com': 'Design'
-  };
-
-  const titleKeywords = {
-    react: 'Development',
-    vue: 'Development',
-    javascript: 'Development',
-    typescript: 'Development',
-    python: 'Development',
-    api: 'Development',
-    tutorial: 'Learning',
-    course: 'Learning',
-    recipe: 'Lifestyle',
-    travel: 'Lifestyle',
-    news: 'Reading',
-    blog: 'Reading'
-  };
-
   const suggestions = [];
   const newCollectionsSet = new Set();
 
@@ -132,25 +104,25 @@ async function mockCategorize(bookmarks, existingCollections) {
     let category = null;
     let reason = '';
 
-    // Try domain match
+    // Try domain match via taxonomy
     try {
       const hostname = new URL(bookmark.url).hostname.replace(/^www\./, '');
-      for (const [domain, cat] of Object.entries(domainCategories)) {
-        if (hostname === domain || hostname.endsWith('.' + domain)) {
-          category = cat;
-          reason = `${domain} 属于${cat}`;
-          break;
-        }
+      const cat = getDomainCategory(hostname);
+      if (cat) {
+        category = cat;
+        reason = t('aiReasonDomain', hostname, cat);
       }
-    } catch {}
+    } catch (err) {
+      logError('aiService.mockCategorize', err);
+    }
 
-    // Try title keyword match
+    // Try title keyword match via taxonomy
     if (!category) {
       const lowerTitle = bookmark.title.toLowerCase();
-      for (const [keyword, cat] of Object.entries(titleKeywords)) {
+      for (const [keyword, cat] of Object.entries(TITLE_KEYWORDS)) {
         if (lowerTitle.includes(keyword)) {
           category = cat;
-          reason = `标题包含「${keyword}」`;
+          reason = t('aiReasonTitle', keyword);
           break;
         }
       }

@@ -1,4 +1,5 @@
 import { getApiKey } from './aiService';
+import { logError } from './utils';
 
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -59,7 +60,8 @@ export function extractJsonObject(text) {
     if (depth === 0) {
       try {
         return JSON.parse(text.slice(start, i + 1));
-      } catch {
+      } catch (err) {
+        logError('claudeClient.extractJsonObject', err);
         return null;
       }
     }

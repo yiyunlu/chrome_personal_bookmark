@@ -1,7 +1,8 @@
 import React from 'react';
 import { BookmarkIcon } from './BookmarkIcon';
-import { ChevronDown, ChevronRight, FolderOpen, GripVertical, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, FolderOpen, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { t } from '../lib/i18n';
+import { logError } from '../lib/utils';
 
 export function BookmarkCard({
   card,
@@ -16,7 +17,9 @@ export function BookmarkCard({
   let domain = '';
   try {
     domain = new URL(card.url).hostname.replace(/^www\./, '');
-  } catch {}
+  } catch (err) {
+    logError('BookmarkCard.domain', err);
+  }
 
   return (
     <div
@@ -110,7 +113,8 @@ export function CollectionCard({
   onCardContextMenu,
   onEditCard,
   onDeleteCard,
-  onToggleCardSelect
+  onToggleCardSelect,
+  onOpenAll
 }) {
   return (
     <article
@@ -141,6 +145,27 @@ export function CollectionCard({
         <span className="text-[0.7rem] tabular-nums mr-1" style={{ color: 'var(--muted)' }}>
           {collection.cards.length}
         </span>
+        {collection.cards.length > 0 && onOpenAll && (
+          <span
+            role="button"
+            tabIndex={0}
+            className="flex-shrink-0 p-1 rounded-md opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
+            style={{ color: 'var(--accent)' }}
+            title={t('openAllTabs')}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenAll(collection.id);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+                onOpenAll(collection.id);
+              }
+            }}
+          >
+            <ExternalLink size={14} />
+          </span>
+        )}
         {collapsed ? (
           <ChevronRight size={16} style={{ color: 'var(--muted)' }} />
         ) : (
