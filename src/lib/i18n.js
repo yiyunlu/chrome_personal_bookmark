@@ -105,6 +105,28 @@ const dictionaries = {
     chatPlaceholder: '输入指令或问题…',
     chatDeletedBookmarks: (n) => `已删除 ${n} 个书签。`,
     chatMovedBookmarks: (n, target) => `已移动 ${n} 个书签到「${target}」。`,
+    chatEnterSearchQuery: '请输入搜索关键词。',
+    chatNoResults: (query) => `未找到与「${query}」匹配的书签。`,
+    chatFoundBookmarks: (n) => `找到 ${n} 个匹配的书签：`,
+    chatSpecifyMoveTarget: '请指定要移动的书签和目标分类。',
+    chatCollectionNotFound: (name) => `未找到名为「${name}」的分类。`,
+    chatWillMove: (n, target) => `将移动 ${n} 个书签到「${target}」。`,
+    chatSpecifyDeleteTarget: '请指定要删除的书签。',
+    chatConfirmDelete: (n) => `找到 ${n} 个匹配的书签，确认删除？`,
+    chatNoDuplicates: '未发现重复书签。',
+    chatFoundDuplicates: (n) => `发现 ${n} 个重复书签：`,
+    chatUseToolbar: '请使用工具栏中的「AI 分类」或「自动整理」按钮来整理书签。',
+    chatStats: (bookmarks, collections) => `共 ${bookmarks} 个书签，${collections} 个分类。`,
+    chatTopCollections: '书签最多的分类：',
+    chatCollectionCount: (name, count) => `  ${name}: ${count} 个`,
+    chatUnknownCommand: '抱歉，我不太理解这个指令。试试「搜索 React」或「查找重复」。',
+    chatUnderstood: '我理解了。',
+    // Enrichment
+    linkTimeout: '请求超时',
+    linkUnreachable: '无法访问',
+    // AI mock reasons
+    aiReasonDomain: (hostname, category) => `${hostname} 属于${category}`,
+    aiReasonTitle: (keyword) => `标题包含「${keyword}」`,
     // Shortcuts
     shortcutSaveKey: '快捷键: S',
     shortcutOrganizeKey: '快捷键: O',
@@ -132,7 +154,26 @@ const dictionaries = {
     aiModeMock: '演示模式',
     testConnection: '测试连接',
     testConnectionSuccess: '连接成功！',
-    testConnectionFailed: '连接失败'
+    testConnectionFailed: '连接失败',
+    // Import / Export
+    dataSection: '数据',
+    exportData: '导出数据',
+    importData: '导入数据',
+    exportSuccess: (n) => `已导出 ${n} 个集合`,
+    importSuccess: (n, m) => `已导入 ${n} 个集合，${m} 个书签`,
+    importFailed: (msg) => `导入失败：${msg}`,
+    invalidImportFile: '无效的导入文件',
+    // Open tabs
+    openAllTabs: '全部打开',
+    openInNewTab: '在新标签页中打开',
+    // Modal dialogs
+    confirm: '确认',
+    deleteBookmarkTitle: '删除书签',
+    deleteCollectionTitle: '删除集合',
+    batchTrashTitle: '批量删除',
+    emptyTrashTitle: '清空回收站',
+    renameCollectionTitle: '重命名集合',
+    newCollectionTitle: '新建分类'
   },
   en: {
     appTitle: 'TabHub',
@@ -238,6 +279,28 @@ const dictionaries = {
     chatPlaceholder: 'Type a command or question...',
     chatDeletedBookmarks: (n) => `Deleted ${n} bookmark(s).`,
     chatMovedBookmarks: (n, target) => `Moved ${n} bookmark(s) to "${target}".`,
+    chatEnterSearchQuery: 'Please enter a search query.',
+    chatNoResults: (query) => `No bookmarks matching "${query}" found.`,
+    chatFoundBookmarks: (n) => `Found ${n} matching bookmark(s):`,
+    chatSpecifyMoveTarget: 'Please specify the bookmark and target collection.',
+    chatCollectionNotFound: (name) => `No collection named "${name}" found.`,
+    chatWillMove: (n, target) => `Will move ${n} bookmark(s) to "${target}".`,
+    chatSpecifyDeleteTarget: 'Please specify the bookmark to delete.',
+    chatConfirmDelete: (n) => `Found ${n} matching bookmark(s). Confirm delete?`,
+    chatNoDuplicates: 'No duplicate bookmarks found.',
+    chatFoundDuplicates: (n) => `Found ${n} duplicate bookmark(s):`,
+    chatUseToolbar: 'Please use the "AI Categorize" or "Auto Organize" buttons in the toolbar.',
+    chatStats: (bookmarks, collections) => `${bookmarks} bookmarks in ${collections} collections.`,
+    chatTopCollections: 'Top collections:',
+    chatCollectionCount: (name, count) => `  ${name}: ${count}`,
+    chatUnknownCommand: 'Sorry, I didn\'t understand that command. Try "search React" or "find duplicates".',
+    chatUnderstood: 'Got it.',
+    // Enrichment
+    linkTimeout: 'Request timed out',
+    linkUnreachable: 'Unreachable',
+    // AI mock reasons
+    aiReasonDomain: (hostname, category) => `${hostname} belongs to ${category}`,
+    aiReasonTitle: (keyword) => `Title contains "${keyword}"`,
     // Shortcuts
     shortcutSaveKey: 'Shortcut: S',
     shortcutOrganizeKey: 'Shortcut: O',
@@ -265,7 +328,26 @@ const dictionaries = {
     aiModeMock: 'Demo Mode',
     testConnection: 'Test Connection',
     testConnectionSuccess: 'Connection successful!',
-    testConnectionFailed: 'Connection failed'
+    testConnectionFailed: 'Connection failed',
+    // Import / Export
+    dataSection: 'Data',
+    exportData: 'Export Data',
+    importData: 'Import Data',
+    exportSuccess: (n) => `Exported ${n} collections`,
+    importSuccess: (n, m) => `Imported ${n} collections, ${m} bookmarks`,
+    importFailed: (msg) => `Import failed: ${msg}`,
+    invalidImportFile: 'Invalid import file',
+    // Open tabs
+    openAllTabs: 'Open All',
+    openInNewTab: 'Open in New Tab',
+    // Modal dialogs
+    confirm: 'Confirm',
+    deleteBookmarkTitle: 'Delete Bookmark',
+    deleteCollectionTitle: 'Delete Collection',
+    batchTrashTitle: 'Batch Delete',
+    emptyTrashTitle: 'Empty Trash',
+    renameCollectionTitle: 'Rename Collection',
+    newCollectionTitle: 'New Collection'
   }
 };
 
@@ -316,6 +398,10 @@ export function setLanguage(lang) {
       resolve();
     }
   });
+}
+
+export function getCurrentLang() {
+  return currentLang;
 }
 
 export function t(key, ...args) {

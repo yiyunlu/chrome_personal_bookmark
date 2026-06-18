@@ -6,18 +6,9 @@
  * - Domain/category-aware search ("social media", "dev tools")
  */
 
-const CATEGORY_KEYWORDS = {
-  development: ['github', 'stackoverflow', 'npmjs', 'developer', 'code', 'programming', 'dev', 'api', 'sdk'],
-  'social media': ['twitter', 'x.com', 'reddit', 'facebook', 'instagram', 'linkedin', 'social', 'mastodon'],
-  reading: ['medium', 'dev.to', 'news', 'blog', 'article', 'ycombinator', 'substack'],
-  shopping: ['amazon', 'ebay', 'shop', 'store', 'buy', 'price', 'deal'],
-  video: ['youtube', 'vimeo', 'twitch', 'video', 'watch', 'stream'],
-  music: ['spotify', 'soundcloud', 'music', 'playlist', 'audio'],
-  design: ['figma', 'dribbble', 'behance', 'design', 'ui', 'ux'],
-  productivity: ['notion', 'docs.google', 'trello', 'asana', 'calendar', 'tool'],
-  learning: ['tutorial', 'course', 'learn', 'education', 'udemy', 'coursera'],
-  reference: ['docs', 'documentation', 'wiki', 'reference', 'manual', 'mdn']
-};
+import { getCategoryKeywords } from './taxonomy';
+
+const CATEGORY_KEYWORDS = getCategoryKeywords();
 
 /**
  * Compute a simple fuzzy match score between query and text.

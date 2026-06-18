@@ -1,3 +1,5 @@
+import { logError } from './utils';
+
 const TABHUB_ROOT_NAME = 'TabHub';
 const TRASH_FOLDER_NAME = '.TabHub Trash';
 
@@ -22,6 +24,7 @@ const updateBookmarkApi = promisifyChromeApi(chrome.bookmarks.update.bind(chrome
 const removeTreeApi = promisifyChromeApi(chrome.bookmarks.removeTree.bind(chrome.bookmarks));
 const updateTabApi = promisifyChromeApi(chrome.tabs.update.bind(chrome.tabs));
 const queryTabsApi = promisifyChromeApi(chrome.tabs.query.bind(chrome.tabs));
+const createTabApi = promisifyChromeApi(chrome.tabs.create.bind(chrome.tabs));
 const getSubTreeApi = promisifyChromeApi(chrome.bookmarks.getSubTree.bind(chrome.bookmarks));
 
 function normalizeCollection(folder, titlePrefix = '') {
@@ -268,4 +271,66 @@ export async function ensureTrashFolder(rootId) {
 
 export async function openBookmarkInCurrentTab(url) {
   return updateTabApi(undefined, { url });
+}
+
+export async function openBookmarkInNewTab(url) {
+  return createTabApi({ url, active: false });
+}
+
+export async function openAllInNewTabs(urls) {
+  return Promise.all(urls.map((url) => createTabApi({ url, active: false })));
+}
+
+export function exportCollections(collections) {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    collections: collections.map((c) => ({
+      title: c.folderTitle || c.title,
+      cards: c.cards.map((card) => ({
+        title: card.title,
+        url: card.url
+      }))
+    }))
+  };
+  return JSON.stringify(data, null, 2);
+}
+
+export async function importCollections(jsonString, parentId) {
+  let data;
+  try {
+    data = JSON.parse(jsonString);
+  } catch (err) {
+    logError('bookmarkService.importCollections', err);
+    throw new Error('Invalid JSON');
+  }
+
+  if (!data || !Array.isArray(data.collections)) {
+    throw new Error('Invalid import file format');
+  }
+
+  let collectionsCreated = 0;
+  let bookmarksCreated = 0;
+
+  for (const col of data.collections) {
+    const folder = await createBookmark({
+      parentId,
+      title: col.title || 'Untitled'
+    });
+    collectionsCreated += 1;
+
+    const cards = Array.isArray(col.cards) ? col.cards : [];
+    for (const card of cards) {
+      if (card.url) {
+        await createBookmark({
+          parentId: folder.id,
+          title: card.title || card.url,
+          url: card.url
+        });
+        bookmarksCreated += 1;
+      }
+    }
+  }
+
+  return { collectionsCreated, bookmarksCreated };
 }

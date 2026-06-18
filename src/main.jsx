@@ -6,17 +6,21 @@ import './index.css';
 import {
   createCollectionFolder,
   ensureTrashFolder,
+  exportCollections,
   getCollectionsPayload,
   getTrashContents,
+  importCollections,
   moveBookmark,
+  openAllInNewTabs,
   openBookmarkInCurrentTab,
+  openBookmarkInNewTab,
   removeCollectionFolder,
   renameCollectionFolder,
   saveCurrentWindowTabsToCollection,
   subscribeBookmarksChanges,
   updateBookmark
 } from './lib/bookmarkService';
-import { normalizeUrlKey, sortSnapshots } from './lib/utils';
+import { logError, normalizeUrlKey, sortSnapshots } from './lib/utils';
 import { smartSearch } from './lib/searchService';
 
 import { initLanguage, getLanguageSetting, setLanguage as setI18nLanguage, t } from './lib/i18n';
@@ -39,6 +43,8 @@ import { DeadLinkModal } from './components/DeadLinkModal';
 import { ChatPanel, ChatToggle } from './components/ChatPanel';
 import { UndoToast } from './components/UndoToast';
 import { SettingsModal } from './components/SettingsModal';
+import { ConfirmModal } from './components/ConfirmModal';
+import { PromptModal } from './components/PromptModal';
 
 function App() {
   const [tabHubRootId, setTabHubRootId] = useState('');
@@ -65,6 +71,8 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashItems, setTrashItems] = useState(null);
   const [showTrash, setShowTrash] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [promptDialog, setPromptDialog] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -346,7 +354,7 @@ function App() {
     // Safe destroy helper — SortableJS may throw if DOM elements are already gone
     const safeDestroyAll = () => {
       for (const s of cardSortablesRef.current.values()) {
-        try { s.destroy(); } catch {}
+        try { s.destroy(); } catch (err) { logError('safeDestroyAll', err); }
       }
       cardSortablesRef.current.clear();
     };
@@ -451,7 +459,7 @@ function App() {
               });
 
               for (const s of cardSortablesRef.current.values()) {
-                try { s.destroy(); } catch {}
+                try { s.destroy(); } catch (err) { logError('cardDrag.destroySortable', err); }
               }
               cardSortablesRef.current.clear();
 
@@ -465,8 +473,9 @@ function App() {
             }
           }
         });
-      } catch {
+      } catch (err) {
         // SortableJS can throw if DOM elements are detached during pre-render
+        logError('cardSortable.init', err);
         return;
       }
 
@@ -492,25 +501,29 @@ function App() {
         index: card.index
       }));
 
-      const targetCollection = collections.find((collection) => collection.id === targetParentId);
-      let insertIndex = 0;
-      if (targetCollection && targetCollection.cards.length > 0) {
-        const lastCard = targetCollection.cards[targetCollection.cards.length - 1];
-        insertIndex = lastCard.index + 1;
-      }
-
-      for (const card of cards) {
-        await moveBookmark(card.id, targetParentId, insertIndex);
-        insertIndex += 1;
-      }
-
-      showUndo(undoLabel, async () => {
-        for (const snapshot of sortSnapshots(snapshots)) {
-          await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+      try {
+        const targetCollection = collections.find((collection) => collection.id === targetParentId);
+        let insertIndex = 0;
+        if (targetCollection && targetCollection.cards.length > 0) {
+          const lastCard = targetCollection.cards[targetCollection.cards.length - 1];
+          insertIndex = lastCard.index + 1;
         }
-      });
 
-      await refresh(activeSourceRef.current);
+        for (const card of cards) {
+          await moveBookmark(card.id, targetParentId, insertIndex);
+          insertIndex += 1;
+        }
+
+        showUndo(undoLabel, async () => {
+          for (const snapshot of sortSnapshots(snapshots)) {
+            await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+          }
+        });
+      } catch (err) {
+        logError('moveCardsWithUndo', err);
+      } finally {
+        await refresh(activeSourceRef.current);
+      }
     },
     [collections, showUndo, refresh]
   );
@@ -521,29 +534,33 @@ function App() {
 
       if (!tabHubRootId) return;
 
-      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(tabHubRootId);
-      if (!trashFolderId) setTrashFolderId(trashFolder.id);
+      try {
+        const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(tabHubRootId);
+        if (!trashFolderId) setTrashFolderId(trashFolder.id);
 
-      const snapshots = cards.map((card) => ({
-        id: card.id,
-        title: card.title,
-        parentId: card.parentId,
-        index: card.index
-      }));
+        const snapshots = cards.map((card) => ({
+          id: card.id,
+          title: card.title,
+          parentId: card.parentId,
+          index: card.index
+        }));
 
-      let insertIndex = 0;
-      for (const card of cards) {
-        await moveBookmark(card.id, trashFolder.id, insertIndex);
-        insertIndex += 1;
-      }
-
-      showUndo(t('movedToTrash', cards.length), async () => {
-        for (const snapshot of sortSnapshots(snapshots)) {
-          await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+        let insertIndex = 0;
+        for (const card of cards) {
+          await moveBookmark(card.id, trashFolder.id, insertIndex);
+          insertIndex += 1;
         }
-      });
 
-      await refresh(activeSourceRef.current);
+        showUndo(t('movedToTrash', cards.length), async () => {
+          for (const snapshot of sortSnapshots(snapshots)) {
+            await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+          }
+        });
+      } catch (err) {
+        logError('moveCardsToTrash', err);
+      } finally {
+        await refresh(activeSourceRef.current);
+      }
     },
     [tabHubRootId, trashFolderId, showUndo, refresh]
   );
@@ -632,6 +649,9 @@ function App() {
         });
       }
 
+      await refresh(activeSourceRef.current);
+    } catch (err) {
+      logError('handleAutoOrganize', err);
       await refresh(activeSourceRef.current);
     } finally {
       setAutoOrganizing(false);
@@ -738,6 +758,8 @@ function App() {
           }
         });
       }
+    } catch (err) {
+      logError('handleApplyAISuggestions', err);
     } finally {
       setAICategorizeState(null);
       await refresh(activeSourceRef.current);
@@ -764,26 +786,64 @@ function App() {
     async (bookmarkId, title) => {
       const card = allCards.find((c) => c.id === bookmarkId);
       if (!card) return;
-      const shouldDelete = window.confirm(t('confirmDeleteBookmark', title));
-      if (!shouldDelete) return;
-      await moveCardsToTrash([card]);
-      // Remove from dead link results
-      setDeadLinkState((prev) => {
-        if (!prev?.results) return prev;
-        return { ...prev, results: prev.results.filter((r) => r.bookmarkId !== bookmarkId) };
+      setConfirmDialog({
+        title: t('deleteBookmarkTitle'),
+        message: t('confirmDeleteBookmark', title),
+        danger: true,
+        onConfirm: async () => {
+          setConfirmDialog(null);
+          await moveCardsToTrash([card]);
+          setDeadLinkState((prev) => {
+            if (!prev?.results) return prev;
+            return { ...prev, results: prev.results.filter((r) => r.bookmarkId !== bookmarkId) };
+          });
+        }
       });
     },
     [allCards, moveCardsToTrash]
   );
 
-  const handleNewCollection = useCallback(async () => {
+  const handleNewCollection = useCallback(() => {
     const rootId = activeSourceId || tabHubRootId;
     if (!rootId) return;
-    const title = window.prompt(t('newCollectionPrompt'));
-    if (!title?.trim()) return;
-    await createCollectionFolder(rootId, title.trim());
-    await refresh(activeSourceRef.current);
+    setPromptDialog({
+      title: t('newCollectionTitle'),
+      placeholder: t('newCollectionPrompt'),
+      defaultValue: '',
+      onConfirm: async (value) => {
+        setPromptDialog(null);
+        await createCollectionFolder(rootId, value);
+        await refresh(activeSourceRef.current);
+      }
+    });
   }, [activeSourceId, tabHubRootId, refresh]);
+
+  const handleExport = useCallback(() => {
+    const jsonString = exportCollections(collections);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tabhub-export-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showUndo(t('exportSuccess', collections.length), null);
+  }, [collections, showUndo]);
+
+  const handleImport = useCallback(async (jsonString) => {
+    try {
+      const parentId = activeSourceId || tabHubRootId;
+      if (!parentId) return;
+      const result = await importCollections(jsonString, parentId);
+      showUndo(t('importSuccess', result.collectionsCreated, result.bookmarksCreated), null);
+      await refresh(activeSourceRef.current);
+    } catch (err) {
+      logError('handleImport', err);
+      showUndo(t('importFailed', err?.message || t('invalidImportFile')), null);
+    }
+  }, [activeSourceId, tabHubRootId, showUndo, refresh]);
 
   const handleViewTrash = useCallback(async () => {
     if (!tabHubRootId) return;
@@ -804,16 +864,22 @@ function App() {
     await refresh(activeSourceRef.current);
   }, [activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]);
 
-  const handleEmptyTrash = useCallback(async () => {
+  const handleEmptyTrash = useCallback(() => {
     if (!trashFolderId) return;
-    const ok = window.confirm(t('confirmEmptyTrash'));
-    if (!ok) return;
-    await removeCollectionFolder(trashFolderId);
-    setTrashFolderId('');
-    setTrashItems([]);
-    setShowTrash(false);
-    showUndo(t('trashEmptied'), null);
-    await refresh(activeSourceRef.current);
+    setConfirmDialog({
+      title: t('emptyTrashTitle'),
+      message: t('confirmEmptyTrash'),
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        await removeCollectionFolder(trashFolderId);
+        setTrashFolderId('');
+        setTrashItems([]);
+        setShowTrash(false);
+        showUndo(t('trashEmptied'), null);
+        await refresh(activeSourceRef.current);
+      }
+    });
   }, [trashFolderId, showUndo, refresh]);
 
   const handleChatMessage = useCallback(
@@ -936,10 +1002,16 @@ function App() {
     openEditorByCard(current);
   };
 
-  const handleDeleteCardByCard = async (card) => {
-    const shouldDelete = window.confirm(t('confirmDeleteBookmark', card.title));
-    if (!shouldDelete) return;
-    await moveCardsToTrash([card]);
+  const handleDeleteCardByCard = (card) => {
+    setConfirmDialog({
+      title: t('deleteBookmarkTitle'),
+      message: t('confirmDeleteBookmark', card.title),
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        await moveCardsToTrash([card]);
+      }
+    });
   };
 
   const handleDeleteCard = async () => {
@@ -949,33 +1021,41 @@ function App() {
     await handleDeleteCardByCard(current);
   };
 
-  const handleRenameCollection = async () => {
+  const handleRenameCollection = () => {
     if (contextMenu?.kind !== 'collection' || !contextMenu.collection?.editable) return;
     const current = contextMenu.collection;
     setContextMenu(null);
 
-    const nextTitle = window.prompt(t('renamePrompt'), current.folderTitle || current.title);
-    if (nextTitle == null) return;
-    const trimmed = nextTitle.trim();
-    if (!trimmed) return;
-
-    await renameCollectionFolder(current.id, trimmed);
-    await refresh(activeSourceRef.current);
+    setPromptDialog({
+      title: t('renameCollectionTitle'),
+      placeholder: t('renamePrompt'),
+      defaultValue: current.folderTitle || current.title,
+      onConfirm: async (value) => {
+        setPromptDialog(null);
+        await renameCollectionFolder(current.id, value);
+        await refresh(activeSourceRef.current);
+      }
+    });
   };
 
-  const handleDeleteCollection = async () => {
+  const handleDeleteCollection = () => {
     if (contextMenu?.kind !== 'collection' || !contextMenu.collection?.deletable) return;
     const current = contextMenu.collection;
     setContextMenu(null);
 
-    const shouldDelete = window.confirm(t('confirmDeleteFolder', current.title));
-    if (!shouldDelete) return;
-
-    await removeCollectionFolder(current.id);
-    if (activeCollectionId === current.id) {
-      setActiveCollectionId('all');
-    }
-    await refresh(activeSourceRef.current);
+    setConfirmDialog({
+      title: t('deleteCollectionTitle'),
+      message: t('confirmDeleteFolder', current.title),
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        await removeCollectionFolder(current.id);
+        if (activeCollectionId === current.id) {
+          setActiveCollectionId('all');
+        }
+        await refresh(activeSourceRef.current);
+      }
+    });
   };
 
   const handleCardClick = async (event, card) => {
@@ -996,7 +1076,33 @@ function App() {
       return;
     }
 
+    if (event.ctrlKey || event.metaKey || event.button === 1) {
+      await openBookmarkInNewTab(card.url);
+      return;
+    }
+
     await openBookmarkInCurrentTab(card.url);
+  };
+
+  const handleOpenAllInCollection = useCallback(
+    async (collectionId) => {
+      const collection = collections.find((c) => c.id === collectionId);
+      if (!collection || collection.cards.length === 0) return;
+      const urls = collection.cards.map((card) => card.url).filter(Boolean);
+      if (urls.length > 0) {
+        await openAllInNewTabs(urls);
+      }
+    },
+    [collections]
+  );
+
+  const handleOpenInNewTab = async () => {
+    if (contextMenu?.kind !== 'card' || !contextMenu.card) return;
+    const url = contextMenu.card.url;
+    setContextMenu(null);
+    if (url) {
+      await openBookmarkInNewTab(url);
+    }
   };
 
   const handleEditorSave = async () => {
@@ -1052,12 +1158,18 @@ function App() {
     }
   };
 
-  const handleBatchTrash = async () => {
+  const handleBatchTrash = () => {
     if (!selectedCards.length) return;
-    const shouldDelete = window.confirm(t('confirmBatchTrash', selectedCards.length));
-    if (!shouldDelete) return;
-    await moveCardsToTrash(selectedCards);
-    clearSelections();
+    setConfirmDialog({
+      title: t('batchTrashTitle'),
+      message: t('confirmBatchTrash', selectedCards.length),
+      danger: true,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        await moveCardsToTrash(selectedCards);
+        clearSelections();
+      }
+    });
   };
 
   // --- Render ---
@@ -1169,6 +1281,7 @@ function App() {
                   onEditCard={openEditorByCard}
                   onDeleteCard={handleDeleteCardByCard}
                   onToggleCardSelect={toggleCardSelection}
+                  onOpenAll={handleOpenAllInCollection}
                 />
               ))}
             </section>
@@ -1178,6 +1291,7 @@ function App() {
 
       <ContextMenu
         contextMenu={contextMenu}
+        onOpenNewTab={handleOpenInNewTab}
         onEditCard={handleEditCard}
         onDeleteCard={handleDeleteCard}
         onRenameCollection={handleRenameCollection}
@@ -1226,7 +1340,12 @@ function App() {
         <ChatToggle onClick={() => setChatOpen(true)} />
       )}
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onExport={handleExport}
+        onImport={handleImport}
+      />
 
       {showTrash && trashItems && (
         <div
@@ -1283,6 +1402,17 @@ function App() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={!!confirmDialog}
+        {...(confirmDialog || {})}
+        onCancel={() => setConfirmDialog(null)}
+      />
+      <PromptModal
+        open={!!promptDialog}
+        {...(promptDialog || {})}
+        onCancel={() => setPromptDialog(null)}
+      />
 
       <UndoToast undoToast={undoToast} onUndo={() => handleUndo(() => refresh(activeSourceRef.current))} />
     </div>

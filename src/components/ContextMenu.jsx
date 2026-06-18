@@ -1,8 +1,8 @@
 import React from 'react';
-import { FolderPen, Pencil, Trash2 } from 'lucide-react';
+import { ExternalLink, FolderPen, Pencil, Trash2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 
-export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCollection, onDeleteCollection }) {
+export function ContextMenu({ contextMenu, onOpenNewTab, onEditCard, onDeleteCard, onRenameCollection, onDeleteCollection }) {
   if (!contextMenu) return null;
 
   return (
@@ -19,6 +19,21 @@ export function ContextMenu({ contextMenu, onEditCard, onDeleteCard, onRenameCol
     >
       {contextMenu.kind === 'card' && (
         <>
+          <button
+            type="button"
+            className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
+            style={{ color: 'var(--text)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
+            onClick={onOpenNewTab}
+          >
+            <ExternalLink size={14} style={{ color: 'var(--muted)' }} />
+            {t('openInNewTab')}
+          </button>
           <button
             type="button"
             className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
