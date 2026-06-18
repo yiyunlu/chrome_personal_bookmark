@@ -19,7 +19,6 @@ const getTree = promisifyChromeApi(chrome.bookmarks.getTree.bind(chrome.bookmark
 const createBookmark = promisifyChromeApi(chrome.bookmarks.create.bind(chrome.bookmarks));
 const moveBookmarkApi = promisifyChromeApi(chrome.bookmarks.move.bind(chrome.bookmarks));
 const updateBookmarkApi = promisifyChromeApi(chrome.bookmarks.update.bind(chrome.bookmarks));
-const removeBookmarkApi = promisifyChromeApi(chrome.bookmarks.remove.bind(chrome.bookmarks));
 const removeTreeApi = promisifyChromeApi(chrome.bookmarks.removeTree.bind(chrome.bookmarks));
 const updateTabApi = promisifyChromeApi(chrome.tabs.update.bind(chrome.tabs));
 const queryTabsApi = promisifyChromeApi(chrome.tabs.query.bind(chrome.tabs));
@@ -231,10 +230,6 @@ export async function moveBookmark(bookmarkId, parentId, index) {
 
 export async function updateBookmark(bookmarkId, changes) {
   return updateBookmarkApi(bookmarkId, changes);
-}
-
-export async function removeBookmark(bookmarkId) {
-  return removeBookmarkApi(bookmarkId);
 }
 
 export async function renameCollectionFolder(collectionId, title) {

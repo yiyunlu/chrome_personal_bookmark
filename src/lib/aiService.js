@@ -41,17 +41,15 @@ export async function categorizeBookmarks(bookmarks, existingCollections) {
   const apiKey = await getApiKey();
 
   if (apiKey) {
-    return callClaudeAPI(bookmarks, existingCollections, apiKey);
+    return callClaudeAPI(bookmarks, existingCollections);
   }
 
   // Mock mode
   return mockCategorize(bookmarks, existingCollections);
 }
 
-/**
- * Real Claude API call (placeholder — to be implemented).
- */
-async function callClaudeAPI(bookmarks, existingCollections, apiKey) {
+async function callClaudeAPI(bookmarks, existingCollections) {
+  const { callClaude, extractJsonObject } = await import('./claudeClient');
   const collectionNames = existingCollections.map((c) => c.title);
 
   const prompt = `You are a bookmark organizer. Given these bookmarks and existing collections, suggest which collection each bookmark should belong to.
@@ -75,36 +73,12 @@ Rules:
 - Group by topic/domain (dev tools, reading, social, shopping, etc.)
 - Keep reasons under 10 words`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
+  const text = await callClaude({ prompt, maxTokens: 2048 });
+  if (!text) throw new Error('No API key set');
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Claude API error: ${response.status} ${errText}`);
-  }
-
-  const data = await response.json();
-  const text = data.content?.[0]?.text || '';
-
-  // Extract JSON from response
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error('Failed to parse AI response');
-  }
-
-  return JSON.parse(jsonMatch[0]);
+  const parsed = extractJsonObject(text);
+  if (!parsed) throw new Error('Failed to parse AI response');
+  return parsed;
 }
 
 /**

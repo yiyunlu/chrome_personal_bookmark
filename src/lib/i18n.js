@@ -280,7 +280,3 @@ export function t(key, ...args) {
   if (typeof val === 'function') return val(...args);
   return val || key;
 }
-
-export function getCurrentLang() {
-  return currentLang;
-}

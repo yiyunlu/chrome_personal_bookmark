@@ -4,13 +4,7 @@
  * Provides enhanced search beyond simple keyword matching:
  * - Fuzzy matching (tolerates typos)
  * - Domain/category-aware search ("social media", "dev tools")
- * - Natural language queries ("that react article", "shopping sites")
- *
- * When an API key is set, uses Claude for semantic search.
- * Otherwise falls back to local smart matching.
  */
-
-import { getApiKey } from './aiService';
 
 const CATEGORY_KEYWORDS = {
   development: ['github', 'stackoverflow', 'npmjs', 'developer', 'code', 'programming', 'dev', 'api', 'sdk'],
@@ -139,76 +133,3 @@ export function smartSearch(query, bookmarks) {
   return results;
 }
 
-/**
- * AI-powered semantic search using Claude API.
- * Falls back to local smartSearch when no API key.
- *
- * @param {string} query
- * @param {Array} bookmarks
- * @returns {Promise<Array<{bookmark: object, score: number, matchReason: string}>>}
- */
-export async function semanticSearch(query, bookmarks) {
-  const apiKey = await getApiKey();
-
-  if (!apiKey) {
-    return smartSearch(query, bookmarks);
-  }
-
-  // Claude-powered search
-  const prompt = `You are a bookmark search engine. Given a natural language query and a list of bookmarks, return the IDs of bookmarks that match the query, ranked by relevance.
-
-Query: "${query}"
-
-Bookmarks:
-${bookmarks
-  .slice(0, 100) // Limit to prevent token overflow
-  .map((b) => `- id:${b.id} title:"${b.title}" url:${b.url}`)
-  .join('\n')}
-
-Respond with a JSON array of objects: [{"id": "...", "reason": "short reason"}]
-Only include relevant matches. Return empty array if nothing matches.`;
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    if (!response.ok) {
-      // Fall back to local search on API error
-      return smartSearch(query, bookmarks);
-    }
-
-    const data = await response.json();
-    const text = data.content?.[0]?.text || '';
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return smartSearch(query, bookmarks);
-
-    const matches = JSON.parse(jsonMatch[0]);
-    const bookmarkMap = new Map(bookmarks.map((b) => [b.id, b]));
-
-    return matches
-      .map((m, idx) => {
-        const bookmark = bookmarkMap.get(m.id);
-        if (!bookmark) return null;
-        return {
-          bookmark,
-          score: 1 - idx * 0.05, // Rank-based score
-          matchReason: m.reason || 'AI 匹配'
-        };
-      })
-      .filter(Boolean);
-  } catch {
-    return smartSearch(query, bookmarks);
-  }
-}
