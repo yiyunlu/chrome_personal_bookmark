@@ -94,6 +94,8 @@ const dictionaries = {
     deadLinkFound: (dead, total) => `发现 ${dead} 个失效链接（共检测 ${total} 个）`,
     deadLinkDeleteTitle: '删除此书签',
     deadLinkCheckFailed: '检测失败',
+    deadLinkConfirmed: '确认无效',
+    deadLinkUnknown: '无法验证',
     // Chat
     chatTitle: 'AI 助手',
     chatHint: '试试输入：',
@@ -182,7 +184,17 @@ const dictionaries = {
     batchTrashTitle: '批量删除',
     emptyTrashTitle: '清空回收站',
     renameCollectionTitle: '重命名集合',
-    newCollectionTitle: '新建分类'
+    newCollectionTitle: '新建分类',
+    // Onboarding
+    welcomeTitle: '欢迎使用 TabHub',
+    welcomeMessage: '开始管理您的书签吧',
+    welcomeSaveTabs: '保存当前标签页',
+    welcomeCreateCollection: '创建集合',
+    welcomeConnectAI: '连接 AI',
+    welcomeDismiss: '不再显示',
+    // Cross-source search
+    otherSourceResults: '其他来源的结果',
+    fromSource: (name) => `来自 ${name}`
   },
   en: {
     appTitle: 'TabHub',
@@ -277,6 +289,8 @@ const dictionaries = {
     deadLinkFound: (dead, total) => `Found ${dead} dead link(s) (${total} checked)`,
     deadLinkDeleteTitle: 'Delete this bookmark',
     deadLinkCheckFailed: 'Detection failed',
+    deadLinkConfirmed: 'Confirmed dead',
+    deadLinkUnknown: 'Could not verify',
     // Chat
     chatTitle: 'AI Assistant',
     chatHint: 'Try typing:',
@@ -365,7 +379,17 @@ const dictionaries = {
     batchTrashTitle: 'Batch Delete',
     emptyTrashTitle: 'Empty Trash',
     renameCollectionTitle: 'Rename Collection',
-    newCollectionTitle: 'New Collection'
+    newCollectionTitle: 'New Collection',
+    // Onboarding
+    welcomeTitle: 'Welcome to TabHub',
+    welcomeMessage: 'Start managing your bookmarks',
+    welcomeSaveTabs: 'Save Current Tabs',
+    welcomeCreateCollection: 'Create a Collection',
+    welcomeConnectAI: 'Connect AI',
+    welcomeDismiss: "Don't show again",
+    // Cross-source search
+    otherSourceResults: 'Results from other sources',
+    fromSource: (name) => `From ${name}`
   }
 };
 

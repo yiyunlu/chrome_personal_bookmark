@@ -1,23 +1,25 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FolderOpen, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { Modal } from './Modal';
 import { BookmarkIcon } from './BookmarkIcon';
 
 const NEW_COLLECTION_VALUE = '__new__';
 
-export function SaveTabsModal({ open, tabs, collections, onSave, onClose }) {
+export function SaveTabsModal({ open, tabs, defaultFolderName, collections, onSave, onClose }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set((tabs || []).map((tab) => tab.id)));
-  const [folderName, setFolderName] = useState('');
+  const [folderName, setFolderName] = useState(defaultFolderName || '');
   const [targetId, setTargetId] = useState(NEW_COLLECTION_VALUE);
   const [saving, setSaving] = useState(false);
 
-  // Reset selection when tabs change
+  // Reset state when modal opens with new tabs
   React.useEffect(() => {
     if (tabs && tabs.length > 0) {
       setSelectedIds(new Set(tabs.map((tab) => tab.id)));
+      setFolderName(defaultFolderName || '');
+      setTargetId(NEW_COLLECTION_VALUE);
     }
-  }, [tabs]);
+  }, [tabs, defaultFolderName]);
 
   const allSelected = useMemo(
     () => tabs && tabs.length > 0 && selectedIds.size === tabs.length,
@@ -96,7 +98,7 @@ export function SaveTabsModal({ open, tabs, collections, onSave, onClose }) {
             style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
             value={folderName}
             onChange={(e) => setFolderName(e.target.value)}
-            placeholder={new Date().toISOString().slice(0, 19).replace('T', ' ')}
+            placeholder={t('folderName')}
           />
         </div>
 

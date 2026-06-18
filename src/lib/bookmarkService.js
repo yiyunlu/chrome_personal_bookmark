@@ -187,6 +187,29 @@ export async function getCollectionsPayload(preferredSourceId) {
   };
 }
 
+/**
+ * Fetch all bookmark cards for a given source (folder) ID.
+ * Returns a flat array of cards with collectionTitle attached.
+ */
+export async function getCardsForSource(sourceId) {
+  try {
+    const [sourceRoot] = await getSubTreeApi(sourceId);
+    if (!sourceRoot) return [];
+    const trashFolder = (sourceRoot.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
+    const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
+    const collections = collectNestedCollections(sourceRoot, false, hiddenFolderIds);
+    return collections.flatMap((col) =>
+      col.cards.map((card) => ({
+        ...card,
+        collectionId: col.id,
+        collectionTitle: col.title
+      }))
+    );
+  } catch {
+    return [];
+  }
+}
+
 export function subscribeBookmarksChanges(onChange) {
   const handler = () => onChange();
   chrome.bookmarks.onCreated.addListener(handler);
