@@ -75,8 +75,6 @@ function App() {
   const cardDragActiveRef = useRef(false);
   const suppressCardOpenUntilRef = useRef(0);
   const suppressNextCardClickRef = useRef(false);
-  const handleSaveTabsRef = useRef(null);
-  const handleAutoOrganizeRef = useRef(null);
 
   const { themeMode, handleThemeModeChange } = useTheme();
   const { undoToast, showUndo, handleUndo } = useUndoStack();
@@ -161,7 +159,7 @@ function App() {
       refresh(activeSourceRef.current);
     });
     return () => unsubscribe();
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
@@ -266,7 +264,7 @@ function App() {
       }
       await refresh(activeSourceRef.current);
     },
-    [topLevelSortableCollections, activeSourceId]
+    [topLevelSortableCollections, activeSourceId, refresh]
   );
 
   // --- SortableJS: Nav sidebar ---
@@ -457,7 +455,7 @@ function App() {
       cancelAnimationFrame(rafId);
       safeDestroyAll();
     };
-  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo]);
+  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo, refresh]);
 
   // --- Business logic ---
 
@@ -487,7 +485,7 @@ function App() {
 
       await refresh(activeSourceRef.current);
     },
-    [collections, showUndo]
+    [collections, showUndo, refresh]
   );
 
   const moveCardsToTrash = useCallback(
@@ -520,7 +518,7 @@ function App() {
 
       await refresh(activeSourceRef.current);
     },
-    [activeSourceId, tabHubRootId, trashFolderId, showUndo]
+    [activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]
   );
 
   const openEditorByCard = (card) => {
@@ -540,7 +538,7 @@ function App() {
     if (!targetRootId) return;
     await saveCurrentWindowTabsToCollection(targetRootId);
     await refresh(activeSourceRef.current);
-  }, [activeSourceId, tabHubRootId]);
+  }, [activeSourceId, tabHubRootId, refresh]);
 
   const handleAutoOrganize = useCallback(async () => {
     if (autoOrganizing || !collections.length) return;
@@ -611,7 +609,7 @@ function App() {
     } finally {
       setAutoOrganizing(false);
     }
-  }, [autoOrganizing, collections, activeSourceId, tabHubRootId, trashFolderId, showUndo]);
+  }, [autoOrganizing, collections, activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]);
 
   const handleAICategorize = useCallback(async () => {
     if (!collections.length) return;
@@ -686,35 +684,38 @@ function App() {
     const accepted = aiCategorizeState.suggestions.filter((s) => s.status === 'accepted');
     if (accepted.length === 0) return;
 
-    // Snapshot for undo
-    const snapshots = [];
-    for (const suggestion of accepted) {
-      const card = allCards.find((c) => c.id === suggestion.bookmarkId);
-      if (card) {
-        snapshots.push({ id: card.id, parentId: card.parentId, index: card.index });
+    try {
+      const snapshots = [];
+      for (const suggestion of accepted) {
+        const card = allCards.find((c) => c.id === suggestion.bookmarkId);
+        if (card) {
+          snapshots.push({ id: card.id, parentId: card.parentId, index: card.index });
+        }
       }
+
+      const collectionByTitle = new Map(collections.map((c) => [c.title.toLowerCase(), c]));
+      let movedCount = 0;
+
+      for (const suggestion of accepted) {
+        const target = collectionByTitle.get(suggestion.targetCollectionTitle.toLowerCase());
+        if (target) {
+          await moveBookmark(suggestion.bookmarkId, target.id, target.cards.length + movedCount);
+          movedCount++;
+        }
+      }
+
+      if (movedCount > 0) {
+        showUndo(t('aiCategorizeComplete', movedCount), async () => {
+          for (const snapshot of sortSnapshots(snapshots)) {
+            await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+          }
+        });
+      }
+    } finally {
+      setAICategorizeState(null);
+      await refresh(activeSourceRef.current);
     }
-
-    // Find or create target collections
-    const collectionByTitle = new Map(collections.map((c) => [c.title.toLowerCase(), c]));
-
-    for (const suggestion of accepted) {
-      const target = collectionByTitle.get(suggestion.targetCollectionTitle.toLowerCase());
-      if (target) {
-        await moveBookmark(suggestion.bookmarkId, target.id, target.cards.length);
-      }
-      // Skip suggestions targeting non-existent collections (new collection creation not supported in mock)
-    }
-
-    showUndo(t('aiCategorizeComplete', accepted.length), async () => {
-      for (const snapshot of sortSnapshots(snapshots)) {
-        await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
-      }
-    });
-
-    setAICategorizeState(null);
-    await refresh(activeSourceRef.current);
-  }, [aiCategorizeState, allCards, collections, showUndo]);
+  }, [aiCategorizeState, allCards, collections, showUndo, refresh]);
 
   const handleCheckDeadLinks = useCallback(async () => {
     const allBookmarks = collections.flatMap((c) => c.cards);

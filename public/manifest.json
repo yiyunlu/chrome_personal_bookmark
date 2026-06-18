@@ -4,6 +4,7 @@
   "description": "A Toby-style new tab experience powered by Chrome native bookmarks.",
   "version": "0.1.0",
   "permissions": ["bookmarks", "tabs", "storage", "favicon"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js",
     "type": "module"

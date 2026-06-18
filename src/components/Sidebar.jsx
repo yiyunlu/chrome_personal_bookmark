@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bookmark, ChevronLeft, ChevronRight, FolderOpen, Globe, GripVertical, Monitor, Moon, Sun } from 'lucide-react';
+import { Bookmark, ChevronLeft, ChevronRight, FolderOpen, GripVertical, Monitor, Moon, Sun } from 'lucide-react';
 import { t } from '../lib/i18n';
 
 export function Sidebar({
