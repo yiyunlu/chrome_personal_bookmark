@@ -3,10 +3,10 @@ import { logError } from './utils';
 const TABHUB_ROOT_NAME = 'TabHub';
 const TRASH_FOLDER_NAME = '.TabHub Trash';
 
-function promisifyChromeApi(fn) {
+function chromeApi(obj, method) {
   return (...args) =>
     new Promise((resolve, reject) => {
-      fn(...args, (result) => {
+      obj[method](...args, (result) => {
         const err = chrome.runtime?.lastError;
         if (err) {
           reject(new Error(err.message));
@@ -17,15 +17,15 @@ function promisifyChromeApi(fn) {
     });
 }
 
-const getTree = promisifyChromeApi(chrome.bookmarks.getTree.bind(chrome.bookmarks));
-const createBookmark = promisifyChromeApi(chrome.bookmarks.create.bind(chrome.bookmarks));
-const moveBookmarkApi = promisifyChromeApi(chrome.bookmarks.move.bind(chrome.bookmarks));
-const updateBookmarkApi = promisifyChromeApi(chrome.bookmarks.update.bind(chrome.bookmarks));
-const removeTreeApi = promisifyChromeApi(chrome.bookmarks.removeTree.bind(chrome.bookmarks));
-const updateTabApi = promisifyChromeApi(chrome.tabs.update.bind(chrome.tabs));
-const queryTabsApi = promisifyChromeApi(chrome.tabs.query.bind(chrome.tabs));
-const createTabApi = promisifyChromeApi(chrome.tabs.create.bind(chrome.tabs));
-const getSubTreeApi = promisifyChromeApi(chrome.bookmarks.getSubTree.bind(chrome.bookmarks));
+const getTree = chromeApi(chrome.bookmarks, 'getTree');
+const createBookmark = chromeApi(chrome.bookmarks, 'create');
+const moveBookmarkApi = chromeApi(chrome.bookmarks, 'move');
+const updateBookmarkApi = chromeApi(chrome.bookmarks, 'update');
+const removeTreeApi = chromeApi(chrome.bookmarks, 'removeTree');
+const updateTabApi = chromeApi(chrome.tabs, 'update');
+const queryTabsApi = chromeApi(chrome.tabs, 'query');
+const createTabApi = chromeApi(chrome.tabs, 'create');
+const getSubTreeApi = chromeApi(chrome.bookmarks, 'getSubTree');
 
 function normalizeCollection(folder, titlePrefix = '') {
   const title = folder.title || 'Untitled Collection';
