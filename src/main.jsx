@@ -102,6 +102,8 @@ function App() {
   );
 
   const cardById = useMemo(() => new Map(allCards.map((card) => [card.id, card])), [allCards]);
+  const cardByIdRef = useRef(cardById);
+  cardByIdRef.current = cardById;
 
   const selectedCards = useMemo(
     () =>
@@ -393,10 +395,7 @@ function App() {
             suppressCardOpenUntilRef.current = Date.now() + 1800;
             suppressNextCardClickRef.current = true;
 
-            // ── CRITICAL: Revert SortableJS's DOM mutation ──
-            // SortableJS has already physically moved evt.item in the DOM.
-            // We MUST put it back before React tries to reconcile, otherwise
-            // React's virtual DOM will be out of sync → removeChild crash → blank page.
+            // Revert SortableJS's DOM mutation before React reconciles
             if (evt.from !== evt.to) {
               evt.to.removeChild(evt.item);
               if (evt.from.children[oldIndex]) {
@@ -421,10 +420,28 @@ function App() {
                 return;
               }
 
-              await moveBookmark(bookmarkId, newParentId, newIndex);
+              const draggedCard = cardById.get(bookmarkId);
+              const oldChromeIndex = draggedCard?.index ?? oldIndex;
+
+              // Translate DOM newIndex to Chrome bookmark index
+              const targetCollectionId = evt.to.getAttribute('data-cards-collection-id');
+              const targetCol = visibleCollections.find((c) => c.id === targetCollectionId);
+              let chromeNewIndex;
+              if (targetCol && targetCol.cards.length > 0) {
+                if (newIndex < targetCol.cards.length) {
+                  chromeNewIndex = targetCol.cards[newIndex].index;
+                } else {
+                  const lastCard = targetCol.cards[targetCol.cards.length - 1];
+                  chromeNewIndex = lastCard.index + 1;
+                }
+              } else {
+                chromeNewIndex = newIndex;
+              }
+
+              await moveBookmark(bookmarkId, newParentId, chromeNewIndex);
 
               showUndo(t('movedBookmarks', 1), async () => {
-                await moveBookmark(bookmarkId, oldParentId, oldIndex ?? 0);
+                await moveBookmark(bookmarkId, oldParentId, oldChromeIndex);
               });
 
               for (const s of cardSortablesRef.current.values()) {
@@ -455,7 +472,7 @@ function App() {
       cancelAnimationFrame(rafId);
       safeDestroyAll();
     };
-  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo, refresh]);
+  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo, refresh, cardById]);
 
   // --- Business logic ---
 
@@ -470,7 +487,11 @@ function App() {
       }));
 
       const targetCollection = collections.find((collection) => collection.id === targetParentId);
-      let insertIndex = targetCollection ? targetCollection.cards.length : 0;
+      let insertIndex = 0;
+      if (targetCollection && targetCollection.cards.length > 0) {
+        const lastCard = targetCollection.cards[targetCollection.cards.length - 1];
+        insertIndex = lastCard.index + 1;
+      }
 
       for (const card of cards) {
         await moveBookmark(card.id, targetParentId, insertIndex);
@@ -492,10 +513,10 @@ function App() {
     async (cards) => {
       if (!cards.length) return;
 
-      const rootId = activeSourceId || tabHubRootId;
-      if (!rootId) return;
+      if (!tabHubRootId) return;
 
-      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(rootId);
+      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(tabHubRootId);
+      if (!trashFolderId) setTrashFolderId(trashFolder.id);
 
       const snapshots = cards.map((card) => ({
         id: card.id,
@@ -518,7 +539,7 @@ function App() {
 
       await refresh(activeSourceRef.current);
     },
-    [activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]
+    [tabHubRootId, trashFolderId, showUndo, refresh]
   );
 
   const openEditorByCard = (card) => {
@@ -542,12 +563,12 @@ function App() {
 
   const handleAutoOrganize = useCallback(async () => {
     if (autoOrganizing || !collections.length) return;
-    const rootId = activeSourceId || tabHubRootId;
-    if (!rootId) return;
+    if (!tabHubRootId) return;
 
     setAutoOrganizing(true);
     try {
-      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(rootId);
+      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(tabHubRootId);
+      if (!trashFolderId) setTrashFolderId(trashFolder.id);
       const cardsBefore = collections.flatMap((c) =>
         c.cards.map((card) => ({ id: card.id, title: card.title, url: card.url, parentId: card.parentId, index: card.index }))
       );
@@ -609,7 +630,7 @@ function App() {
     } finally {
       setAutoOrganizing(false);
     }
-  }, [autoOrganizing, collections, activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]);
+  }, [autoOrganizing, collections, tabHubRootId, trashFolderId, showUndo, refresh]);
 
   const handleAICategorize = useCallback(async () => {
     if (!collections.length) return;
@@ -768,8 +789,9 @@ function App() {
       // Add confirm handler for actionable results
       if (result.action === 'move' && result.results?.length && result.targetCollectionId) {
         assistantMsg.onConfirm = async () => {
+          const currentMap = cardByIdRef.current;
           const cards = result.results
-            .map((r) => allCards.find((c) => c.id === r.id))
+            .map((r) => currentMap.get(r.id))
             .filter(Boolean);
           if (cards.length > 0) {
             await moveCardsWithUndo(cards, result.targetCollectionId, t('movedBookmarks', cards.length));
@@ -781,8 +803,9 @@ function App() {
         };
       } else if (result.action === 'delete' && result.results?.length) {
         assistantMsg.onConfirm = async () => {
+          const currentMap = cardByIdRef.current;
           const cards = result.results
-            .map((r) => allCards.find((c) => c.id === r.id))
+            .map((r) => currentMap.get(r.id))
             .filter(Boolean);
           if (cards.length > 0) {
             await moveCardsToTrash(cards);

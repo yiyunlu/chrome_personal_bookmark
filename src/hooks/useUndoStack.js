@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useUndoStack() {
   const [undoToast, setUndoToast] = useState(null);
@@ -14,7 +14,7 @@ export function useUndoStack() {
     []
   );
 
-  const showUndo = (message, undo) => {
+  const showUndo = useCallback((message, undo) => {
     const id = Date.now();
     if (undoTimerRef.current) {
       clearTimeout(undoTimerRef.current);
@@ -25,9 +25,9 @@ export function useUndoStack() {
       setUndoToast((prev) => (prev?.id === id ? null : prev));
       undoTimerRef.current = null;
     }, 8000);
-  };
+  }, []);
 
-  const handleUndo = async (onAfterUndo) => {
+  const handleUndo = useCallback(async (onAfterUndo) => {
     if (!undoToast || undoToast.pending) return;
     const action = undoToast;
     setUndoToast((prev) => (prev ? { ...prev, pending: true } : prev));
@@ -41,7 +41,7 @@ export function useUndoStack() {
         undoTimerRef.current = null;
       }
     }
-  };
+  }, [undoToast]);
 
   return { undoToast, showUndo, handleUndo };
 }

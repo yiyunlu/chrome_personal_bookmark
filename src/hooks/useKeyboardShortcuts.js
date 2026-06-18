@@ -14,6 +14,8 @@ export function useKeyboardShortcuts({ searchInputRef, onSaveTabs, onAutoOrganiz
       if (event.key === '/') {
         event.preventDefault();
         searchInputRef.current?.focus();
+      } else if (event.metaKey || event.ctrlKey || event.altKey) {
+        return;
       } else if (key === 's') {
         event.preventDefault();
         onSaveTabs();

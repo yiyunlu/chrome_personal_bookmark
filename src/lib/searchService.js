@@ -61,11 +61,11 @@ function fuzzyScore(query, text) {
  */
 function expandCategoryQuery(query) {
   const q = query.toLowerCase().trim();
+  if (q.length < 3) return [];
   const expansions = [];
 
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    // Check if query matches category name or any keyword
-    if (category.includes(q) || keywords.some((kw) => kw.includes(q) || q.includes(kw))) {
+    if (category === q || keywords.some((kw) => kw === q || (q.length >= 4 && (kw.includes(q) || q.includes(kw))))) {
       expansions.push(...keywords);
     }
   }
