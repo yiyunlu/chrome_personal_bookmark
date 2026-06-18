@@ -8,6 +8,7 @@ import {
   createCollectionFolder,
   ensureTrashFolder,
   exportCollections,
+  getCardsForSource,
   getOpenTabs,
   getTrashContents,
   importCollections,
@@ -35,6 +36,7 @@ import { checkDeadLinks } from './lib/enrichmentService';
 import { processChat } from './lib/chatService';
 
 import { Sidebar } from './components/Sidebar';
+import { WelcomeCard } from './components/WelcomeCard';
 import { Toolbar, BatchToolbar } from './components/Toolbar';
 import { CollectionCard } from './components/CollectionCard';
 import { ContextMenu } from './components/ContextMenu';
@@ -88,10 +90,12 @@ function App() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [promptDialog, setPromptDialog] = useState(null);
   const [saveTabsState, setSaveTabsState] = useState(null);
+  const [crossSourceResults, setCrossSourceResults] = useState([]);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [langReady, setLangReady] = useState(false);
   const [languageSetting, setLanguageSetting] = useState('auto');
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [, forceUpdate] = useState(0);
 
   const navSortableRef = useRef(null);
@@ -147,9 +151,10 @@ function App() {
     })();
 
     (async () => {
-      const [savedCollection, savedCollapsed] = await Promise.all([
+      const [savedCollection, savedCollapsed, savedOnboarding] = await Promise.all([
         storageGet('tabhub_active_collection').catch(() => undefined),
-        storageGet('tabhub_sidebar_collapsed').catch(() => undefined)
+        storageGet('tabhub_sidebar_collapsed').catch(() => undefined),
+        storageGet('tabhub_onboarding_dismissed').catch(() => undefined)
       ]);
 
       if (typeof savedCollapsed === 'boolean') {
@@ -157,6 +162,9 @@ function App() {
       }
       if (savedCollection) {
         setActiveCollectionId(savedCollection);
+      }
+      if (savedOnboarding === true) {
+        setOnboardingDismissed(true);
       }
     })();
   }, []);
@@ -261,6 +269,47 @@ function App() {
     }
     return filtered.filter((collection) => collection.id === activeCollectionId);
   }, [collections, search, activeCollectionId, allCards]);
+
+  // --- Cross-source search ---
+  const visibleCardCount = useMemo(
+    () => visibleCollections.reduce((sum, c) => sum + c.cards.length, 0),
+    [visibleCollections]
+  );
+
+  useEffect(() => {
+    const keyword = search.trim();
+    if (!keyword || visibleCardCount >= 3 || sources.length <= 1) {
+      setCrossSourceResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const otherSources = sources.filter((s) => s.id !== activeSourceId);
+      const results = [];
+
+      for (const source of otherSources) {
+        const cards = await getCardsForSource(source.id);
+        if (cancelled) return;
+        const matches = smartSearch(keyword, cards);
+        if (matches.length > 0) {
+          results.push({
+            sourceName: source.title,
+            sourceId: source.id,
+            cards: matches.slice(0, 5).map((m) => m.bookmark)
+          });
+        }
+      }
+
+      if (!cancelled) {
+        setCrossSourceResults(results);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [search, visibleCardCount, sources, activeSourceId]);
 
   // --- Drag-and-drop: collection sorting ---
 
@@ -844,6 +893,19 @@ function App() {
     });
   }, [activeSourceId, tabHubRootId, refresh]);
 
+  const handleDismissOnboarding = useCallback(async () => {
+    setOnboardingDismissed(true);
+    await storageSet('tabhub_onboarding_dismissed', true).catch(logError);
+  }, []);
+
+  // Show onboarding when there are zero user-created collections and not dismissed
+  const showOnboarding = useMemo(() => {
+    if (onboardingDismissed || loading) return false;
+    // Check if there are any editable collections (user-created, excluding system folders)
+    const userCollections = collections.filter((c) => c.editable);
+    return userCollections.length === 0;
+  }, [onboardingDismissed, loading, collections]);
+
   const handleExport = useCallback(() => {
     const jsonString = exportCollections(collections);
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -959,6 +1021,10 @@ function App() {
     },
     [collections, allCards, moveCardsWithUndo, moveCardsToTrash]
   );
+
+  const handleTagClick = useCallback((tag) => {
+    setSearch(tag);
+  }, []);
 
   const onToggleManage = useCallback(() => setManageMode((prev) => !prev), []);
 
@@ -1278,18 +1344,27 @@ function App() {
               {error}
             </div>
           ) : visibleCollections.length === 0 ? (
-            <div
-              className="rounded-2xl border p-12 text-center"
-              style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)' }}
-            >
-              <div className="text-4xl mb-3">📑</div>
-              <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                {t('noBookmarks')}
+            showOnboarding ? (
+              <WelcomeCard
+                onSaveTabs={handleSaveTabs}
+                onCreateCollection={handleNewCollection}
+                onConnectAI={() => setSettingsOpen(true)}
+                onDismiss={handleDismissOnboarding}
+              />
+            ) : (
+              <div
+                className="rounded-2xl border p-12 text-center"
+                style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)' }}
+              >
+                <div className="text-4xl mb-3">📑</div>
+                <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                  {t('noBookmarks')}
+                </div>
+                <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                  {t('noBookmarksHint')}
+                </div>
               </div>
-              <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                {t('noBookmarksHint')}
-              </div>
-            </div>
+            )
           ) : (
             <section className="space-y-4" data-module-sortable="true">
               {visibleCollections.map((collection) => (
@@ -1308,7 +1383,58 @@ function App() {
                   onDeleteCard={handleDeleteCardByCard}
                   onToggleCardSelect={toggleCardSelection}
                   onOpenAll={handleOpenAllInCollection}
+                  onTagClick={handleTagClick}
                 />
+              ))}
+            </section>
+          )}
+
+          {/* Cross-source search results */}
+          {crossSourceResults.length > 0 && (
+            <section className="mt-6">
+              <h3
+                className="text-xs font-semibold uppercase tracking-wide mb-3 px-1"
+                style={{ color: 'var(--muted)' }}
+              >
+                {t('otherSourceResults')}
+              </h3>
+              {crossSourceResults.map((group) => (
+                <div
+                  key={group.sourceId}
+                  className="mb-4 rounded-2xl border overflow-hidden"
+                  style={{
+                    background: 'var(--panel-bg)',
+                    borderColor: 'var(--panel-border)',
+                    boxShadow: 'var(--shadow)'
+                  }}
+                >
+                  <div
+                    className="px-4 py-2 text-xs font-medium"
+                    style={{ color: 'var(--muted)', borderBottom: '1px solid var(--panel-border)' }}
+                  >
+                    {t('fromSource', group.sourceName)}
+                  </div>
+                  <div className="px-3 py-2 space-y-1.5">
+                    {group.cards.map((card) => (
+                      <div
+                        key={card.id}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        style={{ background: 'var(--card-bg)' }}
+                        onClick={() => openBookmarkInCurrentTab(card.url)}
+                        title={card.url}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm truncate" style={{ color: 'var(--text)' }}>
+                            {card.title}
+                          </div>
+                          <div className="text-[0.7rem] truncate" style={{ color: 'var(--muted)' }}>
+                            {card.url}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))}
             </section>
           )}
@@ -1354,6 +1480,15 @@ function App() {
         onRejectSuggestion={handleRejectSuggestion}
         onApplyAll={handleApplyAISuggestions}
         onClose={() => setAICategorizeState(null)}
+      />
+
+      <SaveTabsModal
+        open={!!saveTabsState}
+        tabs={saveTabsState?.tabs || null}
+        defaultFolderName={saveTabsState?.folderName || ''}
+        collections={collections}
+        onSave={handleSaveTabsConfirm}
+        onClose={() => setSaveTabsState(null)}
       />
 
       {chatOpen ? (

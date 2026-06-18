@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BookmarkIcon } from './BookmarkIcon';
 import { ChevronDown, ChevronRight, ExternalLink, FolderOpen, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { logError } from '../lib/utils';
+import { generateTags } from '../lib/enrichmentService';
 
 export function BookmarkCard({
   card,
@@ -12,7 +13,8 @@ export function BookmarkCard({
   onContextMenu,
   onEdit,
   onDelete,
-  onToggleSelect
+  onToggleSelect,
+  onTagClick
 }) {
   let domain = '';
   try {
@@ -20,6 +22,11 @@ export function BookmarkCard({
   } catch (err) {
     logError('BookmarkCard.domain', err);
   }
+
+  const tags = useMemo(
+    () => generateTags({ url: card.url, title: card.title }).slice(0, 3),
+    [card.url, card.title]
+  );
 
   return (
     <div
@@ -56,7 +63,7 @@ export function BookmarkCard({
         <BookmarkIcon url={card.url} title={card.title} />
       </div>
 
-      {/* Title + domain */}
+      {/* Title + domain + tags */}
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate" style={{ color: 'var(--text)' }}>
           {card.title}
@@ -64,6 +71,23 @@ export function BookmarkCard({
         {domain && (
           <div className="text-[0.7rem] truncate mt-0.5" style={{ color: 'var(--muted)' }}>
             {domain}
+          </div>
+        )}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="tag-chip text-[0.6rem] px-1.5 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
+                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onTagClick) onTagClick(tag);
+                }}
+              >
+                {tag}
+              </span>
+            ))}
           </div>
         )}
       </div>
@@ -114,7 +138,8 @@ export function CollectionCard({
   onEditCard,
   onDeleteCard,
   onToggleCardSelect,
-  onOpenAll
+  onOpenAll,
+  onTagClick
 }) {
   return (
     <article
@@ -203,6 +228,7 @@ export function CollectionCard({
                   onEdit={onEditCard}
                   onDelete={onDeleteCard}
                   onToggleSelect={onToggleCardSelect}
+                  onTagClick={onTagClick}
                 />
               ))}
             </div>

@@ -14,8 +14,13 @@ import { t } from './i18n';
 /**
  * Check if a URL is accessible. Returns status info.
  *
+ * Status values:
+ * - 'alive': URL responded with 2xx/3xx
+ * - 'dead': URL responded with a clear HTTP error (4xx, 5xx)
+ * - 'unknown': Could not verify (network error, timeout, non-HTTP error)
+ *
  * @param {string} url
- * @returns {Promise<{alive: boolean, status: number|null, error: string|null}>}
+ * @returns {Promise<{alive: boolean, status: number|null, error: string|null, linkStatus: 'alive'|'dead'|'unknown'}>}
  */
 export async function checkLink(url) {
   try {
@@ -29,16 +34,23 @@ export async function checkLink(url) {
 
     clearTimeout(timeoutId);
 
+    if (response.ok) {
+      return { alive: true, status: response.status, error: null, linkStatus: 'alive' };
+    }
+
+    // Clear HTTP error responses (4xx, 5xx) are confirmed dead
     return {
-      alive: response.ok,
+      alive: false,
       status: response.status,
-      error: response.ok ? null : `HTTP ${response.status}`
+      error: `HTTP ${response.status}`,
+      linkStatus: 'dead'
     };
   } catch (err) {
+    // Network errors, timeouts, and non-HTTP errors are "unknown" — not confirmed dead
     if (err.name === 'AbortError') {
-      return { alive: false, status: null, error: t('linkTimeout') };
+      return { alive: false, status: null, error: t('linkTimeout'), linkStatus: 'unknown' };
     }
-    return { alive: false, status: null, error: err.message || t('linkUnreachable') };
+    return { alive: false, status: null, error: err.message || t('linkUnreachable'), linkStatus: 'unknown' };
   }
 }
 
