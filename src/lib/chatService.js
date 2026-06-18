@@ -88,9 +88,11 @@ export function executeCommand(command, context) {
 
   switch (command.type) {
     case COMMAND_TYPES.SEARCH: {
-      const searchResults = smartSearch(command.params.query, allCards);
+      const searchQuery = command.params?.query || '';
+      if (!searchQuery) return { message: '请输入搜索关键词。' };
+      const searchResults = smartSearch(searchQuery, allCards);
       if (searchResults.length === 0) {
-        return { message: `未找到与「${command.params.query}」匹配的书签。` };
+        return { message: `未找到与「${searchQuery}」匹配的书签。` };
       }
       return {
         message: `找到 ${searchResults.length} 个匹配的书签：`,
@@ -104,7 +106,9 @@ export function executeCommand(command, context) {
     }
 
     case COMMAND_TYPES.MOVE: {
-      const { bookmarkQuery, targetCollection } = command.params;
+      const bookmarkQuery = command.params?.bookmarkQuery || '';
+      const targetCollection = command.params?.targetCollection || '';
+      if (!bookmarkQuery || !targetCollection) return { message: '请指定要移动的书签和目标分类。' };
       const query = bookmarkQuery.toLowerCase();
       const matches = allCards.filter(
         (c) => c.title.toLowerCase().includes(query) || c.url.toLowerCase().includes(query)
@@ -128,13 +132,15 @@ export function executeCommand(command, context) {
     }
 
     case COMMAND_TYPES.DELETE: {
-      const query = command.params.bookmarkQuery.toLowerCase();
+      const deleteQuery = command.params?.bookmarkQuery || '';
+      if (!deleteQuery) return { message: '请指定要删除的书签。' };
+      const query = deleteQuery.toLowerCase();
       const matches = allCards.filter(
         (c) => c.title.toLowerCase().includes(query) || c.url.toLowerCase().includes(query)
       );
 
       if (matches.length === 0) {
-        return { message: `未找到与「${command.params.bookmarkQuery}」匹配的书签。` };
+        return { message: `未找到与「${deleteQuery}」匹配的书签。` };
       }
 
       return {
@@ -282,7 +288,7 @@ For response: just a helpful message`;
     // Otherwise execute the structured command
     const command = { type: parsed.type, params: parsed.params || {} };
     const result = executeCommand(command, context);
-    return { ...result, message: parsed.message || result.message };
+    return result;
   } catch {
     const command = parseCommand(message);
     return executeCommand(command, context);
