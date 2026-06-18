@@ -204,16 +204,28 @@ export function subscribeBookmarksChanges(onChange) {
   };
 }
 
-export async function saveCurrentWindowTabsToCollection(rootId) {
+export async function getOpenTabs() {
   const tabs = await queryTabsApi({ currentWindow: true });
-  const now = new Date();
-  const folderName = now.toISOString().slice(0, 19).replace('T', ' ');
+  return tabs
+    .filter((tab) => tab.url && /^https?:/i.test(tab.url))
+    .map((tab) => ({
+      id: tab.id,
+      title: tab.title || tab.url,
+      url: tab.url,
+      favIconUrl: tab.favIconUrl
+    }));
+}
+
+export async function saveCurrentWindowTabsToCollection(rootId, { tabs, folderName } = {}) {
+  const savableTabs =
+    tabs ||
+    (await queryTabsApi({ currentWindow: true })).filter((tab) => tab.url && /^https?:/i.test(tab.url));
+  const name = folderName || new Date().toISOString().slice(0, 19).replace('T', ' ');
   const folder = await createBookmark({
     parentId: rootId,
-    title: folderName
+    title: name
   });
 
-  const savableTabs = tabs.filter((tab) => tab.url && /^https?:/i.test(tab.url));
   await Promise.all(
     savableTabs.map((tab) =>
       createBookmark({
@@ -237,6 +249,10 @@ export async function updateBookmark(bookmarkId, changes) {
 
 export async function createCollectionFolder(parentId, title) {
   return createBookmark({ parentId, title });
+}
+
+export async function addBookmarkToFolder(parentId, title, url) {
+  return createBookmark({ parentId, title, url });
 }
 
 export async function getTrashContents(rootId) {

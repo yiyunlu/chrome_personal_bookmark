@@ -4,10 +4,11 @@ import Sortable from 'sortablejs';
 import './index.css';
 
 import {
+  addBookmarkToFolder,
   createCollectionFolder,
   ensureTrashFolder,
   exportCollections,
-  getCollectionsPayload,
+  getOpenTabs,
   getTrashContents,
   importCollections,
   moveBookmark,
@@ -17,7 +18,6 @@ import {
   removeCollectionFolder,
   renameCollectionFolder,
   saveCurrentWindowTabsToCollection,
-  subscribeBookmarksChanges,
   updateBookmark
 } from './lib/bookmarkService';
 import { logError, normalizeUrlKey, sortSnapshots } from './lib/utils';
@@ -25,6 +25,7 @@ import { smartSearch } from './lib/searchService';
 import { storageGet, storageSet } from './lib/storage';
 
 import { initLanguage, getLanguageSetting, setLanguage as setI18nLanguage, t } from './lib/i18n';
+import { useCollections } from './hooks/useCollections';
 import { useTheme } from './hooks/useTheme';
 import { useUndoStack } from './hooks/useUndoStack';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -46,15 +47,27 @@ import { UndoToast } from './components/UndoToast';
 import { SettingsModal } from './components/SettingsModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { PromptModal } from './components/PromptModal';
+import { SaveTabsModal } from './components/SaveTabsModal';
 
 function App() {
-  const [tabHubRootId, setTabHubRootId] = useState('');
-  const [sources, setSources] = useState([]);
-  const [activeSourceId, setActiveSourceId] = useState('');
-  const [trashFolderId, setTrashFolderId] = useState('');
-  const activeSourceRef = useRef('');
+  const {
+    tabHubRootId,
+    sources,
+    activeSourceId,
+    trashFolderId,
+    setTrashFolderId,
+    activeSourceRef,
+    collections,
+    loading,
+    error,
+    activeSource,
+    allCards,
+    cardById,
+    cardByIdRef,
+    refresh,
+    initialLoadDoneRef
+  } = useCollections();
 
-  const [collections, setCollections] = useState([]);
   const [search, setSearch] = useState('');
   const [activeCollectionId, setActiveCollectionId] = useState('all');
   const [collapsedCollectionIds, setCollapsedCollectionIds] = useState(new Set());
@@ -74,15 +87,12 @@ function App() {
   const [showTrash, setShowTrash] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [promptDialog, setPromptDialog] = useState(null);
+  const [saveTabsState, setSaveTabsState] = useState(null);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [langReady, setLangReady] = useState(false);
   const [languageSetting, setLanguageSetting] = useState('auto');
   const [, forceUpdate] = useState(0);
-
-  const initialLoadDoneRef = useRef(false);
 
   const navSortableRef = useRef(null);
   const moduleSortableRef = useRef(null);
@@ -98,29 +108,12 @@ function App() {
 
   const dragEnabled = search.trim() === '';
   const cardDragEnabled = dragEnabled && !manageMode;
-  const activeSource = sources.find((source) => source.id === activeSourceId) || null;
   const canSortCollections = dragEnabled && activeCollectionId === 'all';
 
   const topLevelSortableCollections = useMemo(
     () => collections.filter((c) => c.editable && c.parentId === activeSourceId),
     [collections, activeSourceId]
   );
-
-  const allCards = useMemo(
-    () =>
-      collections.flatMap((collection) =>
-        collection.cards.map((card) => ({
-          ...card,
-          collectionId: collection.id,
-          collectionTitle: collection.title
-        }))
-      ),
-    [collections]
-  );
-
-  const cardById = useMemo(() => new Map(allCards.map((card) => [card.id, card])), [allCards]);
-  const cardByIdRef = useRef(cardById);
-  cardByIdRef.current = cardById;
 
   const selectedCards = useMemo(
     () =>
@@ -144,27 +137,7 @@ function App() {
     return collections.filter((c) => c.title.toLowerCase().includes(keyword));
   }, [batchMoveState, collections]);
 
-  // --- Data refresh ---
-  const refresh = useCallback(async (preferredSourceId = activeSourceRef.current) => {
-    try {
-      const result = await getCollectionsPayload(preferredSourceId);
-      setTabHubRootId(result.tabHubRootId);
-      setSources(result.sources);
-      setActiveSourceId(result.activeSourceId);
-      setTrashFolderId(result.trashFolderId || '');
-      activeSourceRef.current = result.activeSourceId;
-      setCollections(result.collections);
-      setError('');
-    } catch (e) {
-      setError(e?.message || 'Failed to load collections');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // --- Initialization & subscriptions ---
-
-  // --- Init ---
+  // --- Initialization ---
   useEffect(() => {
     (async () => {
       await initLanguage();
@@ -174,8 +147,7 @@ function App() {
     })();
 
     (async () => {
-      const [savedSource, savedCollection, savedCollapsed] = await Promise.all([
-        storageGet('tabhub_active_source').catch(() => undefined),
+      const [savedCollection, savedCollapsed] = await Promise.all([
         storageGet('tabhub_active_collection').catch(() => undefined),
         storageGet('tabhub_sidebar_collapsed').catch(() => undefined)
       ]);
@@ -186,35 +158,21 @@ function App() {
       if (savedCollection) {
         setActiveCollectionId(savedCollection);
       }
-
-      await refresh(savedSource || undefined);
-      initialLoadDoneRef.current = true;
     })();
-
-    const unsubscribe = subscribeBookmarksChanges(() => {
-      refresh(activeSourceRef.current);
-    });
-    return () => unsubscribe();
-  }, [refresh]);
+  }, []);
 
   // --- Persist active state to storage ---
-  useEffect(() => {
-    if (initialLoadDoneRef.current && activeSourceId) {
-      storageSet('tabhub_active_source', activeSourceId).catch(logError);
-    }
-  }, [activeSourceId]);
-
   useEffect(() => {
     if (initialLoadDoneRef.current && activeCollectionId) {
       storageSet('tabhub_active_collection', activeCollectionId).catch(logError);
     }
-  }, [activeCollectionId]);
+  }, [activeCollectionId, initialLoadDoneRef]);
 
   useEffect(() => {
     if (initialLoadDoneRef.current) {
       storageSet('tabhub_sidebar_collapsed', sidebarCollapsed).catch(logError);
     }
-  }, [sidebarCollapsed]);
+  }, [sidebarCollapsed, initialLoadDoneRef]);
 
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
@@ -617,11 +575,40 @@ function App() {
   };
 
   const handleSaveTabs = useCallback(async () => {
-    const targetRootId = activeSourceId || tabHubRootId;
-    if (!targetRootId) return;
-    await saveCurrentWindowTabsToCollection(targetRootId);
-    await refresh(activeSourceRef.current);
-  }, [activeSourceId, tabHubRootId, refresh]);
+    const openTabs = await getOpenTabs();
+    if (openTabs.length === 0) return;
+    const folderName = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    setSaveTabsState({ tabs: openTabs, folderName });
+  }, []);
+
+  const handleSaveTabsConfirm = useCallback(
+    async ({ selectedTabIds, folderName, targetCollectionId }) => {
+      if (!saveTabsState) return;
+      const selectedTabs = saveTabsState.tabs.filter((tab) => selectedTabIds.has(tab.id));
+      if (selectedTabs.length === 0) return;
+
+      try {
+        if (targetCollectionId) {
+          // Save directly into an existing collection
+          await Promise.all(
+            selectedTabs.map((tab) => addBookmarkToFolder(targetCollectionId, tab.title || tab.url, tab.url))
+          );
+        } else {
+          // New collection — create a named folder under the active source
+          const rootId = activeSourceId || tabHubRootId;
+          if (!rootId) return;
+          const name = folderName || new Date().toISOString().slice(0, 19).replace('T', ' ');
+          await saveCurrentWindowTabsToCollection(rootId, { tabs: selectedTabs, folderName: name });
+        }
+
+        showUndo(t('savedTabs', selectedTabs.length), null);
+        await refresh(activeSourceRef.current);
+      } finally {
+        setSaveTabsState(null);
+      }
+    },
+    [saveTabsState, activeSourceId, tabHubRootId, showUndo, refresh]
+  );
 
   const handleAutoOrganize = useCallback(async () => {
     if (autoOrganizing || !collections.length) return;

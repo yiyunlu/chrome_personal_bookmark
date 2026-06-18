@@ -166,6 +166,15 @@ const dictionaries = {
     // Open tabs
     openAllTabs: '全部打开',
     openInNewTab: '在新标签页中打开',
+    // Save Tabs Preview
+    saveTabsTitle: '保存标签页',
+    folderName: '文件夹名称',
+    selectAll: '全选',
+    deselectAll: '取消全选',
+    targetCollection: '目标集合',
+    newCollectionOption: '新建集合',
+    tabsSelected: (n) => `已选 ${n} 个标签页`,
+    savedTabs: (n) => `已保存 ${n} 个标签页`,
     // Modal dialogs
     confirm: '确认',
     deleteBookmarkTitle: '删除书签',
@@ -340,6 +349,15 @@ const dictionaries = {
     // Open tabs
     openAllTabs: 'Open All',
     openInNewTab: 'Open in New Tab',
+    // Save Tabs Preview
+    saveTabsTitle: 'Save Tabs',
+    folderName: 'Folder Name',
+    selectAll: 'Select All',
+    deselectAll: 'Deselect All',
+    targetCollection: 'Target Collection',
+    newCollectionOption: 'New Collection',
+    tabsSelected: (n) => `${n} tabs selected`,
+    savedTabs: (n) => `Saved ${n} tabs`,
     // Modal dialogs
     confirm: 'Confirm',
     deleteBookmarkTitle: 'Delete Bookmark',
