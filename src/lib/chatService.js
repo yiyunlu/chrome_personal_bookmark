@@ -6,6 +6,8 @@
  */
 
 import { getApiKey } from './aiService';
+import { normalizeUrlKey } from './utils';
+import { smartSearch } from './searchService';
 
 /**
  * Command types the chat can produce.
@@ -86,20 +88,17 @@ export function executeCommand(command, context) {
 
   switch (command.type) {
     case COMMAND_TYPES.SEARCH: {
-      const query = command.params.query.toLowerCase();
-      const matches = allCards.filter(
-        (c) => c.title.toLowerCase().includes(query) || c.url.toLowerCase().includes(query)
-      );
-      if (matches.length === 0) {
+      const searchResults = smartSearch(command.params.query, allCards);
+      if (searchResults.length === 0) {
         return { message: `未找到与「${command.params.query}」匹配的书签。` };
       }
       return {
-        message: `找到 ${matches.length} 个匹配的书签：`,
-        results: matches.slice(0, 10).map((c) => ({
-          id: c.id,
-          title: c.title,
-          url: c.url,
-          collection: c.collectionTitle || ''
+        message: `找到 ${searchResults.length} 个匹配的书签：`,
+        results: searchResults.slice(0, 10).map((r) => ({
+          id: r.bookmark.id,
+          title: r.bookmark.title,
+          url: r.bookmark.url,
+          collection: r.bookmark.collectionTitle || ''
         }))
       };
     }
@@ -149,7 +148,7 @@ export function executeCommand(command, context) {
       const seen = new Map();
       const duplicates = [];
       for (const card of allCards) {
-        const key = card.url.toLowerCase().replace(/\/$/, '');
+        const key = normalizeUrlKey(card.url);
         if (seen.has(key)) {
           duplicates.push(card);
         } else {

@@ -20,17 +20,10 @@ export async function checkLink(url) {
 
     const response = await fetch(url, {
       method: 'HEAD',
-      mode: 'no-cors',
       signal: controller.signal
     });
 
     clearTimeout(timeoutId);
-
-    // In no-cors mode, response.type is 'opaque' and status is 0
-    // but the request succeeded, so the link is alive
-    if (response.type === 'opaque') {
-      return { alive: true, status: null, error: null };
-    }
 
     return {
       alive: response.ok,
