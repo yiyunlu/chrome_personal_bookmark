@@ -1,8 +1,28 @@
 import { useEffect } from 'react';
 
-export function useKeyboardShortcuts({ searchInputRef, onSaveTabs, onAutoOrganize, onToggleManage, autoOrganizing }) {
+export function useKeyboardShortcuts({
+  searchInputRef,
+  onSaveTabs,
+  onAutoOrganize,
+  onToggleManage,
+  autoOrganizing,
+  disabled = false,
+  onEscape
+}) {
   useEffect(() => {
     const onKeyDown = (event) => {
+      // Escape works everywhere, including inside inputs and while overlays are open.
+      if (event.key === 'Escape') {
+        if (onEscape) onEscape();
+        return;
+      }
+
+      // Never hijack browser/system chords (Cmd+S save-page, Cmd+M minimize, Ctrl+O …).
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+      // Single-key shortcuts are surprising while a modal is open.
+      if (disabled) return;
+
       const target = event.target;
       if (target instanceof HTMLElement) {
         const tag = target.tagName.toLowerCase();
@@ -32,5 +52,5 @@ export function useKeyboardShortcuts({ searchInputRef, onSaveTabs, onAutoOrganiz
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [autoOrganizing, searchInputRef, onSaveTabs, onAutoOrganize, onToggleManage]);
+  }, [autoOrganizing, searchInputRef, onSaveTabs, onAutoOrganize, onToggleManage, disabled, onEscape]);
 }

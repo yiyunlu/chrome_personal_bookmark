@@ -31,4 +31,25 @@ describe('storage', () => {
       expect(chrome.storage.local.set).toHaveBeenCalledWith({ my_key: 42 }, expect.any(Function));
     });
   });
+
+  describe('chrome.runtime.lastError handling', () => {
+    it('storageGet rejects on a failed read rather than masking it', async () => {
+      chrome.storage.local.get = vi.fn((_keys, cb) => {
+        chrome.runtime.lastError = { message: 'read failed' };
+        cb({});
+        chrome.runtime.lastError = null;
+      });
+      // Callers opt into a default with .catch(() => undefined) at each call site.
+      await expect(storageGet('some_key')).rejects.toThrow('read failed');
+    });
+
+    it('storageSet rejects on a failed write instead of reporting success', async () => {
+      chrome.storage.local.set = vi.fn((_obj, cb) => {
+        chrome.runtime.lastError = { message: 'quota exceeded' };
+        cb();
+        chrome.runtime.lastError = null;
+      });
+      await expect(storageSet('some_key', 'v')).rejects.toThrow('quota exceeded');
+    });
+  });
 });

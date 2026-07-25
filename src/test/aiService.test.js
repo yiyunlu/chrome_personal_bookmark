@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { categorizeBookmarks, getApiKey, setApiKey } from '../lib/aiService';
 
 describe('aiService', () => {
@@ -106,6 +106,81 @@ describe('aiService', () => {
 
       const result = await categorizeBookmarks(bookmarks, existingCollections);
       expect(result.suggestions).toHaveLength(2); // github + medium, random skipped
+    });
+  });
+
+  describe('categorizeBookmarks (Claude API mode)', () => {
+    const bookmarks = [
+      { id: 'b1', title: 'Repo', url: 'https://github.com/user/repo', currentCollection: 'Unfiled' },
+      { id: 'b2', title: 'Article', url: 'https://medium.com/article', currentCollection: 'Unfiled' }
+    ];
+    const existingCollections = [{ id: 'c1', title: 'Development' }];
+
+    const claudeResponse = (payload) => ({
+      ok: true,
+      json: async () => ({ content: [{ text: `Here you go:\n${JSON.stringify(payload)}` }] })
+    });
+
+    beforeEach(() => {
+      chrome.storage.local.get = vi.fn((_keys, cb) => cb({ tabhub_ai_api_key: 'test-api-key' }));
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('sends real bookmark ids in the prompt so the model can echo them back', async () => {
+      const fetchMock = vi.fn(async () => claudeResponse({ suggestions: [], newCollections: [] }));
+      vi.stubGlobal('fetch', fetchMock);
+
+      await categorizeBookmarks(bookmarks, existingCollections);
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const prompt = body.messages[0].content;
+      expect(prompt).toContain('id:b1');
+      expect(prompt).toContain('id:b2');
+    });
+
+    it('drops suggestions whose bookmarkId was not in the request (hallucinated ids)', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () =>
+          claudeResponse({
+            suggestions: [
+              { bookmarkId: 'b1', targetCollectionTitle: 'Development', reason: 'code' },
+              { bookmarkId: '1', targetCollectionTitle: 'Development', reason: 'hallucinated id' },
+              { bookmarkId: 'b2', targetCollectionTitle: '', reason: 'empty target' }
+            ],
+            newCollections: ['Reading', 42, '  ']
+          })
+        )
+      );
+
+      const result = await categorizeBookmarks(bookmarks, existingCollections);
+      expect(result.suggestions).toEqual([{ bookmarkId: 'b1', targetCollectionTitle: 'Development', reason: 'code' }]);
+      expect(result.newCollections).toEqual(['Reading']);
+    });
+
+    it('tolerates a malformed shape by returning empty lists instead of crashing the apply flow', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => claudeResponse({ suggestions: 'nope' })));
+
+      const result = await categorizeBookmarks(bookmarks, existingCollections);
+      expect(result).toEqual({ suggestions: [], newCollections: [] });
+    });
+
+    it('throws when the response contains no JSON at all', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({ ok: true, json: async () => ({ content: [{ text: 'sorry, no JSON' }] }) }))
+      );
+
+      await expect(categorizeBookmarks(bookmarks, existingCollections)).rejects.toThrow('Failed to parse AI response');
+    });
+
+    it('surfaces API errors with status code', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401, text: async () => 'unauthorized' })));
+
+      await expect(categorizeBookmarks(bookmarks, existingCollections)).rejects.toThrow('Claude API error: 401');
     });
   });
 });

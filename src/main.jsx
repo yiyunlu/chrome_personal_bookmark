@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import Sortable from 'sortablejs';
 import './index.css';
@@ -13,6 +13,7 @@ import {
   getTrashContents,
   importCollections,
   moveBookmark,
+  moveBookmarkToCardPosition,
   openAllInNewTabs,
   openBookmarkInCurrentTab,
   openBookmarkInNewTab,
@@ -244,8 +245,12 @@ function App() {
 
   // --- Visible collections ---
 
+  // Deferred: the O(N) scan and full list re-render lag behind fast typing
+  // instead of blocking each keystroke.
+  const deferredSearch = useDeferredValue(search);
+
   const visibleCollections = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
+    const keyword = deferredSearch.trim().toLowerCase();
 
     let matchedCardIds = null;
     if (keyword) {
@@ -268,7 +273,7 @@ function App() {
       return filtered;
     }
     return filtered.filter((collection) => collection.id === activeCollectionId);
-  }, [collections, search, activeCollectionId, allCards]);
+  }, [collections, deferredSearch, activeCollectionId, allCards]);
 
   // --- Cross-source search ---
   const visibleCardCount = useMemo(
@@ -464,7 +469,9 @@ function App() {
                 evt.from.appendChild(evt.item);
               }
             } else {
-              const refNode = evt.from.children[oldIndex];
+              // Same-container: after an upward drag the item sits before its old
+              // slot, so the element that should follow it is at oldIndex + 1.
+              const refNode = evt.from.children[newIndex < oldIndex ? oldIndex + 1 : oldIndex];
               if (refNode) {
                 evt.from.insertBefore(evt.item, refNode);
               } else {
@@ -611,7 +618,7 @@ function App() {
     [tabHubRootId, trashFolderId, showUndo, refresh]
   );
 
-  const openEditorByCard = (card) => {
+  const openEditorByCard = useCallback((card) => {
     setEditorState({
       cardId: card.id,
       title: card.title,
@@ -621,7 +628,7 @@ function App() {
       folderQuery: '',
       saving: false
     });
-  };
+  }, []);
 
   const handleSaveTabs = useCallback(async () => {
     const openTabs = await getOpenTabs();
@@ -766,19 +773,29 @@ function App() {
         };
       });
 
-      setAICategorizeState({
-        loading: false,
-        suggestions: enriched,
-        newCollections: result.newCollections || [],
-        error: null
-      });
+      // Functional guard: if the user closed the modal while we awaited,
+      // don't re-open it with late results.
+      setAICategorizeState((prev) =>
+        prev
+          ? {
+              loading: false,
+              suggestions: enriched,
+              newCollections: result.newCollections || [],
+              error: null
+            }
+          : prev
+      );
     } catch (err) {
-      setAICategorizeState({
-        loading: false,
-        suggestions: [],
-        newCollections: [],
-        error: err?.message || t('aiCategorizeFailed')
-      });
+      setAICategorizeState((prev) =>
+        prev
+          ? {
+              loading: false,
+              suggestions: [],
+              newCollections: [],
+              error: err?.message || t('aiCategorizeFailed')
+            }
+          : prev
+      );
     }
   }, [collections]);
 
@@ -851,9 +868,12 @@ function App() {
       const results = await checkDeadLinks(allBookmarks, (progress) => {
         setDeadLinkState((prev) => (prev ? { ...prev, progress } : prev));
       });
-      setDeadLinkState({ loading: false, progress: null, results, error: null });
+      // Functional guard: never re-open the modal the user already closed.
+      setDeadLinkState((prev) => (prev ? { loading: false, progress: null, results, error: null } : prev));
     } catch (err) {
-      setDeadLinkState({ loading: false, progress: null, results: null, error: err?.message || t('deadLinkCheckFailed') });
+      setDeadLinkState((prev) =>
+        prev ? { loading: false, progress: null, results: null, error: err?.message || t('deadLinkCheckFailed') } : prev
+      );
     }
   }, [collections]);
 
@@ -986,9 +1006,14 @@ function App() {
         action: result.action
       };
 
-      // Add confirm handler for actionable results
+      // Add confirm handler for actionable results. Confirms run later (or
+      // never): resolve ids against the LATEST cards via allCardsRef, and a
+      // closure flag makes a double click a no-op instead of a double delete.
       if (result.action === 'move' && result.results?.length && result.targetCollectionId) {
+        let executed = false;
         assistantMsg.onConfirm = async () => {
+          if (executed) return;
+          executed = true;
           const currentMap = cardByIdRef.current;
           const cards = result.results
             .map((r) => currentMap.get(r.id))
@@ -1002,7 +1027,10 @@ function App() {
           }
         };
       } else if (result.action === 'delete' && result.results?.length) {
+        let executed = false;
         assistantMsg.onConfirm = async () => {
+          if (executed) return;
+          executed = true;
           const currentMap = cardByIdRef.current;
           const cards = result.results
             .map((r) => currentMap.get(r.id))
@@ -1019,7 +1047,7 @@ function App() {
 
       setChatMessages((prev) => [...prev, assistantMsg]);
     },
-    [collections, allCards, moveCardsWithUndo, moveCardsToTrash]
+    [collections, allCards, cardByIdRef, moveCardsWithUndo, moveCardsToTrash]
   );
 
   const handleTagClick = useCallback((tag) => {
@@ -1028,12 +1056,33 @@ function App() {
 
   const onToggleManage = useCallback(() => setManageMode((prev) => !prev), []);
 
+  const modalOpen = !!(contextMenu || editorState || batchMoveState || aiCategorizeState || deadLinkState);
+
+  const handleEscape = useCallback(() => {
+    // Close the topmost overlay only.
+    if (contextMenu) {
+      setContextMenu(null);
+    } else if (editorState) {
+      setEditorState(null);
+    } else if (batchMoveState) {
+      setBatchMoveState(null);
+    } else if (aiCategorizeState) {
+      setAICategorizeState(null);
+    } else if (deadLinkState) {
+      setDeadLinkState(null);
+    } else if (chatOpen) {
+      setChatOpen(false);
+    }
+  }, [contextMenu, editorState, batchMoveState, aiCategorizeState, deadLinkState, chatOpen]);
+
   useKeyboardShortcuts({
     searchInputRef,
     onSaveTabs: handleSaveTabs,
     onAutoOrganize: handleAutoOrganize,
     onToggleManage,
-    autoOrganizing
+    autoOrganizing,
+    disabled: modalOpen,
+    onEscape: handleEscape
   });
 
   // --- Event handlers ---
@@ -1050,7 +1099,9 @@ function App() {
     forceUpdate((n) => n + 1);
   };
 
-  const toggleCollection = (collectionId) => {
+  // Stable identities: these flow into React.memo'd CollectionCard/BookmarkCard,
+  // where a fresh function per render would defeat the memo entirely.
+  const toggleCollection = useCallback((collectionId) => {
     setCollapsedCollectionIds((prev) => {
       const next = new Set(prev);
       if (next.has(collectionId)) {
@@ -1060,9 +1111,9 @@ function App() {
       }
       return next;
     });
-  };
+  }, []);
 
-  const toggleCardSelection = (cardId) => {
+  const toggleCardSelection = useCallback((cardId) => {
     setSelectedCardIds((prev) => {
       const next = new Set(prev);
       if (next.has(cardId)) {
@@ -1072,20 +1123,20 @@ function App() {
       }
       return next;
     });
-  };
+  }, []);
 
-  const clearSelections = () => setSelectedCardIds(new Set());
+  const clearSelections = useCallback(() => setSelectedCardIds(new Set()), []);
 
-  const openCardContextMenu = (event, card) => {
+  const openCardContextMenu = useCallback((event, card) => {
     event.preventDefault();
     setContextMenu({ kind: 'card', x: event.clientX, y: event.clientY, card });
-  };
+  }, []);
 
-  const openCollectionContextMenu = (event, collection) => {
+  const openCollectionContextMenu = useCallback((event, collection) => {
     if (!collection.editable && !collection.deletable) return;
     event.preventDefault();
     setContextMenu({ kind: 'collection', x: event.clientX, y: event.clientY, collection });
-  };
+  }, []);
 
   const handleEditCard = async () => {
     if (contextMenu?.kind !== 'card' || !contextMenu.card) return;
@@ -1150,31 +1201,34 @@ function App() {
     });
   };
 
-  const handleCardClick = async (event, card) => {
-    if (event.defaultPrevented) return;
-    const target = event.target;
-    if (target instanceof Element) {
-      if (target.closest('.card-drag-handle') || target.closest('.card-mini-btn') || target.closest('.card-select')) {
+  const handleCardClick = useCallback(
+    async (event, card) => {
+      if (event.defaultPrevented) return;
+      const target = event.target;
+      if (target instanceof Element) {
+        if (target.closest('.card-drag-handle') || target.closest('.card-mini-btn') || target.closest('.card-select')) {
+          return;
+        }
+      }
+
+      if (cardDragActiveRef.current || Date.now() < suppressCardOpenUntilRef.current) {
         return;
       }
-    }
 
-    if (cardDragActiveRef.current || Date.now() < suppressCardOpenUntilRef.current) {
-      return;
-    }
+      if (manageMode) {
+        toggleCardSelection(card.id);
+        return;
+      }
 
-    if (manageMode) {
-      toggleCardSelection(card.id);
-      return;
-    }
+      if (event.ctrlKey || event.metaKey || event.button === 1) {
+        await openBookmarkInNewTab(card.url);
+        return;
+      }
 
-    if (event.ctrlKey || event.metaKey || event.button === 1) {
-      await openBookmarkInNewTab(card.url);
-      return;
-    }
-
-    await openBookmarkInCurrentTab(card.url);
-  };
+      await openBookmarkInCurrentTab(card.url);
+    },
+    [manageMode, toggleCardSelection]
+  );
 
   const handleOpenAllInCollection = useCallback(
     async (collectionId) => {
@@ -1210,7 +1264,7 @@ function App() {
       await updateBookmark(editorState.cardId, { title: nextTitle, url: nextUrl });
 
       if (editorState.targetParentId !== editorState.currentParentId && targetCollection) {
-        await moveBookmark(editorState.cardId, editorState.targetParentId, targetCollection.cards.length);
+        await moveBookmarkToCardPosition(editorState.cardId, editorState.targetParentId, null);
       }
 
       showUndo(t('bookmarkUpdated'), async () => {
