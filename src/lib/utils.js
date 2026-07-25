@@ -9,20 +9,34 @@ export function logError(context, err) {
 
 export function faviconCandidates(url) {
   const extensionFavicon = `/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
-  return [extensionFavicon, `https://www.google.com/s2/favicons?sz=64&domain_url=${encodeURIComponent(url)}`];
+  // The fallback goes to a third party — send only the domain, never the full
+  // URL (paths/query strings can carry tokens or private data).
+  let domain = '';
+  try {
+    domain = new URL(url).hostname;
+  } catch {
+    // Not a parseable URL: skip the external fallback entirely.
+  }
+  return domain
+    ? [extensionFavicon, `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`]
+    : [extensionFavicon];
 }
 
+// Canonical dedup key: protocol-insensitive, hostname lowercased, trailing
+// slash trimmed (except root). Path/query case is preserved — URL paths are
+// case-sensitive, so /User/Repo and /user/repo must stay distinct keys.
 export function normalizeUrlKey(rawUrl) {
   try {
     const url = new URL(rawUrl);
     const host = url.hostname.toLowerCase();
     const path = url.pathname.endsWith('/') && url.pathname !== '/' ? url.pathname.slice(0, -1) : url.pathname;
-    return `${url.protocol}//${host}${path}${url.search}`;
-  } catch (err) {
-    logError('normalizeUrlKey', err);
+    return `${host}${path}${url.search}`;
+  } catch {
+    // Not a parseable URL is an ordinary fallback here, not an error worth logging.
     return String(rawUrl || '')
       .trim()
-      .toLowerCase();
+      .replace(/^https?:\/\//i, '')
+      .replace(/\/$/, '');
   }
 }
 

@@ -63,7 +63,7 @@ async function callClaudeAPI(bookmarks, existingCollections) {
 Existing collections: ${JSON.stringify(collectionNames)}
 
 Bookmarks to categorize:
-${bookmarks.map((b) => `- "${b.title}" (${b.url}) [currently in: ${b.currentCollection}]`).join('\n')}
+${bookmarks.map((b) => `- id:${b.id} | "${b.title}" (${b.url}) [currently in: ${b.currentCollection}]`).join('\n')}
 
 Respond with a JSON object:
 {
@@ -74,6 +74,7 @@ Respond with a JSON object:
 }
 
 Rules:
+- bookmarkId must be exactly one of the id values listed above
 - Prefer existing collections when possible
 - Only suggest new collections if bookmarks truly don't fit existing ones
 - Group by topic/domain (dev tools, reading, social, shopping, etc.)
@@ -85,7 +86,34 @@ Rules:
 
   const parsed = extractJsonObject(text);
   if (!parsed) throw new Error('Failed to parse AI response');
-  return parsed;
+  return sanitizeCategorizeResult(parsed, bookmarks);
+}
+
+// The model's output is untrusted: drop suggestions whose bookmarkId is not one
+// of the ids we sent (a hallucinated small-integer id could collide with a real
+// node elsewhere in the user's bookmark tree) and coerce fields to safe shapes.
+function sanitizeCategorizeResult(raw, bookmarks) {
+  const knownIds = new Set(bookmarks.map((b) => String(b.id)));
+
+  const suggestions = (Array.isArray(raw?.suggestions) ? raw.suggestions : [])
+    .filter(
+      (s) =>
+        s &&
+        knownIds.has(String(s.bookmarkId)) &&
+        typeof s.targetCollectionTitle === 'string' &&
+        s.targetCollectionTitle.trim()
+    )
+    .map((s) => ({
+      bookmarkId: String(s.bookmarkId),
+      targetCollectionTitle: s.targetCollectionTitle.trim(),
+      reason: typeof s.reason === 'string' ? s.reason : ''
+    }));
+
+  const newCollections = (Array.isArray(raw?.newCollections) ? raw.newCollections : [])
+    .filter((name) => typeof name === 'string' && name.trim())
+    .map((name) => name.trim());
+
+  return { suggestions, newCollections };
 }
 
 /**

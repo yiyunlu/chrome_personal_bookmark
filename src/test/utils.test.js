@@ -2,26 +2,44 @@ import { describe, it, expect } from 'vitest';
 import { faviconCandidates, normalizeUrlKey, sortSnapshots } from '../lib/utils';
 
 describe('faviconCandidates', () => {
-  it('returns extension favicon and Google favicon URLs', () => {
-    const result = faviconCandidates('https://example.com');
+  it('returns extension favicon and a domain-only Google fallback', () => {
+    const result = faviconCandidates('https://example.com/secret/path?token=abc');
     expect(result).toHaveLength(2);
     expect(result[0]).toContain('/_favicon/');
-    expect(result[0]).toContain(encodeURIComponent('https://example.com'));
+    expect(result[0]).toContain(encodeURIComponent('https://example.com/secret/path?token=abc'));
     expect(result[1]).toContain('google.com/s2/favicons');
+    // The third-party fallback must never receive the full URL.
+    expect(result[1]).toContain('domain=example.com');
+    expect(result[1]).not.toContain('secret');
+    expect(result[1]).not.toContain('token');
+  });
+
+  it('skips the external fallback for unparseable URLs', () => {
+    const result = faviconCandidates('not a url');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toContain('/_favicon/');
   });
 });
 
 describe('normalizeUrlKey', () => {
-  it('normalizes a standard URL', () => {
-    expect(normalizeUrlKey('https://Example.COM/path/')).toBe('https://example.com/path');
+  it('strips the protocol and normalizes a standard URL', () => {
+    expect(normalizeUrlKey('https://Example.COM/path/')).toBe('example.com/path');
+  });
+
+  it('treats http and https variants as the same key', () => {
+    expect(normalizeUrlKey('http://example.com/a')).toBe(normalizeUrlKey('https://example.com/a'));
   });
 
   it('preserves query strings', () => {
-    expect(normalizeUrlKey('https://example.com/page?q=test')).toBe('https://example.com/page?q=test');
+    expect(normalizeUrlKey('https://example.com/page?q=test')).toBe('example.com/page?q=test');
+  });
+
+  it('preserves path/query case (URL paths are case-sensitive)', () => {
+    expect(normalizeUrlKey('https://github.com/User/Repo')).not.toBe(normalizeUrlKey('https://github.com/user/repo'));
   });
 
   it('does not strip trailing slash on root path', () => {
-    expect(normalizeUrlKey('https://example.com/')).toBe('https://example.com/');
+    expect(normalizeUrlKey('https://example.com/')).toBe('example.com/');
   });
 
   it('handles invalid URLs gracefully', () => {
@@ -32,7 +50,7 @@ describe('normalizeUrlKey', () => {
   });
 
   it('lowercases hostname', () => {
-    expect(normalizeUrlKey('https://GitHub.COM/repo')).toBe('https://github.com/repo');
+    expect(normalizeUrlKey('https://GitHub.COM/repo')).toBe('github.com/repo');
   });
 });
 

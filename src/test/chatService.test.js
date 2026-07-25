@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { parseCommand, executeCommand, COMMAND_TYPES } from '../lib/chatService';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { parseCommand, executeCommand, processChat, COMMAND_TYPES } from '../lib/chatService';
 
 describe('parseCommand', () => {
   it('parses search commands', () => {
@@ -33,6 +33,14 @@ describe('parseCommand', () => {
     expect(parseCommand('查找重复').type).toBe(COMMAND_TYPES.FIND_DUPLICATES);
     expect(parseCommand('去重').type).toBe(COMMAND_TYPES.FIND_DUPLICATES);
     expect(parseCommand('duplicates').type).toBe(COMMAND_TYPES.FIND_DUPLICATES);
+    // Regression: must not be swallowed by the SEARCH pattern ("find …").
+    expect(parseCommand('find duplicates').type).toBe(COMMAND_TYPES.FIND_DUPLICATES);
+  });
+
+  it('does not parse "remove … to …" as a move (embedded "move" substring)', () => {
+    const cmd = parseCommand('remove old article to read');
+    expect(cmd.type).toBe(COMMAND_TYPES.DELETE);
+    expect(cmd.params.bookmarkQuery).toBe('old article to read');
   });
 
   it('parses organize commands', () => {
@@ -127,8 +135,89 @@ describe('executeCommand', () => {
     expect(result.action).toBe('delete');
   });
 
+  it('treats protocol variants as duplicates', () => {
+    const ctx = {
+      ...context,
+      allCards: [
+        { id: 'b1', title: 'A', url: 'http://reactjs.org/docs', collectionTitle: 'Dev' },
+        { id: 'b2', title: 'B', url: 'https://reactjs.org/docs', collectionTitle: 'Dev' }
+      ]
+    };
+    const result = executeCommand({ type: COMMAND_TYPES.FIND_DUPLICATES, params: {} }, ctx);
+    expect(result.results).toHaveLength(1);
+  });
+
+  it('never flags case-different paths as duplicates (deleting one would lose a distinct URL)', () => {
+    const ctx = {
+      ...context,
+      allCards: [
+        { id: 'b1', title: 'A', url: 'https://github.com/User/Repo', collectionTitle: 'Dev' },
+        { id: 'b2', title: 'B', url: 'https://github.com/user/repo', collectionTitle: 'Dev' }
+      ]
+    };
+    const result = executeCommand({ type: COMMAND_TYPES.FIND_DUPLICATES, params: {} }, ctx);
+    expect(result.message).toContain('未发现');
+  });
+
+  it('does not truncate actionable results — the confirm must cover the promised count', () => {
+    const manyCards = Array.from({ length: 25 }, (_, i) => ({
+      id: `m${i}`,
+      title: `Item ${i}`,
+      url: `https://items.example/${i}`,
+      collectionTitle: 'Development'
+    }));
+    const ctx = { ...context, allCards: manyCards };
+    const result = executeCommand(
+      { type: COMMAND_TYPES.MOVE, params: { bookmarkQuery: 'item', targetCollection: 'Reading' } },
+      ctx
+    );
+    expect(result.message).toContain('25');
+    expect(result.results).toHaveLength(25);
+  });
+
   it('handles organize command', () => {
     const result = executeCommand({ type: COMMAND_TYPES.ORGANIZE, params: {} }, context);
     expect(result.action).toBe('organize');
+  });
+});
+
+describe('processChat (Claude API mode)', () => {
+  const context = {
+    collections: [{ id: 'c1', title: 'Development', cards: [] }],
+    allCards: [
+      { id: 'b1', title: 'React Docs', url: 'https://reactjs.org', collectionTitle: 'Development' }
+    ]
+  };
+
+  beforeEach(() => {
+    chrome.storage.local.get = vi.fn((_keys, cb) => cb({ tabhub_ai_api_key: 'test-api-key' }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('executes the structured command Claude returns', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          content: [{ text: JSON.stringify({ type: 'search', message: '这是搜索结果', params: { query: 'react' } }) }]
+        })
+      }))
+    );
+
+    // The response message is generated locally via i18n; Claude only supplies
+    // the structured command, so assert on the command it caused us to execute.
+    const result = await processChat('帮我找 react 相关的书签', context);
+    expect(result.results?.[0]?.title).toBe('React Docs');
+  });
+
+  it('falls back to pattern matching when the API call fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, text: async () => 'err' })));
+
+    const result = await processChat('搜索 react', context);
+    expect(result.results?.[0]?.title).toBe('React Docs');
   });
 });
