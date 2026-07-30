@@ -17,9 +17,14 @@ export function useCollections() {
   const initialLoadDoneRef = useRef(false);
 
   // --- Data refresh ---
+  const refreshSeqRef = useRef(0);
   const refresh = useCallback(async (preferredSourceId = activeSourceRef.current) => {
+    // Concurrent refreshes can resolve out of order (e.g. a slow fetch landing
+    // after a source switch); only the most recent one may write state.
+    const seq = ++refreshSeqRef.current;
     try {
       const result = await getCollectionsPayload(preferredSourceId);
+      if (seq !== refreshSeqRef.current) return;
       setTabHubRootId(result.tabHubRootId);
       setSources(result.sources);
       setActiveSourceId(result.activeSourceId);
@@ -28,6 +33,7 @@ export function useCollections() {
       setCollections(result.collections);
       setError('');
     } catch (e) {
+      if (seq !== refreshSeqRef.current) return;
       setError(e?.message || 'Failed to load collections');
     } finally {
       setLoading(false);
@@ -42,10 +48,20 @@ export function useCollections() {
       initialLoadDoneRef.current = true;
     })();
 
+    // Bulk operations (save tabs, batch move, undo) fire one bookmark event per
+    // node — coalesce the storm into a single refetch.
+    let syncDebounceTimer = null;
     const unsubscribe = subscribeBookmarksChanges(() => {
-      refresh(activeSourceRef.current);
+      if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+      syncDebounceTimer = setTimeout(() => {
+        syncDebounceTimer = null;
+        refresh(activeSourceRef.current);
+      }, 150);
     });
-    return () => unsubscribe();
+    return () => {
+      if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+      unsubscribe();
+    };
   }, [refresh]);
 
   // --- Persist activeSourceId to storage ---

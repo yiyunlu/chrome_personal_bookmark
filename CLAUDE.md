@@ -47,21 +47,22 @@
     │   ├── Toolbar.jsx               # Toolbar + BatchToolbar
     │   └── UndoToast.jsx             # Undo notification
     ├── hooks/
-    │   ├── useKeyboardShortcuts.js   # Keyboard event handler
+    │   ├── useKeyboardShortcuts.js   # Keyboard event handler (shortcuts + Escape)
     │   ├── useTheme.js               # Theme detection, persistence, toggling
     │   └── useUndoStack.js           # Undo snapshot + timer logic
-    └── lib/
-        ├── aiService.js              # AI categorization (mock + Claude API)
-        ├── bookmarkService.js        # Chrome Bookmarks API wrapper (promisified)
-        ├── chatService.js            # NL command parsing + execution
-        ├── claudeClient.js           # Claude API HTTP client
-        ├── enrichmentService.js      # Dead link detection + auto-tagging
-        ├── i18n.js                   # Internationalization (zh-CN, en) + language detection
-        ├── searchService.js          # Smart search with fuzzy + category matching
-        ├── storage.js                # chrome.storage.local get/set wrappers
-        ├── taxonomy.js               # Category taxonomy for AI categorization
-        ├── types.js                  # Shared type definitions / constants
-        └── utils.js                  # faviconCandidates, normalizeUrlKey, sortSnapshots
+    ├── lib/
+    │   ├── aiService.js              # AI categorization (mock + Claude API)
+    │   ├── bookmarkService.js        # Chrome Bookmarks API wrapper (promisified)
+    │   ├── chatService.js            # NL command parsing + execution
+    │   ├── claudeClient.js           # Claude API HTTP client
+    │   ├── enrichmentService.js      # Dead link detection + auto-tagging
+    │   ├── i18n.js                   # Internationalization (zh-CN, en) + language detection
+    │   ├── searchService.js          # Smart search with fuzzy + category matching
+    │   ├── storage.js                # chrome.storage.local get/set wrappers
+    │   ├── taxonomy.js               # Category taxonomy for AI categorization
+    │   ├── types.js                  # Shared type definitions / constants
+    │   └── utils.js                  # faviconCandidates, normalizeUrlKey, sortSnapshots
+    └── test/                         # Vitest suites + Chrome API mock (setup.js)
 ```
 
 ## Development Commands
@@ -88,6 +89,7 @@ The `App` component in `src/main.jsx` owns all state and business logic. Present
 - `subscribeBookmarksChanges()` — real-time sync listener
 - `saveCurrentWindowTabsToCollection()` — bulk save tabs
 - CRUD: `moveBookmark()`, `updateBookmark()`, `renameCollectionFolder()`
+- `moveBookmarkToCardPosition()` — translates a card-relative position (SortableJS drop index among rendered cards) into the real chrome child index (which also counts subfolders); null/past-end appends. Use this for any card move driven by UI position.
 
 ### AI service
 `src/lib/aiService.js` provides bookmark categorization. Two modes:
@@ -99,7 +101,7 @@ Key exports: `categorizeBookmarks(bookmarks, existingCollections)`, `getApiKey()
 Returns `{suggestions: [{bookmarkId, targetCollectionTitle, reason}], newCollections: string[]}`
 
 ### Smart search
-`src/lib/searchService.js` enhances search with fuzzy matching and category keyword expansion (e.g., "social media" → twitter, reddit). Falls back to Claude API semantic search when API key is set.
+`src/lib/searchService.js` enhances search with fuzzy matching and category keyword expansion (e.g., "social media" → twitter, reddit). A Claude-powered `semanticSearch()` exists but is not wired into the UI — `main.jsx` only calls the local `smartSearch()`.
 
 ### Enrichment service
 `src/lib/enrichmentService.js` provides dead link detection (batch HEAD requests with timeout), auto-tag generation from URL/title patterns, and domain extraction.
@@ -114,7 +116,7 @@ Managed by `useTheme` hook. CSS custom properties (light/dark) in `index.css`, t
 Tailwind-first: components use Tailwind utility classes inline. `index.css` contains only CSS custom properties for theming, base resets, scrollbar styles, and keyframe animations. Colors are referenced via `var(--accent)`, `var(--panel-bg)`, etc. for automatic theme support.
 
 ### Drag-and-drop
-SortableJS instances managed in `useRef(Map)` within `main.jsx`. Three scopes: nav sidebar, module (collection cards), and bookmark cards. After card drops, a hard reload is triggered (`HARD_RELOAD_AFTER_CARD_DROP = true`) as a Chrome compatibility workaround.
+SortableJS instances managed in `useRef(Map)` within `main.jsx`. Three scopes: nav sidebar, module (collection cards), and bookmark cards. After a card drop, the handler reverts SortableJS's DOM mutation before React reconciles (otherwise React's virtual DOM desyncs → removeChild crash), then persists the move via `moveBookmarkToCardPosition()` and refreshes state. There is no hard reload.
 
 ### Data model
 - **Sources** = top-level bookmark folders under the TabHub root
@@ -127,9 +129,6 @@ SortableJS instances managed in `useRef(Map)` within `main.jsx`. Three scopes: n
 // bookmarkService.js
 TABHUB_ROOT_NAME = 'TabHub'
 TRASH_FOLDER_NAME = '.TabHub Trash'
-
-// main.jsx
-HARD_RELOAD_AFTER_CARD_DROP = true
 ```
 
 ## Code Conventions
@@ -137,7 +136,7 @@ HARD_RELOAD_AFTER_CARD_DROP = true
 - **Plain JavaScript** with JSX — no TypeScript
 - **Async/await** throughout, with try-catch for error handling
 - **DOM data attributes**: `data-collection-id`, `data-card-id`, `data-draggable` for query selection
-- **Chinese UI text**: User-facing strings are in Chinese; code identifiers are in English
+- **i18n UI text**: User-facing strings go through `t()` from `src/lib/i18n.js` (zh-CN default, en supported); code identifiers are in English
 - **Component pattern**: Presentational components receive props; App owns state
 - **Hook pattern**: Reusable stateful logic extracted to `src/hooks/`
 - **Icons**: Use `lucide-react` — import individual icons (e.g. `import { Bookmark } from 'lucide-react'`)

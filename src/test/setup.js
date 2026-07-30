@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom';
 
-// Mock Chrome extension APIs
+// Mock Chrome extension APIs.
+// Chrome async APIs take a trailing callback after a variable number of
+// arguments (e.g. bookmarks.getTree(cb) vs bookmarks.move(id, dest, cb)),
+// so the stub must find the callback rather than assume a fixed arity.
 const noop = () => {};
 
 // Chrome APIs pass the callback as the last argument.
@@ -36,6 +39,7 @@ globalThis.chrome = {
     remove: createDispatchable(),
     removeTree: createDispatchable(),
     getSubTree: createDispatchable(),
+    getChildren: createDispatchable(),
     onCreated: createEventTarget(),
     onRemoved: createEventTarget(),
     onChanged: createEventTarget(),

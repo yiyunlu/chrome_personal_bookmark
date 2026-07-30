@@ -5,7 +5,10 @@ import { t } from '../lib/i18n';
 import { logError } from '../lib/utils';
 import { generateTags } from '../lib/enrichmentService';
 
-export function BookmarkCard({
+// Memoized: with hundreds of bookmarks, unrelated App state changes (toasts,
+// chat, modals) must not re-render every card. All callback props are
+// useCallback-stabilized in main.jsx.
+export const BookmarkCard = React.memo(function BookmarkCard({
   card,
   manageMode,
   isSelected,
@@ -123,9 +126,9 @@ export function BookmarkCard({
       )}
     </div>
   );
-}
+});
 
-export function CollectionCard({
+export const CollectionCard = React.memo(function CollectionCard({
   collection,
   collapsed,
   moduleDraggable,
@@ -237,4 +240,4 @@ export function CollectionCard({
       )}
     </article>
   );
-}
+});

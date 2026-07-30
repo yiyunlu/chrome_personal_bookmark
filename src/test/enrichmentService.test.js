@@ -1,5 +1,84 @@
-import { describe, it, expect } from 'vitest';
-import { generateTags, extractDomain, enrichBookmarks } from '../lib/enrichmentService';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { checkLink, checkDeadLinks, generateTags, extractDomain, enrichBookmarks } from '../lib/enrichmentService';
+
+describe('checkLink', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('reports a confirmed-dead link when the server exposes its status via CORS', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 404 })));
+    await expect(checkLink('https://example.com/gone')).resolves.toMatchObject({
+      alive: false,
+      status: 404,
+      error: 'HTTP 404',
+      linkStatus: 'dead'
+    });
+  });
+
+  it('reports alive with real status for reachable CORS hosts', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200 })));
+    await expect(checkLink('https://example.com')).resolves.toMatchObject({
+      alive: true,
+      status: 200,
+      linkStatus: 'alive'
+    });
+  });
+
+  it('retries with GET when the server rejects HEAD', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 405 })
+      .mockResolvedValueOnce({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(checkLink('https://example.com')).resolves.toMatchObject({ alive: true, linkStatus: 'alive' });
+    expect(fetchMock.mock.calls[1][1].method).toBe('GET');
+  });
+
+  it('treats a CORS-blocked but reachable host as unverifiable, never dead', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce({ type: 'opaque' });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(checkLink('https://no-cors-host.example')).resolves.toMatchObject({ linkStatus: 'unknown' });
+    expect(fetchMock.mock.calls[1][1].mode).toBe('no-cors');
+  });
+
+  it('reports unknown (not dead) when both probes fail — the status is unverifiable', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))));
+    await expect(checkLink('https://gone.invalid')).resolves.toMatchObject({
+      alive: false,
+      status: null,
+      linkStatus: 'unknown'
+    });
+  });
+});
+
+describe('checkDeadLinks', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('checks all bookmarks in batches and reports progress', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url) => (url.includes('dead') ? { ok: false, status: 404 } : { ok: true, status: 200 }))
+    );
+    const bookmarks = Array.from({ length: 6 }, (_, i) => ({
+      id: `b${i}`,
+      title: `Bookmark ${i}`,
+      url: i === 3 ? 'https://dead.example/page' : `https://ok.example/${i}`
+    }));
+    const progress = [];
+    const results = await checkDeadLinks(bookmarks, (p) => progress.push(p));
+
+    expect(results).toHaveLength(6);
+    expect(results.filter((r) => !r.alive).map((r) => r.bookmarkId)).toEqual(['b3']);
+    expect(progress.map((p) => p.checked)).toEqual([5, 6]);
+    expect(progress.every((p) => p.total === 6)).toBe(true);
+  });
+});
 
 describe('extractDomain', () => {
   it('extracts domain from URL', () => {
