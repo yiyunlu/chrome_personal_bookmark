@@ -23,34 +23,50 @@ import { t } from './i18n';
  * @returns {Promise<{alive: boolean, status: number|null, error: string|null, linkStatus: 'alive'|'dead'|'unknown'}>}
  */
 export async function checkLink(url) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    // CORS request first: when the server sends Access-Control-Allow-Origin we
+    // see the real HTTP status — the only way to confirm a link is truly dead.
+    try {
+      let response = await fetch(url, { method: 'HEAD', signal: controller.signal });
+      if (response.status === 405 || response.status === 501) {
+        // Some servers reject HEAD; retry with GET before declaring the link dead.
+        response = await fetch(url, { method: 'GET', signal: controller.signal });
+      }
 
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: controller.signal
-    });
+      if (response.ok) {
+        return { alive: true, status: response.status, error: null, linkStatus: 'alive' };
+      }
 
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      return { alive: true, status: response.status, error: null, linkStatus: 'alive' };
+      // Clear HTTP error responses (4xx, 5xx) are confirmed dead
+      return {
+        alive: false,
+        status: response.status,
+        error: `HTTP ${response.status}`,
+        linkStatus: 'dead'
+      };
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      // A CORS rejection and a network failure are indistinguishable here, so
+      // fall through to a no-cors probe that can still tell the two apart.
     }
 
-    // Clear HTTP error responses (4xx, 5xx) are confirmed dead
-    return {
-      alive: false,
-      status: response.status,
-      error: `HTTP ${response.status}`,
-      linkStatus: 'dead'
-    };
+    // Opaque success: the host answered but hides its HTTP status (no CORS
+    // headers). Reachable, yet the status is unverifiable — never "dead".
+    await fetch(url, { method: 'HEAD', mode: 'no-cors', signal: controller.signal });
+    return { alive: false, status: null, error: t('deadLinkUnknown'), linkStatus: 'unknown' };
   } catch (err) {
     // Network errors, timeouts, and non-HTTP errors are "unknown" — not confirmed dead
     if (err.name === 'AbortError') {
       return { alive: false, status: null, error: t('linkTimeout'), linkStatus: 'unknown' };
     }
     return { alive: false, status: null, error: err.message || t('linkUnreachable'), linkStatus: 'unknown' };
+  } finally {
+    // Runs on every path — the original cleared the timer only on success,
+    // leaking the 8s abort timer whenever a fetch threw.
+    clearTimeout(timeoutId);
   }
 }
 

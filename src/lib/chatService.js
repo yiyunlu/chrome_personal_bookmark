@@ -22,34 +22,37 @@ export const COMMAND_TYPES = {
   UNKNOWN: 'unknown'
 };
 
+// Order matters: specific intents (duplicates, move, delete) must be tried
+// before the broad SEARCH pattern, and English keywords need \b so e.g.
+// "remove" is not matched by the embedded "move".
 const PATTERNS = [
   {
-    regex: /(?:搜索|查找|找|search|find)\s+(.+)/i,
-    type: COMMAND_TYPES.SEARCH,
-    extract: (m) => ({ query: m[1].trim() })
-  },
-  {
-    regex: /(?:移动|move)\s+(.+?)\s+(?:到|to)\s+(.+)/i,
-    type: COMMAND_TYPES.MOVE,
-    extract: (m) => ({ bookmarkQuery: m[1].trim(), targetCollection: m[2].trim() })
-  },
-  {
-    regex: /(?:删除|delete|remove)\s+(.+)/i,
-    type: COMMAND_TYPES.DELETE,
-    extract: (m) => ({ bookmarkQuery: m[1].trim() })
-  },
-  {
-    regex: /(?:去重|查找重复|重复|duplicates|find duplicates)/i,
+    regex: /(?:去重|查找重复|重复|\bduplicates\b)/i,
     type: COMMAND_TYPES.FIND_DUPLICATES,
     extract: () => ({})
   },
   {
-    regex: /(?:整理|organize|分类|categorize|sort)/i,
+    regex: /(?:移动|\bmove)\s+(.+?)\s+(?:到|to)\s+(.+)/i,
+    type: COMMAND_TYPES.MOVE,
+    extract: (m) => ({ bookmarkQuery: m[1].trim(), targetCollection: m[2].trim() })
+  },
+  {
+    regex: /(?:删除|\bdelete|\bremove)\s+(.+)/i,
+    type: COMMAND_TYPES.DELETE,
+    extract: (m) => ({ bookmarkQuery: m[1].trim() })
+  },
+  {
+    regex: /(?:搜索|查找|找|\bsearch|\bfind)\s+(.+)/i,
+    type: COMMAND_TYPES.SEARCH,
+    extract: (m) => ({ query: m[1].trim() })
+  },
+  {
+    regex: /(?:整理|\borganize|分类|\bcategorize|\bsort)/i,
     type: COMMAND_TYPES.ORGANIZE,
     extract: () => ({})
   },
   {
-    regex: /(?:多少|几个|数量|统计|count|how many|stats)\s*(.*)/i,
+    regex: /(?:多少|几个|数量|统计|\bcount|\bhow many|\bstats)\s*(.*)/i,
     type: COMMAND_TYPES.INFO,
     extract: (m) => ({ query: (m[1] || '').trim() })
   }
@@ -95,6 +98,7 @@ export function executeCommand(command, context) {
         return { message: t('chatNoResults', searchQuery) };
       }
       return {
+        // Display-only results, so showing the top 10 of N is fine here.
         message: t('chatFoundBookmarks', searchResults.length),
         results: searchResults.slice(0, 10).map((r) => ({
           id: r.bookmark.id,
@@ -122,10 +126,12 @@ export function executeCommand(command, context) {
         return { message: t('chatCollectionNotFound', targetCollection) };
       }
 
+      // Actionable results are never truncated: the confirm button must act on
+      // exactly the set the message promises.
       return {
         message: t('chatWillMove', matches.length, target.title),
         action: 'move',
-        results: matches.slice(0, 20).map((c) => ({ id: c.id, title: c.title })),
+        results: matches.map((c) => ({ id: c.id, title: c.title })),
         targetCollectionId: target.id,
         targetCollectionTitle: target.title
       };
@@ -146,15 +152,21 @@ export function executeCommand(command, context) {
       return {
         message: t('chatConfirmDelete', matches.length),
         action: 'delete',
-        results: matches.slice(0, 20).map((c) => ({ id: c.id, title: c.title, url: c.url }))
+        results: matches.map((c) => ({ id: c.id, title: c.title, url: c.url }))
       };
     }
 
     case COMMAND_TYPES.FIND_DUPLICATES: {
+      // Same canonical key as auto-organize (normalizeUrlKey): protocol-insensitive
+      // but case-preserving on path/query, so github.com/User/Repo is never
+      // "deduplicated" against github.com/user/repo.
       const seen = new Map();
       const duplicates = [];
       for (const card of allCards) {
         const key = normalizeUrlKey(card.url);
+        // An empty key (missing/unparseable url) must not group every such card
+        // together and report them as duplicates of each other.
+        if (!key) continue;
         if (seen.has(key)) {
           duplicates.push(card);
         } else {
@@ -167,8 +179,10 @@ export function executeCommand(command, context) {
       }
 
       return {
+        // action:'delete' makes these actionable — never truncate, or the confirm
+        // button would delete 10 while the message promises N.
         message: t('chatFoundDuplicates', duplicates.length),
-        results: duplicates.slice(0, 10).map((c) => ({
+        results: duplicates.map((c) => ({
           id: c.id,
           title: c.title,
           url: c.url,

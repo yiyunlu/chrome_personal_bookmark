@@ -6,6 +6,13 @@ const TRASH_FOLDER_NAME = '.TabHub Trash';
 function chromeApi(obj, method) {
   return (...args) =>
     new Promise((resolve, reject) => {
+      // Resolved at call time, not module scope: keeps the test mocks' _impl
+      // dispatch working, and lets `npm run dev` in a plain browser tab load the
+      // UI with a clear error instead of crashing on an undefined chrome.*.
+      if (!obj || typeof obj[method] !== 'function') {
+        reject(new Error(`chrome.${method} 不可用 — 请将 TabHub 作为 Chrome 扩展加载`));
+        return;
+      }
       obj[method](...args, (result) => {
         const err = chrome.runtime?.lastError;
         if (err) {
@@ -17,15 +24,16 @@ function chromeApi(obj, method) {
     });
 }
 
-const getTree = chromeApi(chrome.bookmarks, 'getTree');
-const createBookmark = chromeApi(chrome.bookmarks, 'create');
-const moveBookmarkApi = chromeApi(chrome.bookmarks, 'move');
-const updateBookmarkApi = chromeApi(chrome.bookmarks, 'update');
-const removeTreeApi = chromeApi(chrome.bookmarks, 'removeTree');
-const updateTabApi = chromeApi(chrome.tabs, 'update');
-const queryTabsApi = chromeApi(chrome.tabs, 'query');
-const createTabApi = chromeApi(chrome.tabs, 'create');
-const getSubTreeApi = chromeApi(chrome.bookmarks, 'getSubTree');
+const getTree = chromeApi(globalThis.chrome?.bookmarks, 'getTree');
+const createBookmark = chromeApi(globalThis.chrome?.bookmarks, 'create');
+const moveBookmarkApi = chromeApi(globalThis.chrome?.bookmarks, 'move');
+const updateBookmarkApi = chromeApi(globalThis.chrome?.bookmarks, 'update');
+const removeTreeApi = chromeApi(globalThis.chrome?.bookmarks, 'removeTree');
+const updateTabApi = chromeApi(globalThis.chrome?.tabs, 'update');
+const queryTabsApi = chromeApi(globalThis.chrome?.tabs, 'query');
+const createTabApi = chromeApi(globalThis.chrome?.tabs, 'create');
+const getSubTreeApi = chromeApi(globalThis.chrome?.bookmarks, 'getSubTree');
+const getChildrenApi = chromeApi(globalThis.chrome?.bookmarks, 'getChildren');
 
 function normalizeCollection(folder, titlePrefix = '') {
   const title = folder.title || 'Untitled Collection';
@@ -171,9 +179,14 @@ export async function getCollectionsPayload(preferredSourceId) {
       ? preferredSourceId
       : defaultSourceId) || sources[0]?.id;
 
-  const [activeRoot] = await getSubTreeApi(activeSourceId);
-  const fallbackRoot = findNodeById(tree, activeSourceId);
-  const rootNode = activeRoot || fallbackRoot || { children: [] };
+  let activeRoot = null;
+  try {
+    [activeRoot] = await getSubTreeApi(activeSourceId);
+  } catch {
+    // The source folder can vanish between getTree and getSubTree (deleted in
+    // another window / by sync); degrade to the already-fetched tree snapshot.
+  }
+  const rootNode = activeRoot || findNodeById(tree, activeSourceId) || { children: [] };
   const trashFolder = (rootNode.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
   const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
   const collections = collectNestedCollections(rootNode, true, hiddenFolderIds);
@@ -211,6 +224,9 @@ export async function getCardsForSource(sourceId) {
 }
 
 export function subscribeBookmarksChanges(onChange) {
+  if (!globalThis.chrome?.bookmarks?.onCreated) {
+    return () => {};
+  }
   const handler = () => onChange();
   chrome.bookmarks.onCreated.addListener(handler);
   chrome.bookmarks.onRemoved.addListener(handler);
@@ -239,11 +255,21 @@ export async function getOpenTabs() {
     }));
 }
 
+// Local wall-clock timestamp — toISOString() would label the folder in UTC,
+// so an evening save could show tomorrow's date.
+function defaultSaveFolderName(now = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+  );
+}
+
 export async function saveCurrentWindowTabsToCollection(rootId, { tabs, folderName } = {}) {
   const savableTabs =
     tabs ||
     (await queryTabsApi({ currentWindow: true })).filter((tab) => tab.url && /^https?:/i.test(tab.url));
-  const name = folderName || new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const name = folderName || defaultSaveFolderName();
   const folder = await createBookmark({
     parentId: rootId,
     title: name
@@ -264,6 +290,24 @@ export async function saveCurrentWindowTabsToCollection(rootId, { tabs, folderNa
 
 export async function moveBookmark(bookmarkId, parentId, index) {
   return moveBookmarkApi(bookmarkId, { parentId, index });
+}
+
+// chrome.bookmarks indexes count every child of a folder — subfolders included —
+// while the UI only renders URL bookmarks (cards). Translates a card-relative
+// position (e.g. a SortableJS drop index) into the folder's real child index by
+// inserting before the card currently at that position; chrome.bookmarks.move
+// interprets the index against the pre-move child list, so passing that card's
+// absolute index is correct for cross-folder and both same-folder directions.
+// A null/past-the-end position appends to the folder. Children are fetched at
+// call time, so this is also safe inside deferred undo callbacks.
+export async function moveBookmarkToCardPosition(bookmarkId, parentId, cardPosition) {
+  const children = await getChildrenApi(parentId);
+  const cards = children.filter((node) => !!node.url && node.id !== bookmarkId);
+  const nextCard = cardPosition == null ? undefined : cards[cardPosition];
+  return moveBookmarkApi(bookmarkId, {
+    parentId,
+    ...(nextCard ? { index: nextCard.index } : {})
+  });
 }
 
 export async function updateBookmark(bookmarkId, changes) {

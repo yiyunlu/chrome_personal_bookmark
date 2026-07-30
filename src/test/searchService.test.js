@@ -35,15 +35,21 @@ describe('smartSearch', () => {
     expect(results.some((r) => r.bookmark.id === '4')).toBe(true);
   });
 
-  it('expands category queries for "social media"', () => {
-    const results = smartSearch('social', bookmarks);
-    expect(results.some((r) => r.bookmark.id === '3')).toBe(true); // twitter
+  // These fixtures match ONLY via category expansion: the query shares no
+  // substring/fuzzy overlap with title, URL, or collection, so the tests fail
+  // if the expansion feature is removed.
+  it('expands "social media" to platform keywords', () => {
+    const bookmark = { id: '9', title: '推文时间线', url: 'https://twitter.com/timeline', collectionTitle: 'Misc' };
+    const results = smartSearch('social media', [bookmark]);
+    expect(results).toHaveLength(1);
+    expect(results[0].matchReason).toBe('语义匹配');
   });
 
-  it('expands category queries for "dev"', () => {
-    const results = smartSearch('dev', bookmarks);
-    // Should match github, stackoverflow via category expansion
-    expect(results.length).toBeGreaterThanOrEqual(2);
+  it('expands "dev tools" to development keywords', () => {
+    const bookmark = { id: '10', title: 'GitHub 主页', url: 'https://github.com', collectionTitle: '常用' };
+    const results = smartSearch('dev tools', [bookmark]);
+    expect(results).toHaveLength(1);
+    expect(results[0].matchReason).toBe('语义匹配');
   });
 
   it('performs fuzzy matching', () => {

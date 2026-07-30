@@ -23,7 +23,7 @@ A Chrome extension that replaces your new tab page with a powerful bookmark mana
 - Chrome Bookmarks API + Storage API
 - SortableJS (drag-and-drop)
 - lucide-react (icons)
-- ESLint 9 + Prettier + Vitest (72 tests)
+- ESLint 9 + Prettier + Vitest unit & component tests
 
 ## Installation
 
