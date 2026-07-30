@@ -1,10 +1,12 @@
+import { logError } from './utils';
+
 const TABHUB_ROOT_NAME = 'TabHub';
 const TRASH_FOLDER_NAME = '.TabHub Trash';
 
-function promisifyChromeApi(fn) {
+function chromeApi(obj, method) {
   return (...args) =>
     new Promise((resolve, reject) => {
-      fn(...args, (result) => {
+      obj[method](...args, (result) => {
         const err = chrome.runtime?.lastError;
         if (err) {
           reject(new Error(err.message));
@@ -15,15 +17,15 @@ function promisifyChromeApi(fn) {
     });
 }
 
-const getTree = promisifyChromeApi(chrome.bookmarks.getTree.bind(chrome.bookmarks));
-const createBookmark = promisifyChromeApi(chrome.bookmarks.create.bind(chrome.bookmarks));
-const moveBookmarkApi = promisifyChromeApi(chrome.bookmarks.move.bind(chrome.bookmarks));
-const updateBookmarkApi = promisifyChromeApi(chrome.bookmarks.update.bind(chrome.bookmarks));
-const removeBookmarkApi = promisifyChromeApi(chrome.bookmarks.remove.bind(chrome.bookmarks));
-const removeTreeApi = promisifyChromeApi(chrome.bookmarks.removeTree.bind(chrome.bookmarks));
-const updateTabApi = promisifyChromeApi(chrome.tabs.update.bind(chrome.tabs));
-const queryTabsApi = promisifyChromeApi(chrome.tabs.query.bind(chrome.tabs));
-const getSubTreeApi = promisifyChromeApi(chrome.bookmarks.getSubTree.bind(chrome.bookmarks));
+const getTree = chromeApi(chrome.bookmarks, 'getTree');
+const createBookmark = chromeApi(chrome.bookmarks, 'create');
+const moveBookmarkApi = chromeApi(chrome.bookmarks, 'move');
+const updateBookmarkApi = chromeApi(chrome.bookmarks, 'update');
+const removeTreeApi = chromeApi(chrome.bookmarks, 'removeTree');
+const updateTabApi = chromeApi(chrome.tabs, 'update');
+const queryTabsApi = chromeApi(chrome.tabs, 'query');
+const createTabApi = chromeApi(chrome.tabs, 'create');
+const getSubTreeApi = chromeApi(chrome.bookmarks, 'getSubTree');
 
 function normalizeCollection(folder, titlePrefix = '') {
   const title = folder.title || 'Untitled Collection';
@@ -60,9 +62,7 @@ function collectNestedCollections(rootFolder, includeEmpty = true, hiddenFolderI
     }
 
     const nextPrefix = prefix ? `${prefix} / ${folder.title || 'Untitled'}` : folder.title || 'Untitled';
-    (folder.children || [])
-      .filter((node) => !node.url)
-      .forEach((childFolder) => walk(childFolder, nextPrefix));
+    (folder.children || []).filter((node) => !node.url).forEach((childFolder) => walk(childFolder, nextPrefix));
   };
 
   (rootFolder.children || [])
@@ -120,9 +120,7 @@ export async function ensureTabHubRootFolder() {
   const tree = await getTree();
   const allFolders = collectAllFolders(tree, []);
 
-  const existing = allFolders.find(
-    (folder) => folder.title?.trim().toLowerCase() === TABHUB_ROOT_NAME.toLowerCase()
-  );
+  const existing = allFolders.find((folder) => folder.title?.trim().toLowerCase() === TABHUB_ROOT_NAME.toLowerCase());
   if (existing) {
     return existing;
   }
@@ -137,17 +135,17 @@ export async function ensureTabHubRootFolder() {
 }
 
 export async function getCollectionsPayload(preferredSourceId) {
-  const tree = await getTree();
+  let tree = await getTree();
   let tabHubRoot = collectAllFolders(tree, []).find(
     (folder) => folder.title?.trim().toLowerCase() === TABHUB_ROOT_NAME.toLowerCase()
   );
 
   if (!tabHubRoot) {
     tabHubRoot = await ensureTabHubRootFolder();
+    tree = await getTree();
   }
 
-  const refreshedTree = await getTree();
-  const roots = (refreshedTree[0]?.children || []).filter((node) => !node.url);
+  const roots = (tree[0]?.children || []).filter((node) => !node.url);
   const sources = roots.map((node) => ({
     id: node.id,
     title: node.title || 'Untitled Root',
@@ -171,15 +169,12 @@ export async function getCollectionsPayload(preferredSourceId) {
   const activeSourceId =
     (preferredSourceId && sources.some((source) => source.id === preferredSourceId)
       ? preferredSourceId
-      : defaultSourceId) ||
-    sources[0]?.id;
+      : defaultSourceId) || sources[0]?.id;
 
   const [activeRoot] = await getSubTreeApi(activeSourceId);
-  const fallbackRoot = findNodeById(refreshedTree, activeSourceId);
+  const fallbackRoot = findNodeById(tree, activeSourceId);
   const rootNode = activeRoot || fallbackRoot || { children: [] };
-  const trashFolder = (rootNode.children || []).find(
-    (node) => !node.url && node.title === TRASH_FOLDER_NAME
-  );
+  const trashFolder = (rootNode.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
   const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
   const collections = collectNestedCollections(rootNode, true, hiddenFolderIds);
 
@@ -190,6 +185,29 @@ export async function getCollectionsPayload(preferredSourceId) {
     trashFolderId: trashFolder?.id || '',
     collections
   };
+}
+
+/**
+ * Fetch all bookmark cards for a given source (folder) ID.
+ * Returns a flat array of cards with collectionTitle attached.
+ */
+export async function getCardsForSource(sourceId) {
+  try {
+    const [sourceRoot] = await getSubTreeApi(sourceId);
+    if (!sourceRoot) return [];
+    const trashFolder = (sourceRoot.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
+    const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
+    const collections = collectNestedCollections(sourceRoot, false, hiddenFolderIds);
+    return collections.flatMap((col) =>
+      col.cards.map((card) => ({
+        ...card,
+        collectionId: col.id,
+        collectionTitle: col.title
+      }))
+    );
+  } catch {
+    return [];
+  }
 }
 
 export function subscribeBookmarksChanges(onChange) {
@@ -209,16 +227,28 @@ export function subscribeBookmarksChanges(onChange) {
   };
 }
 
-export async function saveCurrentWindowTabsToCollection(rootId) {
+export async function getOpenTabs() {
   const tabs = await queryTabsApi({ currentWindow: true });
-  const now = new Date();
-  const folderName = now.toISOString().slice(0, 19).replace('T', ' ');
+  return tabs
+    .filter((tab) => tab.url && /^https?:/i.test(tab.url))
+    .map((tab) => ({
+      id: tab.id,
+      title: tab.title || tab.url,
+      url: tab.url,
+      favIconUrl: tab.favIconUrl
+    }));
+}
+
+export async function saveCurrentWindowTabsToCollection(rootId, { tabs, folderName } = {}) {
+  const savableTabs =
+    tabs ||
+    (await queryTabsApi({ currentWindow: true })).filter((tab) => tab.url && /^https?:/i.test(tab.url));
+  const name = folderName || new Date().toISOString().slice(0, 19).replace('T', ' ');
   const folder = await createBookmark({
     parentId: rootId,
-    title: folderName
+    title: name
   });
 
-  const savableTabs = tabs.filter((tab) => tab.url && /^https?:/i.test(tab.url));
   await Promise.all(
     savableTabs.map((tab) =>
       createBookmark({
@@ -240,8 +270,22 @@ export async function updateBookmark(bookmarkId, changes) {
   return updateBookmarkApi(bookmarkId, changes);
 }
 
-export async function removeBookmark(bookmarkId) {
-  return removeBookmarkApi(bookmarkId);
+export async function createCollectionFolder(parentId, title) {
+  return createBookmark({ parentId, title });
+}
+
+export async function addBookmarkToFolder(parentId, title, url) {
+  return createBookmark({ parentId, title, url });
+}
+
+export async function getTrashContents(rootId) {
+  const [root] = await getSubTreeApi(rootId);
+  const trashFolder = (root?.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
+  if (!trashFolder) return { trashId: null, items: [] };
+  const items = (trashFolder.children || [])
+    .filter((node) => !!node.url)
+    .map((b) => ({ id: b.id, title: b.title || b.url, url: b.url, parentId: b.parentId, index: b.index }));
+  return { trashId: trashFolder.id, items };
 }
 
 export async function renameCollectionFolder(collectionId, title) {
@@ -254,9 +298,7 @@ export async function removeCollectionFolder(collectionId) {
 
 export async function ensureTrashFolder(rootId) {
   const [root] = await getSubTreeApi(rootId);
-  const existing = (root?.children || []).find(
-    (node) => !node.url && node.title === TRASH_FOLDER_NAME
-  );
+  const existing = (root?.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
   if (existing) {
     return existing;
   }
@@ -268,4 +310,66 @@ export async function ensureTrashFolder(rootId) {
 
 export async function openBookmarkInCurrentTab(url) {
   return updateTabApi(undefined, { url });
+}
+
+export async function openBookmarkInNewTab(url) {
+  return createTabApi({ url, active: false });
+}
+
+export async function openAllInNewTabs(urls) {
+  return Promise.all(urls.map((url) => createTabApi({ url, active: false })));
+}
+
+export function exportCollections(collections) {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    collections: collections.map((c) => ({
+      title: c.folderTitle || c.title,
+      cards: c.cards.map((card) => ({
+        title: card.title,
+        url: card.url
+      }))
+    }))
+  };
+  return JSON.stringify(data, null, 2);
+}
+
+export async function importCollections(jsonString, parentId) {
+  let data;
+  try {
+    data = JSON.parse(jsonString);
+  } catch (err) {
+    logError('bookmarkService.importCollections', err);
+    throw new Error('Invalid JSON');
+  }
+
+  if (!data || !Array.isArray(data.collections)) {
+    throw new Error('Invalid import file format');
+  }
+
+  let collectionsCreated = 0;
+  let bookmarksCreated = 0;
+
+  for (const col of data.collections) {
+    const folder = await createBookmark({
+      parentId,
+      title: col.title || 'Untitled'
+    });
+    collectionsCreated += 1;
+
+    const cards = Array.isArray(col.cards) ? col.cards : [];
+    for (const card of cards) {
+      if (card.url) {
+        await createBookmark({
+          parentId: folder.id,
+          title: card.title || card.url,
+          url: card.url
+        });
+        bookmarksCreated += 1;
+      }
+    }
+  }
+
+  return { collectionsCreated, bookmarksCreated };
 }
