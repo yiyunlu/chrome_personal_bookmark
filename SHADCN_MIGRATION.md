@@ -7,7 +7,7 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | P0 | Foundation + shadcn slate palette + Toolbar pilot | done | not yet |
 | P1 | Dialog / AlertDialog (8 dialog surfaces) | merged, reviewed | **not yet — see smoke list** |
 | P2 | ContextMenu / DropdownMenu | merged, reviewed | **not yet — see smoke list** |
-| P3 | Form primitives (Input / Label / Select / Switch / Textarea) | pending | — |
+| P3 | Form primitives (Input / Label / Select / Textarea) | merged, reviewed | **not yet — see smoke list** |
 | P4 | Feedback (Sonner toasts, Tooltip) | pending | — |
 | P5 | Cards / Sidebar — **gated, optional** | pending | — |
 
@@ -15,6 +15,14 @@ Every phase ends with `./scripts/verify-ui.sh` exiting 0 and one commit named
 `feat(ui): P<N> — <summary>`.
 
 ---
+
+## Writing acceptance criteria
+
+Two boxes in this document were unsatisfiable as written, and both cost a phase real work:
+a repo-wide `grep` demanded in a phase that owns only part of the repo, and the word "still"
+applied to behaviour that never existed. **Verify the baseline before writing a box.** If a
+box says "still", prove the old behaviour exists first; if it greps the repo, check every
+match falls inside that phase's Owns list.
 
 ## Ground rules (all phases)
 
@@ -187,8 +195,19 @@ listed here; build on the merged `DialogShell` versions, not the originals.
 
 Acceptance:
 - [ ] gate exits 0
-- [ ] `grep -c '<select' src/components/*.jsx` is 0 — all 3 bare selects replaced
-- [ ] 12 `<input>` / 12 `<label>` migrated to `Input` / `Label`
+- [ ] `grep -c '<select' src/components/*.jsx` is 0 — **mis-scoped when written.** Of the 3
+      bare selects, 1 was `SaveTabsModal.jsx` (P3's, migrated) and 2 are `Sidebar.jsx:135,185`
+      (the source and language switchers), which P3 does not own. Reaching into them would
+      have broken the file-disjointness that makes P3 and P4 independently revertible. **The
+      two `Sidebar.jsx` selects are handed to P4** (it already edits that file for tooltips,
+      and `@radix-ui/react-select` is in the bundle either way). Within P3's own files: 0.
+- [ ] 12 `<input>` / 12 `<label>` migrated — **also repo-wide counts, also mis-scoped.**
+      Within P3's files the real numbers are 11 inputs and 9 labels; the rest live in
+      `CollectionCard.jsx` (1 input, P5) and `Sidebar.jsx` (3 labels, P4). Done: 10 inputs →
+      `Input` with SaveTabsModal's per-tab `type="checkbox"` left native (shadcn's `Input` is
+      a text field and `checkbox` is a separate, unvendored primitive), and 8 labels →
+      `Label` with SettingsModal's "Data" heading becoming a `<div>` (it names two buttons,
+      not a control, so `Label` would emit an orphan `<label>` — it already was one).
 - [ ] every field has a `Label htmlFor` or an `aria-label`
 - [ ] `/` still focuses the search box (test) and the `/` kbd hint still renders
 - [ ] `Enter` still submits in `PromptModal` and `EditBookmarkModal` (test)
@@ -286,6 +305,22 @@ with the DevTools console open. Record the result in the status table's last col
   pre-existing, not a P1 regression, but check it does not clip on a short window
 - confirm dialogs no longer dismiss on a backdrop click (AlertDialog semantics, intended)
   and now autofocus Cancel
+
+**From P3 (merged):**
+- open **Save tabs** and the target dropdown: it must render *above* the dialog panel
+  (`SelectContent` is vendored at `z-50` and portals to `document.body`, outside the dialog's
+  own portal, so it is overridden to `z-[110]`) and it must show the **full list**, not one
+  scrollable row. shadcn pins the popper `Viewport` to `h-[var(--radix-select-trigger-height)]`
+  and `Viewport` accepts no `className`, so the fix is an ancestor selector
+  (`[&_[data-radix-select-viewport]]:h-auto`) that hangs on an undocumented Radix data
+  attribute. **It would fail silently and no test can see it — jsdom has no layout.**
+- the dropdown's flip/placement near the bottom of the window, and its `bg-popover` surface
+  in both themes; choosing an option must not dismiss the dialog
+- click into the toolbar search **with the mouse**: the accent ring must appear. The rings
+  moved from `:focus` to `:focus-visible`, and separately `twMerge` had been deleting
+  `ring-[var(--accent)]` outright (see the commit after P3's merge) — worth one real look.
+- placeholder text colour moved from the UA default to `text-muted-foreground` on every
+  field, and `Input` is `display:flex` where the raw input was `inline-block`
 
 **Known open item, not a P2 defect:** after a menu closes, focus lands on `<body>`, so a
 keyboard user's next Tab restarts at the top of the page. Identical to the pre-migration

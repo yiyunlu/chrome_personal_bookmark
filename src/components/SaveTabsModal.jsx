@@ -13,11 +13,11 @@ const NEW_COLLECTION_VALUE = '__new__';
 // fields are rounded-lg with 8px padding and the project's accent focus ring.
 const FIELD_CLASS =
   'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
-  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
 // SelectTrigger focuses with :focus, not :focus-visible.
 const TRIGGER_CLASS =
   'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
-  'focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30';
+  'focus:ring-2 focus:ring-[var(--accent)]';
 /* Two overrides of the vendored SelectContent, neither of which needs the file
    edited (cn() is twMerge, and the viewport override outranks the vendored class
    on specificity):

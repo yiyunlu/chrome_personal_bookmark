@@ -8,7 +8,7 @@ import { DialogShell } from './DialogShell';
 // See EditBookmarkModal: keeps the dialog field look over shadcn's Input base.
 const FIELD_CLASS =
   'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
-  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
 
 export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTargets, selectedCount, onSave, onClose }) {
   return (

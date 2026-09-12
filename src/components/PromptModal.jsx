@@ -8,7 +8,7 @@ import { DialogDescription, DialogTitle } from './ui/dialog';
 // field look (rounded-lg, 14px, accent focus ring).
 const FIELD_CLASS =
   'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
-  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
 
 export function PromptModal({
   open,
