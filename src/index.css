@@ -2,63 +2,107 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Theme variables ── */
+/* ── Design tokens ──────────────────────────────────────────────────────────
+   --ui-* are shadcn/ui's own slate tokens, copied verbatim from the shadcn
+   registry (ui.shadcn.com/r/colors/slate.json) as HSL triplets, because
+   tailwind.config.js consumes them as hsl(var(--ui-x)).
+
+   The legacy --bg / --text / --accent / … variables are now thin aliases over
+   those tokens. They are declared once here (not per theme) because CSS custom
+   properties resolve at use time, so the dark block only has to swap --ui-*.
+   That means the 384 existing `var(--x)` usages across 18 components adopt
+   shadcn's day/night palette without a single component edit.
+
+   NOTE: shadcn's slate `primary` is monochrome (near-black / near-white), so
+   TabHub's blue accent is gone by design. To put it back, override just these
+   two lines and nothing else:
+     :root            { --ui-primary: 217.2 91.2% 59.8%; --ui-primary-foreground: 0 0% 100%; }
+     :root[data-theme='dark'] { --ui-primary: 213.1 93.9% 67.8%; }
+   ────────────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --bg: #eef2f6;
-  --text: #1f2937;
-  --muted: #64748b;
-  --sidebar-bg: #f0f3f7;
-  --sidebar-text: #1f2937;
-  --sidebar-hover: rgba(59, 130, 246, 0.08);
-  --sidebar-active: rgba(59, 130, 246, 0.12);
-  --panel-bg: #ffffff;
-  --panel-border: #e2e8f0;
-  --input-bg: #ffffff;
-  --input-border: #cbd5e1;
-  --btn-bg: #334155;
-  --btn-text: #ffffff;
-  --btn-primary: #3b82f6;
-  --btn-primary-text: #ffffff;
-  --card-bg: #ffffff;
-  --card-border: #e2e8f0;
-  --hover: #f8fafc;
-  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 6px 16px rgba(15, 23, 42, 0.06);
-  --accent: #3b82f6;
-  --accent-soft: rgba(59, 130, 246, 0.1);
-  --danger: #ef4444;
-  --danger-soft: rgba(239, 68, 68, 0.1);
+
+  /* shadcn slate — light */
+  --ui-radius: 0.5rem;
+  --ui-background: 0 0% 100%;
+  --ui-foreground: 222.2 84% 4.9%;
+  --ui-card: 0 0% 100%;
+  --ui-card-foreground: 222.2 84% 4.9%;
+  --ui-popover: 0 0% 100%;
+  --ui-popover-foreground: 222.2 84% 4.9%;
+  --ui-primary: 222.2 47.4% 11.2%;
+  --ui-primary-foreground: 210 40% 98%;
+  --ui-secondary: 210 40% 96.1%;
+  --ui-secondary-foreground: 222.2 47.4% 11.2%;
+  --ui-muted: 210 40% 96.1%;
+  --ui-muted-foreground: 215.4 16.3% 46.9%;
+  --ui-accent: 210 40% 96.1%;
+  --ui-accent-foreground: 222.2 47.4% 11.2%;
+  --ui-destructive: 0 84.2% 60.2%;
+  --ui-destructive-foreground: 210 40% 98%;
+  --ui-border: 214.3 31.8% 91.4%;
+  --ui-input: 214.3 31.8% 91.4%;
+  --ui-ring: 222.2 84% 4.9%;
+
+  /* ── Legacy variable aliases (theme-independent) ── */
+  --bg: hsl(var(--ui-background));
+  --text: hsl(var(--ui-foreground));
+  --muted: hsl(var(--ui-muted-foreground));
+  --sidebar-bg: hsl(var(--ui-muted));
+  --sidebar-text: hsl(var(--ui-foreground));
+  --sidebar-hover: hsl(var(--ui-accent));
+  --sidebar-active: hsl(var(--ui-secondary));
+  --panel-bg: hsl(var(--ui-card));
+  --panel-border: hsl(var(--ui-border));
+  --input-bg: hsl(var(--ui-background));
+  --input-border: hsl(var(--ui-input));
+  --btn-bg: hsl(var(--ui-secondary));
+  --btn-text: hsl(var(--ui-secondary-foreground));
+  --btn-primary: hsl(var(--ui-primary));
+  --btn-primary-text: hsl(var(--ui-primary-foreground));
+  --card-bg: hsl(var(--ui-card));
+  --card-border: hsl(var(--ui-border));
+  --hover: hsl(var(--ui-accent));
+  --accent: hsl(var(--ui-primary));
+  --accent-soft: hsl(var(--ui-accent));
+  --danger: hsl(var(--ui-destructive));
+  --danger-soft: hsl(var(--ui-destructive) / 0.1);
+
+  /* Amber warning has no shadcn slate equivalent; kept as-is. */
   --warning: #d97706;
   --warning-soft: rgba(217, 119, 6, 0.1);
+
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0c1222;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --sidebar-bg: #0f172a;
-  --sidebar-text: #cbd5e1;
-  --sidebar-hover: rgba(59, 130, 246, 0.1);
-  --sidebar-active: rgba(59, 130, 246, 0.18);
-  --panel-bg: #1e293b;
-  --panel-border: #334155;
-  --input-bg: #1e293b;
-  --input-border: #475569;
-  --btn-bg: #475569;
-  --btn-text: #f1f5f9;
-  --btn-primary: #3b82f6;
-  --btn-primary-text: #ffffff;
-  --card-bg: #1e293b;
-  --card-border: #334155;
-  --hover: #253348;
-  --shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
-  --accent: #60a5fa;
-  --accent-soft: rgba(96, 165, 250, 0.15);
-  --danger: #f87171;
-  --danger-soft: rgba(248, 113, 113, 0.15);
+
+  /* shadcn slate — dark */
+  --ui-background: 222.2 84% 4.9%;
+  --ui-foreground: 210 40% 98%;
+  --ui-card: 222.2 84% 4.9%;
+  --ui-card-foreground: 210 40% 98%;
+  --ui-popover: 222.2 84% 4.9%;
+  --ui-popover-foreground: 210 40% 98%;
+  --ui-primary: 210 40% 98%;
+  --ui-primary-foreground: 222.2 47.4% 11.2%;
+  --ui-secondary: 217.2 32.6% 17.5%;
+  --ui-secondary-foreground: 210 40% 98%;
+  --ui-muted: 217.2 32.6% 17.5%;
+  --ui-muted-foreground: 215 20.2% 65.1%;
+  --ui-accent: 217.2 32.6% 17.5%;
+  --ui-accent-foreground: 210 40% 98%;
+  --ui-destructive: 0 62.8% 30.6%;
+  --ui-destructive-foreground: 210 40% 98%;
+  --ui-border: 217.2 32.6% 17.5%;
+  --ui-input: 217.2 32.6% 17.5%;
+  --ui-ring: 212.7 26.8% 83.9%;
+
   --warning: #f59e0b;
   --warning-soft: rgba(245, 158, 11, 0.15);
+
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Base ── */
@@ -72,17 +116,21 @@ body {
 }
 
 /* ── Transitions ── */
-* {
+/* Theme-switch smoothing only. `transform` is deliberately NOT in this list:
+   Radix positions poppers with transform, and a blanket transform transition
+   makes menus/tooltips slide in from their previous position. Components that
+   want a transform transition declare it themselves (see [data-card-id]). */
+*,
+*::before,
+*::after {
   transition-property: color, background-color, border-color, box-shadow, opacity;
   transition-duration: 0.15s;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Exclude layout properties from auto-transition */
-*,
-*::before,
-*::after {
-  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+/* Radix popper wrapper must never animate its positioning transform. */
+[data-radix-popper-content-wrapper] {
+  transition: none !important;
 }
 
 /* ── Scrollbar ── */
