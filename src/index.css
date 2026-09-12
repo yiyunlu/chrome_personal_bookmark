@@ -104,6 +104,21 @@
 }
 
 /* ── Base ── */
+/* shadcn ships `@layer base { * { @apply border-border } }` in its globals.css.
+   We skipped it when namespacing the tokens, and the omission is not cosmetic:
+   Tailwind's `border` utility sets width only, so any element with `border` and
+   no border-<colour> falls back to preflight's #e5e7eb. That is invisible in
+   light mode (--ui-border is #e2e8f0) and a near-white 1px outline on every such
+   element in dark mode. The P5a review caught it on the bookmark cards; P6 will
+   produce many more `border`-without-colour class strings, so fix the root. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: hsl(var(--ui-border));
+  }
+}
+
 body {
   margin: 0;
   min-height: 100vh;

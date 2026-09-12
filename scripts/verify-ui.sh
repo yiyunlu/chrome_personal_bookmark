@@ -57,6 +57,12 @@ else
     || pass "no hsl(oklch(...)) in output"
   grep -q 'hsl(var(--ui-primary))' "$css" && pass "token indirection intact" \
     || bad "hsl(var(--ui-primary)) missing — token layer broken"
+  # Tailwind's `border` utility sets width only. Without the base layer, any
+  # `border` with no border-<colour> falls back to preflight's #e5e7eb: invisible
+  # in light mode, a near-white outline in dark. Caught on the bookmark cards.
+  grep -q 'border-color:hsl(var(--ui-border))' "$css" \
+    && pass "universal border-color base layer present" \
+    || bad "base layer missing — bare \`border\` will fall back to preflight #e5e7eb"
 fi
 
 echo "== 5. every --ui-* the Tailwind config reads is defined =="
