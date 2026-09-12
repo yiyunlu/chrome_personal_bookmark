@@ -122,10 +122,11 @@ echo "== 12. style ratchet (see the Style contract in SHADCN_MIGRATION.md) =="
 # UI style": every inline var() is a colour decided outside the token system,
 # every raw <button> is a control styled by hand, and the radius/icon counts are
 # scale drift. P6 drives all four to 0; until then a phase must not add to them.
-CEIL_INLINE_VAR=350
-CEIL_RAW_BUTTON=55
-CEIL_OFF_RADIUS=9
-CEIL_OFF_ICON=40
+# P5a lowered these from 350/55/9/40 by emptying CollectionCard.jsx (23/3/1/5).
+CEIL_INLINE_VAR=327
+CEIL_RAW_BUTTON=52
+CEIL_OFF_RADIUS=8
+CEIL_OFF_ICON=35
 style_scope=(--exclude-dir=ui --exclude-dir=test)
 iv=$(grep -roh "${style_scope[@]}" 'var(--' src/components src/main.jsx | wc -l | tr -d ' ')
 rb=$(grep -roh "${style_scope[@]}" '<button' src/components src/main.jsx | wc -l | tr -d ' ')
