@@ -46,6 +46,8 @@ export default {
           foreground: 'hsl(var(--ui-destructive-foreground))'
         },
         sidebar: 'hsl(var(--ui-sidebar))',
+        // Third text level from the design (counts, URLs, section labels).
+        faint: 'hsl(var(--ui-faint))',
         warning: {
           DEFAULT: 'hsl(var(--ui-warning))',
           foreground: 'hsl(var(--ui-warning-foreground))'
@@ -55,11 +57,14 @@ export default {
         ring: 'hsl(var(--ui-ring))'
       },
       borderRadius: {
-        // --ui-radius is 0.5rem, so lg/md keep Tailwind's default pixel values
-        // and the 82 existing rounded-lg / rounded-md usages are unchanged.
-        lg: 'var(--ui-radius)',
-        md: 'calc(var(--ui-radius) - 2px)',
-        sm: 'calc(var(--ui-radius) - 4px)'
+        // Anchored on the design's own values rather than on a base radius, so
+        // every shadcn primitive lands where the design puts it with no
+        // per-call-site override: Card is rounded-xl (9px), Dialog rounded-lg,
+        // Button/Input rounded-md (8px), menu and select items rounded-sm (6px).
+        sm: '6px',
+        md: '8px',
+        lg: '9px',
+        xl: '9px'
       },
       boxShadow: {
         // The project's elevation shadow, so panels can say `shadow-panel`
@@ -68,6 +73,10 @@ export default {
         soft: '0 6px 20px rgba(15, 23, 42, 0.08)',
         'soft-lg': '0 10px 30px rgba(15, 23, 42, 0.12)',
         'dark-soft': '0 8px 24px rgba(2, 6, 23, 0.4)'
+      },
+      fontFamily: {
+        sans: ['"IBM Plex Sans"', '"Noto Sans SC"', '-apple-system', 'system-ui', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace']
       },
       transitionTimingFunction: {
         smooth: 'cubic-bezier(0.4, 0, 0.2, 1)'

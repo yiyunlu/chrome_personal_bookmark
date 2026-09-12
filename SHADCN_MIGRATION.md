@@ -61,358 +61,67 @@ Two more deliberate choices: `darkMode` keys off `:root[data-theme="dark"]` to m
 `src/hooks/useTheme.js`, and `--ui-radius: 0.5rem` keeps `rounded-lg`/`rounded-md` at their
 pre-migration pixel values across 82 existing usages.
 
+## Source of truth
+
+**`TabHub.dc.html` (Claude Design project `c3755d9a`) is the source of truth for visuals.
+The existing app is the source of truth for behaviour.** Nothing in the design file adds,
+removes or changes a feature. Where the two disagree, that split decides it:
+
+| the design shows | we do |
+| --- | --- |
+| coloured letter tiles instead of favicons | keep real favicons, inside the design's 22px tile |
+| no drag handles anywhere | keep drag; the handles are hover-only, so the static design never showed them |
+| a source *button* that cycles | keep the `Select` — choosing among N sources is behaviour |
+| light/dark only | keep system/light/dark |
+| no language switcher | keep it |
+| nothing for the 9 dialogs, the context menu, the chat panel, the toast, the trash | keep them; they inherit the tokens automatically |
+
+That last row is the payoff from P1–P5: every one of those surfaces is already on token
+classes, so a palette swap re-skins them with no edits. They will read as shadcn components
+wearing the new palette rather than bespoke design work, because the design file does not
+cover them.
+
 ## Palette
 
-`--ui-*` are shadcn's **neutral** tokens — the base colour the reference app at
-ui.shadcn.com actually uses. The 21 legacy variables (`--bg`, `--text`, `--accent`, …) are
-thin aliases over them, so every remaining `var(--x)` usage follows the palette with no
-component edits.
+`--ui-*` carry the design's palette, converted to HSL triplets because the Tailwind config
+consumes `hsl(var(--ui-x))`. It is a **warm** neutral — every grey carries a 15-30° hue —
+with a real brand accent at `#e04a37`. Both are deliberate departures from shadcn's
+achromatic neutral and monochrome primary.
 
-**This was slate until the palette review.** Every slate step carries a blue component
-(dark background `222.2 84% 4.9%` = `#020817`), which tinted every surface and is why the
-app did not look like the reference. Neutral is `0 0% L%` throughout — the hue and
-saturation being zero is the whole point.
+Three additions the shadcn scale does not have:
+- **`--ui-faint`** — the design has a *third* text level (`--faint`) below
+  `muted-foreground`, used for counts, URLs and section labels. Exposed as `text-faint`.
+- **`--ui-sidebar`** — the design's `--panel`, distinct from both the page and the card.
+- **`--ui-destructive` is not from the design.** The design defines no destructive colour
+  and its accent is already red, so a stock red would collide with it. Ours is a darker,
+  less saturated red that keeps an obvious lightness gap from the accent.
 
-The registry now publishes only oklch, so the values here are converted to HSL triplets
-(the Tailwind 3 config consumes `hsl(var(--ui-x))`). Each one round-trips to Tailwind's
-neutral scale exactly: `#ffffff #0a0a0a #171717 #fafafa #f5f5f5 #737373 #e5e5e5 #a1a1a1`.
+### Radius
 
-Two deliberate departures from a straight copy, both to match the reference app's
-*appearance* rather than its token file:
-- **dark `--ui-card` is lighter than `--ui-background`** (`#171717` on `#0a0a0a`). That
-  separation is what makes cards read as surfaces; slate had the two identical.
-- **`--bg` is theme-specific** — light content sits on `--ui-muted` so white cards
-  separate from it, dark content sits on `--ui-background`. Every other alias stays
-  theme-independent.
+Anchored on the design's own values rather than derived from a base radius, so every
+shadcn primitive lands where the design puts it with **no per-call-site override**:
 
-`--ui-sidebar` is shadcn's own sidebar token, so the rail matches the reference instead of
-borrowing `--ui-muted`. `--ui-warning` (amber) is the one colour with no neutral
-equivalent, kept for dead-link warnings.
+| Tailwind | px | primitive that ships it | design element |
+| --- | --- | --- | --- |
+| `rounded-sm` | 6 | `SelectItem`, `DropdownMenuItem`, `DialogClose` | nav rows, small tiles |
+| `rounded-md` | 8 | `Button`, `Input`, `SelectTrigger`, `Badge` | buttons, search field |
+| `rounded-lg` | 9 | `DialogContent`, `AlertDialogContent` | — |
+| `rounded-xl` | 9 | `Card` | bookmark card |
 
-`primary` is monochrome (near-black on light, near-white on dark), which is the reference
-app's look. Restoring a brand accent is a two-line override documented at the top of
-`src/index.css`.
+This supersedes the earlier rule about letting a primitive keep its own radius. The rule is
+now simply: **the design decides the scale, and the scale is set once in
+`tailwind.config.js` so the primitives inherit it.**
 
----
+### Type
 
-## Fallback plan
+`IBM Plex Sans` + `Noto Sans SC` for text, `IBM Plex Mono` for URLs, counts and section
+labels — the mono is the design's strongest identifying feature, not decoration. Base size
+is **13px**, not the browser's 16px; the design is dense throughout.
 
-Ordered cheapest-first. Every layer is independent of the others.
-
-**L0 — palette only.** Revert the `:root` / `:root[data-theme='dark']` hunk in
-`src/index.css`. The whole app returns to the old blue/grey palette with zero component
-changes, because every legacy variable is an alias. Migrated shadcn components follow along
-automatically.
-
-**L1 — one phase.** `git revert <phase commit>`. Phases own disjoint files and never
-change prop APIs, so any of P1–P5 can be reverted in any order. P0 is the shared base.
-
-**L2 — one component.** `git checkout <P0 commit> -- src/components/X.jsx`. Restores the
-hand-rolled version of a single component. Valid precisely because prop APIs are frozen.
-
-**L3 — full abort.** `git checkout rebase-review-fixes`. That branch is never touched by
-this work. Outside the token layer, P0 is purely additive (alias, `cn.js`,
-`components.json`, `src/components/ui/`).
-
-**L4 — behaves badly in the real extension though tests are green.** Revert to the last
-row of the table above whose `dist/` was smoke-tested in Chrome, rebuild, reload the
-unpacked extension.
-
-**Rollback budget:** a phase that is not green after two attempts gets reverted, not
-patched forward. `dist/` is a build artifact — always rebuild after a revert.
-
----
-
-## P1 — Dialog / AlertDialog
-
-**Implementation note (merged):** the phase does **not** use shadcn's `DialogContent` /
-`AlertDialogContent`. Those wrappers unconditionally render a second close button (all 8
-surfaces already have one) and render their own `Portal` + `Overlay` internally at a fixed
-`z-50` with no className passthrough, which would put a nested confirm's scrim *under* the
-dialog that opened it. Neither is reachable through `className`. So `DialogShell.jsx` owns
-the panel geometry, centering, radius, border, shadow, backdrop colour and both animation
-sets; from `src/components/ui/*` we take only `Root`, `Portal`, `Overlay`, `Title` and
-`Description`. For this phase "using shadcn" means Radix behaviour + shadcn tokens, not
-shadcn's dialog chrome — which also means a future `npx shadcn add dialog --overwrite`
-buys less here than it looks.
-
-**Owns:** `src/components/Modal.jsx` (delete), `ConfirmModal.jsx`, `PromptModal.jsx`,
-`EditBookmarkModal.jsx`, `BatchMoveModal.jsx`, `SaveTabsModal.jsx`, `SettingsModal.jsx`,
-`AICategorizeModal.jsx`, `DeadLinkModal.jsx`, `src/test/AICategorizeModal.test.jsx`.
-**Must not touch** `main.jsx`.
-
-Context: there are currently **three** overlay implementations — the shared `Modal.jsx`
-(6 components, `z-60`, 107 lines of hand-rolled focus trap) plus `ConfirmModal` and
-`PromptModal` each with their own `fixed inset-0` at `z-70`.
-
-Acceptance:
-- [ ] `./scripts/verify-ui.sh` exits 0
-- [ ] `Modal.jsx` deleted; `grep -r FOCUSABLE_SELECTOR src/` returns nothing
-- [ ] `grep -rn 'fixed inset-0' src/components/*.jsx` returns nothing (no hand-rolled overlay survives)
-- [ ] all 8 surfaces use `Dialog`; `ConfirmModal` uses `AlertDialog` (it is a confirm, and
-      AlertDialog correctly refuses to close on overlay click)
-- [ ] every dialog exposes an accessible name via `DialogTitle` (visually hidden is fine)
-- [ ] **≥5 new/updated RTL tests**, one per behaviour the hand-rolled trap provided:
-      focus lands inside on open · `Escape` closes · overlay click closes (non-alert dialogs)
-      · focus returns to the trigger on close · `Tab` cycles within the panel
-- [ ] **`Escape` fires exactly once.** `src/hooks/useKeyboardShortcuts.js` also listens for
-      `Escape`; prove with a test that closing a dialog does not additionally dismiss the
-      panel/menu behind it
-- [ ] nesting preserved: a confirm opened from another dialog still renders above it
-- [ ] `git diff` shows **no change to `main.jsx`** and no prop renames
-- [ ] `AICategorizeModal.test.jsx` updated for portal rendering — the two assertions on
-      `container.firstChild` (closed-state null check, overlay click) must assert the same
-      user-visible behaviour, not be deleted
-- [ ] manual: open all 8 dialogs in the loaded extension, no console errors
-
-Risk: medium. Fallback: L2 per file.
-
-## P2 — ContextMenu / DropdownMenu
-
-**Owns:** `src/components/ContextMenu.jsx`, `main.jsx` (wiring only),
-`CollectionCard.jsx` (trigger attachment only).
-
-Implementation note: Radix's `ContextMenu` primitive derives its position from a
-`Trigger` that must **wrap** the right-clicked element. Both trigger sites are
-SortableJS-managed hosts — `Sidebar`'s collection rows (owned by P4, off-limits to P2)
-and `CollectionCard`'s cards — and wrapping them would also have forced a prop-API
-change on `CollectionCard`, breaking ground rule 3. `ContextMenu.jsx` therefore uses
-`DropdownMenu` anchored to a zero-size virtual anchor at the stored pointer
-coordinates: the `contextMenu` state object and every prop API survive untouched, no
-DOM node is inserted anywhere near a draggable host, and Radix still owns roving
-focus, `Escape`, dismissal, collision handling and ARIA. `modal={false}` so the
-menu never locks body scroll or disables pointer events on the Sortable lists below.
-
-Acceptance:
-- [x] gate exits 0 — 11 checks, 186 tests (baseline 171)
-- [x] the 190-line hand-rolled `ArrowUp`/`ArrowDown`/`Tab` handler is gone
-- [x] right-click opens the menu at the pointer, for both a bookmark card and a collection
-      header (the card header trigger is new: `CollectionCard`'s header button now takes
-      an optional `onCollectionContextMenu`)
-- [x] ≥2 tests: menu opens on `contextmenu`; each item invokes the same callback as before
-      (`src/test/ContextMenu.test.jsx`, 15 tests)
-- [x] Radix keyboard nav (`Arrow`, `Home`, `End`, `Escape`) — covered by jsdom tests;
-      **still unverified in a real browser**
-- [~] **opening a menu on a draggable card must not start a drag**, and closing it must not
-      leave a `.card-dragging` class behind — **code-verified only, not test-covered.**
-      All three Sortable scopes use an explicit `handle:` (`main.jsx:355,387,442`) and
-      sortablejs bails on `evt.button !== 0` (`sortable.esm.js:1196`). The assertions that
-      originally claimed this box were vacuous — `.card-dragging` is only ever Sortable's
-      `ghostClass` and the test harness instantiates no Sortable — and have been removed.
-      On the manual smoke list.
-- [x] `data-card-id` / `data-collection-id` remain on the *same* DOM nodes — they appear in
-      no diff hunk at all; asserted structurally in `ContextMenu.test.jsx`. (Gate 9 now
-      counts with `--exclude-dir=test`, so selectors added in a test file can no longer
-      mask an attribute removed from a component.)
-- [x] `[data-radix-popper-content-wrapper] { transition: none }` still present in `index.css`
-      (removing it makes menus slide in from their previous position)
-- [ ] manual: drag a card → right-click it → drag it again; no `removeChild` crash
-      — **not done, needs a loaded extension**
-
-Risk: medium-high — SortableJS adjacency. Fallback: L1.
-
-## P3 — Form primitives
-
-**Owns:** `Toolbar.jsx` (the whole file — P4 must not touch it), `SettingsModal.jsx`,
-`EditBookmarkModal.jsx`, `PromptModal.jsx`, `SaveTabsModal.jsx`, `BatchMoveModal.jsx`,
-`ChatPanel.jsx`. Runs **after P1** (shares files). Note P1 rewrote all five modal files
-listed here; build on the merged `DialogShell` versions, not the originals.
-
-Acceptance:
-- [ ] gate exits 0
-- [ ] `grep -c '<select' src/components/*.jsx` is 0 — **mis-scoped when written.** Of the 3
-      bare selects, 1 was `SaveTabsModal.jsx` (P3's, migrated) and 2 are `Sidebar.jsx:135,185`
-      (the source and language switchers), which P3 does not own. Reaching into them would
-      have broken the file-disjointness that makes P3 and P4 independently revertible. **The
-      two `Sidebar.jsx` selects are handed to P4** (it already edits that file for tooltips,
-      and `@radix-ui/react-select` is in the bundle either way). Within P3's own files: 0.
-- [ ] 12 `<input>` / 12 `<label>` migrated — **also repo-wide counts, also mis-scoped.**
-      Within P3's files the real numbers are 11 inputs and 9 labels; the rest live in
-      `CollectionCard.jsx` (1 input, P5) and `Sidebar.jsx` (3 labels, P4). Done: 10 inputs →
-      `Input` with SaveTabsModal's per-tab `type="checkbox"` left native (shadcn's `Input` is
-      a text field and `checkbox` is a separate, unvendored primitive), and 8 labels →
-      `Label` with SettingsModal's "Data" heading becoming a `<div>` (it names two buttons,
-      not a control, so `Label` would emit an orphan `<label>` — it already was one).
-- [ ] every field has a `Label htmlFor` or an `aria-label`
-- [ ] `/` still focuses the search box (test) and the `/` kbd hint still renders
-- [ ] `Enter` still submits in `PromptModal` and `EditBookmarkModal` (test)
-- [ ] the API key field stays `type="password"`; the storage round-trip test stays green
-- [ ] `ChatPanel` keeps its existing send-key behaviour exactly
-
-Risk: low. Fallback: L2 per file.
-
-## P4 — Feedback (Sonner, Tooltip)
-
-**Owns:** `UndoToast.jsx`, `main.jsx` (mount `Toaster`, plus the Trash overlay below),
-`Sidebar.jsx` (its tooltips *and*, by later agreement, its two native selects),
-`AICategorizeModal.jsx` (its `title` attributes only), `src/test/AICategorizeModal.test.jsx`,
-the new `src/test/undoToast.test.jsx` and `src/test/Sidebar.test.jsx`, and the toast half of
-`src/test/dialog.test.jsx`'s z-order case. **`Toolbar.jsx` belongs to P3** — do not touch it;
-toolbar tooltips are deferred to a later pass so the two waves stay file-disjoint.
-
-**Inherited from P1 — the undo toast is now unreachable while any dialog is open.**
-P1 raised dialogs to z-90/100 to clear `ChatPanel` (z-50) and the toast (z-80), so the
-toast sits behind the scrim. But z-order is only part of it: Radix's modal Dialog sets
-`disableOutsidePointerEvents`, which puts `pointer-events: none` on `document.body`, and
-calls `hideOthers(content)`, which puts `aria-hidden` on `#root`. So the toast is also
-pointer-inert and hidden from screen readers regardless of its z-index. **A z-index bump
-alone will not fix this** — the toast needs `pointer-events: auto` and to sit outside
-`hideOthers`' scope, i.e. in its own portal, which is what Sonner does anyway. Soft-delete
-keeps its 8s timer running (`useUndoStack.js:27-30`) and the flows genuinely coexist
-(delete a card, then `S` opens SaveTabsModal), so this is a real reachability bug, not a
-cosmetic one.
-
-**Also inherited: a ninth hand-rolled overlay.** `src/main.jsx:1571` renders the Trash
-modal as an inline `fixed inset-0 z-50` with its own backdrop-click dismissal. P1 was
-forbidden to touch `main.jsx` so it survived the dialog sweep, and no phase owned it —
-it is now below both the new dialogs (z-90) and the toast (z-80). Migrate it to
-`DialogShell` here, or state in this doc that it stays hand-rolled and fix its z-order.
-
-### Implementation notes (implemented)
-
-**One premise above is wrong, and the fix does not depend on it: Sonner does not portal.**
-`sonner@2.0.8` imports `ReactDOM` only for `flushSync`; `grep -c Portal
-node_modules/sonner/dist/index.mjs` is 0, and its `<section>` renders in place in the React
-tree. Portalling to `<body>` would not have helped anyway — `hideOthers` walks `<body>`'s
-*children*, so a direct child of body is marked like any other. What actually spares the
-toast is `aria-hidden`'s explicit live-region exemption
-(`node_modules/aria-hidden/dist/es2015/index.js`: `targets.push(…querySelectorAll(
-'[aria-live], script'))`), which skips the matched node and leaves every ancestor of it
-unmarked too. Sonner earns the exemption structurally: it renders
-`<section aria-live="polite">` even with zero toasts, so mounting the `Toaster` for the life
-of the app puts the exemption in place *before* any dialog opens. The old toast was rendered
-only while a toast existed, so in the "open a dialog, then delete something" order it
-mounted inside an already-`aria-hidden` `#root`.
-
-**Pointer events had to be fixed by hand.** Sonner's stylesheet sets no `pointer-events` on
-its container, so it inherits the `none` that `DismissableLayer` puts on `<body>`.
-`UndoToast` passes `style={{ pointerEvents: 'auto' }}` to the `Toaster` (Sonner spreads
-`style` onto the toast `<ol>`) and repeats it on the toast body. This, not the z-index, is
-the half of the bug that ate the undo click: verified by mutation — deleting both makes
-`undoToast.test.jsx`'s reachability test fail. That test also carries a control element with
-the *old* toast's exact markup (`role=status`, `aria-live`, `z-[80]`) and asserts it is
-pointer-inert.
-
-**Stacking.** Sonner's injected stylesheet gives `[data-sonner-toaster]`
-`position: fixed; z-index: 999999999`, well above P1's z-90/100. The App root is
-`position: relative; z-index: auto`, which creates no stacking context, so that wins
-globally. Asserted on the *computed* z-index, not on a class string.
-
-**The Trash overlay was migrated to `DialogShell`** rather than kept hand-rolled with a
-higher z-index. Three reasons: (1) it can *open* another dialog — Empty trash raises
-`ConfirmModal` at `LAYER_TOP` (z-100) — so ordering it by hand means hand-tracking two
-layers the shells already order by construction; (2) it was the last surface with no focus
-trap, no Escape (it was not in `handleEscape` either), no `role="dialog"` and no accessible
-name, and it is a list of buttons, so that was a real gap rather than a cosmetic one;
-(3) a z-index-only fix keeps a ninth of the overlay logic hand-rolled for no gain, whereas
-now the only `fixed inset-0` left in the source is the vendored `ui/dialog.jsx` /
-`ui/alert-dialog.jsx` overlay (plus the comment in `main.jsx` recording this). Its inner
-scroll region moved from
-`flex-1 overflow-y-auto` on a flex panel to `maxHeight: 60vh`, matching the other eight.
-
-**The two native selects in `Sidebar.jsx`** (source, language) were migrated to shadcn
-`Select` here, at the coordinator's request: P3's acceptance asks for zero bare selects
-repo-wide but P3 does not own this file. Same two workarounds P3 used — `z-[110]` on
-`SelectContent`, and `[&_[data-radix-select-viewport]]:h-auto` from the content, because
-shadcn pins the popper viewport to one row and `Viewport` accepts no `className`. The
-trigger keeps the old control's colours and geometry (the sidebar is a dark panel that
-shadcn's `bg-transparent`/`border-input` defaults disappear into); the floating list keeps
-`bg-popover`, like P2's context menu. Both triggers are now named by their existing visible
-`<label>` via `htmlFor`/`id`.
-
-**The tooltip drag guard reads SortableJS's statics, not React state.** `Sortable.dragged`
-is set on the pointerdown on a handle and cleared by `_nulling()` on drop, so
-`dragInProgress()` in `Sidebar.jsx` covers the whole gesture without a render — a `dragging`
-flag in React state would reconcile mid-drag, which is the failure mode `main.jsx` reverts
-SortableJS's DOM mutation to avoid. The test drives a real `Sortable` instance with a real
-`pointerdown`; removing the guard makes it fail.
-
-**Bundle.** Sonner costs ≈10.4 KB gz (measured: 155,070 B with it against 144,648 B with
-the hand-rolled toast restored and nothing else changed); Tooltip is ≈1.2 KB on top of the
-Popper P2 already pulled in. Gate 11 passes at **155,066 B gz against the 160,000 cap —
-4,934 B of headroom**, and that figure already includes `Select`, so merging P3 should not
-move it. Stated plainly: the reachability fix itself needed only `pointer-events: auto` and
-a permanently mounted live region, both of which a hand-rolled toast could have had for
-0 bytes. Sonner buys the stacking, the queue, and one place for any future toast — but with
-under 5 KB left, **P5 has essentially no bundle budget.**
-
-Acceptance:
-- [x] gate exits 0 — 11 checks, 231 tests (baseline 171; 212 before this phase)
-- [x] undo still fires inside the 8s window and `src/hooks/useUndoStack.js` timing logic is
-      **unchanged** (that hook owns the timer; the toast is only the surface) — test it
-      (`undoToast.test.jsx`, "the 8s undo window survives the migration": undo fires at
-      7.9s, and a click past the deadline does nothing; `git diff` shows the hook untouched)
-- [x] `Toaster` gets `theme={resolvedTheme}` from `useTheme`, never `next-themes`
-      (asserted through the rendered `data-sonner-theme`, both ways)
-- [x] icon-only buttons get `Tooltip` **plus** an `aria-label` — the collapse toggle and the
-      four collapsed-rail buttons. Two deliberate exceptions, argued in the code: the three
-      theme buttons render their label beside the icon, so they take the `aria-label` and no
-      tooltip; the expanded nav rows are not icon-only and are SortableJS children, so their
-      `title` (the right-click hint) stays.
-- [x] `AICategorizeModal.test.jsx` migrated off `getByTitle('接受')` / `getByTitle('拒绝')`
-      to accessible-name queries **in the same commit** that removes those `title` attributes
-      (`grep -rn getByTitle src/` is empty)
-- [x] no tooltip opens while a card is being dragged — see the drag guard note above
-- [x] the undo toast is reachable while a dialog is open: neither `aria-hidden` nor
-      pointer-inert, proven against two controls that are
-- [x] the ninth overlay is gone — the Trash modal is a `DialogShell`
-- [ ] manual: the browser-only items added to the smoke list below
-
-Risk: low, except the `getByTitle` coupling. Fallback: L1.
-
-## P5 — Cards / Sidebar — gated
-
-Start only if P1–P4 are merged, green, and smoke-tested. Default decision is **skip**:
-`main.jsx` already performs a delicate revert of SortableJS's DOM mutation before React
-reconciles, and restructuring the draggable hosts is how that breaks.
-
-Acceptance (all required):
-- [ ] gate exits 0
-- [ ] `data-card-id` / `data-collection-id` / `data-draggable` sit on the **same element at
-      the same depth** relative to their Sortable container — reviewed as a diff
-- [ ] manual matrix, each with a DevTools console open and zero errors: reorder within a
-      collection · move across collections · reorder the nav sidebar · drag while a search
-      filter is active · drag in manage mode · reload and confirm the order persisted
-- [ ] `moveBookmarkToCardPosition()` still receives card-relative indices in a collection
-      that also contains subfolders
-
-Risk: high. Fallback: L1, immediately.
-
----
-
-## Style contract
-
-Binding on every phase from P5 onward. It exists because the codebase currently runs
-**two** styling systems side by side, and "unified UI" is otherwise unfalsifiable. Measured
-at the P5 baseline: **350 inline `var()` colours, 55 raw `<button>`s, 6 radius values,
-7 icon sizes.** Gate 12 ratchets all four — they may only go down.
-
-### Colour — token classes only, zero inline `var()`
-
-No `style={{ … var(--x) }}` in any component. Every legacy variable has a class:
-
-| was | becomes |
-| --- | --- |
-| `var(--bg)` | `bg-background` |
-| `var(--text)` | `text-foreground` |
-| `var(--muted)` | `text-muted-foreground` |
-| `var(--panel-bg)`, `var(--card-bg)` | `bg-card` |
-| `var(--panel-border)`, `var(--card-border)` | `border-border` |
-| `var(--input-bg)` | `bg-background` |
-| `var(--input-border)` | `border-input` |
-| `var(--hover)`, `var(--accent-soft)` | `bg-accent` |
-| `var(--accent)` | `text-primary` / `bg-primary` / `ring-ring`, by role |
-| `var(--btn-primary)` + `var(--btn-primary-text)` | `<Button>` (variant `default`) |
-| `var(--danger)` | `text-destructive`; soft fill → `bg-destructive/10` |
-| `var(--warning)` | `text-warning`; soft fill → `bg-warning/10` |
-| `var(--shadow)` | `shadow-panel` |
-| `var(--sidebar-bg)` | `bg-muted` |
-| `var(--sidebar-hover)` | `hover:bg-accent` |
-| `var(--sidebar-active)` | `bg-secondary` |
-
-`--ui-warning` and `shadow-panel` were added for this table, so there is no colour left
-that needs an inline style. Once the count reaches 0, the legacy alias block in
-`src/index.css` is deleted and `--ui-*` becomes the only palette.
+**The woff2 files are not bundled yet**, so the stack currently resolves to system
+fallbacks. Adding them later needs no code change, only the font files and an `@font-face`
+block. Loading them from Google Fonts instead would put a network request on every new tab
+open, which is why it is not done that way.
 
 ### The tailwind-merge hazard — read this before overriding any vendored class
 
