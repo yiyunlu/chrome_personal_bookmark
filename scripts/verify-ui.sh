@@ -139,12 +139,12 @@ echo "== 12. style ratchet (see the Style contract in SHADCN_MIGRATION.md) =="
 # from the 350/55/9/40 baseline. Measured after the merge, not computed.
 CEIL_INLINE_VAR=291
 CEIL_RAW_BUTTON=42
-CEIL_OFF_RADIUS=8
+CEIL_OFF_RADIUS=7
 CEIL_OFF_ICON=27
 style_scope=(--exclude-dir=ui --exclude-dir=test)
 iv=$(grep -roh "${style_scope[@]}" 'var(--' src/components src/main.jsx | wc -l | tr -d ' ')
 rb=$(grep -roh "${style_scope[@]}" '<button' src/components src/main.jsx | wc -l | tr -d ' ')
-orad=$(grep -rohE "${style_scope[@]}" 'rounded-(sm|2xl)\b' src/components src/main.jsx | wc -l | tr -d ' ')
+orad=$(grep -rohE "${style_scope[@]}" 'rounded-(2xl|3xl)\b' src/components src/main.jsx | wc -l | tr -d ' ')
 oico=$(grep -rohE "${style_scope[@]}" 'size=\{(10|11|12|13|14|15|17|18|19|21|22|24)\}' src/components src/main.jsx | wc -l | tr -d ' ')
 ratchet() { # name current ceiling
   if [ "$2" -le "$3" ]; then
@@ -156,7 +156,7 @@ ratchet() { # name current ceiling
 }
 ratchet "inline var() colours" "$iv" "$CEIL_INLINE_VAR"
 ratchet "raw <button> elements" "$rb" "$CEIL_RAW_BUTTON"
-ratchet "off-scale radius (sm/2xl)" "$orad" "$CEIL_OFF_RADIUS"
+ratchet "off-scale radius (2xl/3xl)" "$orad" "$CEIL_OFF_RADIUS"
 ratchet "off-scale icon sizes" "$oico" "$CEIL_OFF_ICON"
 
 echo

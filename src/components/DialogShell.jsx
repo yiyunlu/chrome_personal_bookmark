@@ -42,13 +42,14 @@ export const LAYER_TOP = 'z-[100]';
    same specificity and is emitted later in the stylesheet. */
 const OVERLAY_CLASS = 'bg-slate-900/40 data-[state=closed]:!animate-none';
 
-/* Same panel as before: 1rem gutters, rounded-2xl, one border, project shadow.
+/* Panel geometry. Radius follows shadcn's own DialogContent (rounded-lg); the
+   hand-rolled overlay this replaced used rounded-2xl, which nothing in shadcn uses.
    Enter animation classes are shadcn's — they are written to compose with the
    translate-based centering, which the project's `animate-slide-up` keyframe
    would clobber. No exit animation, see above. */
 const PANEL_CLASS =
   'fixed left-1/2 top-1/2 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 ' +
-  'overflow-hidden rounded-2xl border duration-200 focus:outline-none ' +
+  'overflow-hidden rounded-lg border duration-200 focus:outline-none ' +
   'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 ' +
   'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]';
 

@@ -446,17 +446,31 @@ with `extendTailwindMerge`, so mechanism C is fixed at the root. `src/test/cn.te
 pins all three mechanisms, including the two historical bugs, so an upgrade cannot bring
 them back unnoticed.
 
-### Radius — four values, no others
+### Radius — mirror the primitives, do not invent a scale
 
-| value | for |
-| --- | --- |
-| `rounded-md` | interactive controls: buttons, inputs, select triggers, menu items, badges |
-| `rounded-lg` | surfaces: cards, popovers, menus, toasts, inline panels |
-| `rounded-xl` | dialog panels only |
-| `rounded-full` | pills and circular icon buttons |
+The first version of this table was invented, and it contradicted shadcn on three of four
+rows: it sent card surfaces to `rounded-lg` (shadcn's `Card` ships `rounded-xl`), sent
+dialogs to `rounded-xl` (shadcn's `DialogContent` ships `rounded-lg`), and banned
+`rounded-sm` (which shadcn uses for dense inner elements — the dialog close button,
+`SelectItem`, `DropdownMenuItem`). P5a dutifully overrode `Card`'s own radius to comply,
+which is most of why the bookmark boxes looked squarer than the reference app.
 
-`rounded-sm` and `rounded-2xl` are banned. Note `--ui-radius: 0.5rem` already pins
-`rounded-lg`/`rounded-md` to Tailwind's default pixel values.
+**The rule is: let a primitive keep its own radius, and match the nearest primitive when
+hand-rolling a surface.**
+
+| value | for | matches |
+| --- | --- | --- |
+| `rounded-xl` | card-like surfaces | `Card` |
+| `rounded-lg` | dialog and alert-dialog panels | `DialogContent`, `AlertDialogContent` |
+| `rounded-md` | controls: button, input, select trigger, badge, menu | `Button`, `Input`, `Select`, `Badge`, `DropdownMenu` |
+| `rounded-sm` | dense affordances inside a menu or dialog | `DialogClose`, `SelectItem`, `DropdownMenuItem` |
+| `rounded-full` | pills and circular icon buttons | — |
+
+Banned: `rounded-2xl` and `rounded-3xl`. Nothing in shadcn uses them.
+
+`--ui-radius` is **0.625rem**, the registry's own value, so `rounded-lg` is 10px,
+`rounded-md` 8px and `rounded-xl` 12px — the reference app's proportions. It was 0.5rem
+until the palette review, chosen to keep the pre-migration pixel values.
 
 ### Icons — two sizes
 
