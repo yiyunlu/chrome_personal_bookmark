@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle, CheckCircle, ExternalLink, HelpCircle, Trash2, X } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { Modal } from './Modal';
+import { DialogShell } from './DialogShell';
 
 export function DeadLinkModal({ deadLinkState, onDeleteBookmark, onClose }) {
   const open = !!deadLinkState;
@@ -12,7 +12,7 @@ export function DeadLinkModal({ deadLinkState, onDeleteBookmark, onClose }) {
   const hasProblems = deadLinks.length > 0 || unknownLinks.length > 0;
 
   return (
-    <Modal open={open} onClose={onClose} title={t('deadLinkTitle')} className="max-w-xl">
+    <DialogShell open={open} onClose={onClose} title={t('deadLinkTitle')} className="max-w-xl">
       {deadLinkState && (
         <>
           {/* Header */}
@@ -128,7 +128,7 @@ export function DeadLinkModal({ deadLinkState, onDeleteBookmark, onClose }) {
           </div>
         </>
       )}
-    </Modal>
+    </DialogShell>
   );
 }
 
