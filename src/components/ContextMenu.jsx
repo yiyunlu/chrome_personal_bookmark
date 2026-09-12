@@ -67,6 +67,11 @@ export function ContextMenu({
         collisionPadding={8}
         className="min-w-[10rem]"
         aria-label={contextMenu?.kind === 'collection' ? t('collectionActions') : t('bookmarkActions')}
+        // Radix labels the menu from its trigger, which here is the empty,
+        // aria-hidden virtual anchor. Clearing it leaves aria-label as the only
+        // source of the accessible name instead of relying on that lookup
+        // resolving to an empty string.
+        aria-labelledby={undefined}
         // Keep focus where it was. Radix would otherwise restore focus to the
         // virtual anchor, which is invisible and carries no context.
         onCloseAutoFocus={(event) => event.preventDefault()}

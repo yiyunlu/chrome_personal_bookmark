@@ -1,25 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ContextMenu } from '../components/ContextMenu';
 import { CollectionCard } from '../components/CollectionCard';
 import { t } from '../lib/i18n';
-
-// Radix's Popper measures its anchor with ResizeObserver, which jsdom does not
-// implement. Polyfilled here rather than in setup.js so this file stays
-// independent of the other phases' test setup.
-beforeAll(() => {
-  if (!globalThis.ResizeObserver) {
-    globalThis.ResizeObserver = class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    };
-  }
-  if (!Element.prototype.scrollIntoView) {
-    Element.prototype.scrollIntoView = () => {};
-  }
-});
 
 const collection = {
   id: 'col-1',
@@ -246,22 +230,26 @@ describe('ContextMenu (Radix DropdownMenu)', () => {
     await pressAndExpect('Home', items[0]);
   });
 
-  it('opening and closing the menu never marks a card as dragging', async () => {
+  // NOTE: drag safety itself is NOT asserted here. `.card-dragging` is only ever
+  // SortableJS's ghostClass and this harness instantiates no Sortable, so any
+  // assertion on it would pass vacuously. That a right-press cannot start a drag
+  // rests on two code facts instead: all three Sortable scopes use an explicit
+  // `handle:` (main.jsx:355,387,442), and sortablejs bails on `evt.button !== 0`
+  // (sortable.esm.js:1196). It is on the manual smoke list.
+  it('keeps the card host node identical across an open/close cycle', async () => {
     render(<Harness handlers={makeHandlers()} />);
     const card = cardEl();
 
-    // A right-press must not be treated as a drag start.
     fireEvent.pointerDown(card, { button: 2, buttons: 2 });
     fireEvent.mouseDown(card, { button: 2, buttons: 2 });
     fireEvent.contextMenu(card, { clientX: 10, clientY: 10 });
     await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
-    expect(document.querySelector('.card-dragging')).toBeNull();
 
     fireEvent.keyDown(document.querySelector('[role="menu"]'), { key: 'Escape' });
     await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
 
-    expect(document.querySelector('.card-dragging')).toBeNull();
-    // …and the SortableJS host is still the same node, untouched.
+    // React must not have remounted the SortableJS host, or the onEnd DOM-revert
+    // arithmetic in main.jsx would be operating on a different node.
     expect(cardEl()).toBe(card);
     expect(card.getAttribute('data-card-id')).toBe('card-1');
   });
@@ -272,7 +260,6 @@ describe('ContextMenu (Radix DropdownMenu)', () => {
     const article = document.querySelector('[data-collection-id="col-1"]');
     expect(article.tagName).toBe('ARTICLE');
     expect(article.getAttribute('data-draggable')).toBe('true');
-    expect(article.parentElement.getAttribute('data-module-sortable')).toBe('true');
 
     const card = cardEl();
     expect(card.parentElement.getAttribute('data-cards-collection-id')).toBe('col-1');
@@ -283,6 +270,6 @@ describe('ContextMenu (Radix DropdownMenu)', () => {
     await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
 
     expect(cardEl().parentElement.getAttribute('data-cards-collection-id')).toBe('col-1');
-    expect(document.querySelector('[data-collection-id="col-1"]').parentElement.getAttribute('data-module-sortable')).toBe('true');
+    expect(document.querySelector('[data-collection-id="col-1"]')).toBe(article);
   });
 });

@@ -91,9 +91,11 @@ grep -rq "from ['\"]next-themes" src/ && bad "next-themes imported (Next.js only
   || pass "no next-themes import"
 
 echo "== 9. SortableJS DOM invariants =="
-c=$(grep -roh 'data-card-id' src | wc -l | tr -d ' ')
-l=$(grep -roh 'data-collection-id' src | wc -l | tr -d ' ')
-d=$(grep -roh 'data-draggable' src | wc -l | tr -d ' ')
+# Count in shipped source only: test-file selectors must not be able to mask a
+# removal in a component (a phase adding assertions could otherwise hide one).
+c=$(grep -roh --exclude-dir=test 'data-card-id' src | wc -l | tr -d ' ')
+l=$(grep -roh --exclude-dir=test 'data-collection-id' src | wc -l | tr -d ' ')
+d=$(grep -roh --exclude-dir=test 'data-draggable' src | wc -l | tr -d ' ')
 [ "$c" -ge "$BASE_CARD_ATTR" ] && pass "data-card-id x$c (>= $BASE_CARD_ATTR)" || bad "data-card-id dropped to $c"
 [ "$l" -ge "$BASE_COLLECTION_ATTR" ] && pass "data-collection-id x$l (>= $BASE_COLLECTION_ATTR)" || bad "data-collection-id dropped to $l"
 [ "$d" -ge "$BASE_DRAGGABLE_ATTR" ] && pass "data-draggable x$d (>= $BASE_DRAGGABLE_ATTR)" || bad "data-draggable dropped to $d"
