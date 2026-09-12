@@ -8,7 +8,7 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | P1 | Dialog / AlertDialog (8 dialog surfaces) | merged, reviewed | **not yet — see smoke list** |
 | P2 | ContextMenu / DropdownMenu | merged, reviewed | **not yet — see smoke list** |
 | P3 | Form primitives (Input / Label / Select) | merged, reviewed | **not yet — see smoke list** |
-| P4 | Feedback (Sonner, Tooltip) + undo reachability + Trash dialog | merged, needs review | **not yet — see smoke list** |
+| P4 | Feedback (Sonner, Tooltip) + undo reachability + Trash dialog | merged, reviewed | **not yet — see smoke list** |
 | P5 | Cards / Sidebar — **gated, optional** | pending | — |
 
 Every phase ends with `./scripts/verify-ui.sh` exiting 0 and one commit named
@@ -420,6 +420,30 @@ with the DevTools console open. Record the result in the status table's last col
   `ring-[var(--accent)]` outright (see the commit after P3's merge) — worth one real look.
 - placeholder text colour moved from the UA default to `text-muted-foreground` on every
   field, and `Input` is `display:flex` where the raw input was `inline-block`
+
+**From P4 (merged):**
+- delete a card, press `S` to open Save tabs, then click **Undo**. The undo must run
+  **and the dialog must stay open.** The toast deliberately lives outside the dialog's
+  portal, so Radix counted a click on it as an outside interaction and dismissed the
+  dialog — discarding the tab selection. `DialogShell` now ignores pointer-downs inside
+  `[data-sonner-toaster]`; `src/test/dialogToastGuard.test.jsx` guards it and was
+  mutation-checked, but only a browser exercises the real deferred-click path.
+- the same scenario with the keyboard: **known unfixed.** Radix's `FocusScope` is trapped
+  while a dialog is open, so the Undo button cannot be reached by `Tab` (nor by Sonner's
+  hotkey). The mouse path and the screen-reader announcement work; keyboard-only users
+  must close the dialog first. Fixing it means registering the toast as a Radix
+  dismissable *branch*, which is a larger change than this phase warranted.
+- open Trash: `Escape` closes it, focus is trapped, focus returns to the opener, a
+  backdrop click still dismisses, and a long trash list scrolls rather than clipping
+  (its scroll region moved from `flex-1 overflow-y-auto` to `maxHeight: 60vh`). **No test
+  covers this surface at all.**
+- Empty trash from inside Trash: the confirm must render above it (Trash is `LAYER_BASE`,
+  the confirm `LAYER_TOP` — by construction, but the z-order tests only parse class strings)
+- a long toast message (auto-organize's summary) now wraps instead of widening: Sonner caps
+  the container at 356px where the old toast grew. Entry/exit is Sonner's lift-and-slide.
+- hover the collapsed sidebar rail: real tooltips instead of the OS `title` delay. Then
+  start dragging a nav row and confirm no tooltip appears mid-drag.
+- both sidebar dropdowns (source, language) are now poppers, not native OS selects.
 
 **Known open item, not a P2 defect:** after a menu closes, focus lands on `<body>`, so a
 keyboard user's next Tab restarts at the top of the page. Identical to the pre-migration

@@ -219,7 +219,12 @@ export function Sidebar({
                 {t('bookmarkSource')}
               </label>
               <Select value={activeSourceId} onValueChange={onSourceChange}>
-                <SelectTrigger id="tabhub-source-select" className={SELECT_TRIGGER_CLASS} style={SELECT_SURFACE}>
+                <SelectTrigger
+                  id="tabhub-source-select"
+                  aria-label={t('bookmarkSource')}
+                  className={SELECT_TRIGGER_CLASS}
+                  style={SELECT_SURFACE}
+                >
                   <SelectValue placeholder={t('bookmarkSource')} />
                 </SelectTrigger>
                 <SelectContent className={SELECT_CONTENT_CLASS}>
@@ -274,7 +279,12 @@ export function Sidebar({
                 {t('language')}
               </label>
               <Select value={languageSetting} onValueChange={onLanguageChange}>
-                <SelectTrigger id="tabhub-language-select" className={SELECT_TRIGGER_CLASS} style={SELECT_SURFACE}>
+                <SelectTrigger
+                  id="tabhub-language-select"
+                  aria-label={t('language')}
+                  className={SELECT_TRIGGER_CLASS}
+                  style={SELECT_SURFACE}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className={SELECT_CONTENT_CLASS}>

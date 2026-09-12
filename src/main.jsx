@@ -1061,7 +1061,23 @@ function App() {
 
   const onToggleManage = useCallback(() => setManageMode((prev) => !prev), []);
 
-  const modalOpen = !!(contextMenu || editorState || batchMoveState || aiCategorizeState || deadLinkState);
+  // Every overlay that traps focus must disable the single-key shortcuts. Before
+  // the shadcn migration only 5 of the 9 surfaces were listed, which was merely
+  // odd while those overlays had no focus trap; now Radix's FocusScope yanks focus
+  // straight back, so `/` over an open dialog is a visible focus-bounce and `O`
+  // mutates bookmarks under a modal that will not re-render from it.
+  const modalOpen = !!(
+    contextMenu ||
+    editorState ||
+    batchMoveState ||
+    aiCategorizeState ||
+    deadLinkState ||
+    showTrash ||
+    settingsOpen ||
+    saveTabsState ||
+    confirmDialog ||
+    promptDialog
+  );
 
   const handleEscape = useCallback(() => {
     // Close the topmost overlay only.
