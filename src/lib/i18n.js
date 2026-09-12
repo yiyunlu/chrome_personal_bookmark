@@ -72,6 +72,10 @@ const dictionaries = {
     dragHere: '拖拽书签到此处',
     expandSidebar: '展开侧栏',
     collapseSidebar: '收起侧栏',
+    // Header view toggle
+    viewMode: '视图',
+    gridView: '网格视图',
+    listView: '列表视图',
     // AI Categorize
     aiCategorize: 'AI 分类',
     aiCategorizeTitle: 'AI 智能分类',
@@ -271,6 +275,10 @@ const dictionaries = {
     dragHere: 'Drag bookmarks here',
     expandSidebar: 'Expand sidebar',
     collapseSidebar: 'Collapse sidebar',
+    // Header view toggle
+    viewMode: 'View',
+    gridView: 'Grid view',
+    listView: 'List view',
     // AI Categorize
     aiCategorize: 'AI Categorize',
     aiCategorizeTitle: 'AI Smart Categorize',
