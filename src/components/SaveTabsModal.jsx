@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { Modal } from './Modal';
+import { DialogShell } from './DialogShell';
 import { BookmarkIcon } from './BookmarkIcon';
 
 const NEW_COLLECTION_VALUE = '__new__';
@@ -72,7 +72,7 @@ export function SaveTabsModal({ open, tabs, defaultFolderName, collections, onSa
   if (!open || !tabs) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title={t('saveTabsTitle')} className="max-w-xl">
+    <DialogShell open={open} onClose={onClose} title={t('saveTabsTitle')} className="max-w-xl">
       {/* Header */}
       <div
         className="flex items-center justify-between px-5 py-3.5 border-b"
@@ -191,6 +191,6 @@ export function SaveTabsModal({ open, tabs, defaultFolderName, collections, onSa
           {saving ? t('saving') : t('save')}
         </button>
       </div>
-    </Modal>
+    </DialogShell>
   );
 }
