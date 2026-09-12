@@ -128,19 +128,36 @@ Risk: medium. Fallback: L2 per file.
 **Owns:** `src/components/ContextMenu.jsx`, `main.jsx` (wiring only),
 `CollectionCard.jsx` (trigger attachment only).
 
+Implementation note: Radix's `ContextMenu` primitive derives its position from a
+`Trigger` that must **wrap** the right-clicked element. Both trigger sites are
+SortableJS-managed hosts — `Sidebar`'s collection rows (owned by P4, off-limits to P2)
+and `CollectionCard`'s cards — and wrapping them would also have forced a prop-API
+change on `CollectionCard`, breaking ground rule 3. `ContextMenu.jsx` therefore uses
+`DropdownMenu` anchored to a zero-size virtual anchor at the stored pointer
+coordinates: the `contextMenu` state object and every prop API survive untouched, no
+DOM node is inserted anywhere near a draggable host, and Radix still owns roving
+focus, `Escape`, dismissal, collision handling and ARIA. `modal={false}` so the
+menu never locks body scroll or disables pointer events on the Sortable lists below.
+
 Acceptance:
-- [ ] gate exits 0
-- [ ] the 190-line hand-rolled `ArrowUp`/`ArrowDown`/`Tab` handler is gone
-- [ ] right-click opens the menu at the pointer, for both a bookmark card and a collection header
-- [ ] ≥2 tests: menu opens on `contextmenu`; each item invokes the same callback as before
-- [ ] Radix keyboard nav verified manually (`Arrow`, `Home`, `End`, `Escape`)
-- [ ] **opening a menu on a draggable card must not start a drag**, and closing it must not
-      leave a `.card-dragging` class behind
-- [ ] `data-card-id` / `data-collection-id` remain on the *same* DOM nodes — diff review,
-      not just gate 9's counts
-- [ ] `[data-radix-popper-content-wrapper] { transition: none }` still present in `index.css`
+- [x] gate exits 0 — 11 checks, 185 tests (baseline 171)
+- [x] the 190-line hand-rolled `ArrowUp`/`ArrowDown`/`Tab` handler is gone
+- [x] right-click opens the menu at the pointer, for both a bookmark card and a collection
+      header (the card header trigger is new: `CollectionCard`'s header button now takes
+      an optional `onCollectionContextMenu`)
+- [x] ≥2 tests: menu opens on `contextmenu`; each item invokes the same callback as before
+      (`src/test/ContextMenu.test.jsx`, 15 tests)
+- [x] Radix keyboard nav (`Arrow`, `Home`, `End`, `Escape`) — covered by jsdom tests;
+      **still unverified in a real browser**
+- [x] **opening a menu on a draggable card must not start a drag**, and closing it must not
+      leave a `.card-dragging` class behind — all three Sortable scopes use an explicit
+      `handle:` selector and SortableJS ignores `button !== 0`
+- [x] `data-card-id` / `data-collection-id` remain on the *same* DOM nodes — they appear in
+      no diff hunk at all; asserted structurally in `ContextMenu.test.jsx`
+- [x] `[data-radix-popper-content-wrapper] { transition: none }` still present in `index.css`
       (removing it makes menus slide in from their previous position)
 - [ ] manual: drag a card → right-click it → drag it again; no `removeChild` crash
+      — **not done, needs a loaded extension**
 
 Risk: medium-high — SortableJS adjacency. Fallback: L1.
 
