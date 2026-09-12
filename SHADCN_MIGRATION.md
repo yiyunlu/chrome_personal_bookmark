@@ -9,7 +9,9 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | P2 | ContextMenu / DropdownMenu | merged, reviewed | **not yet — see smoke list** |
 | P3 | Form primitives (Input / Label / Select) | merged, reviewed | **not yet — see smoke list** |
 | P4 | Feedback (Sonner, Tooltip) + undo reachability + Trash dialog | merged, reviewed | **not yet — see smoke list** |
-| P5 | Cards / Sidebar — **gated, optional** | pending | — |
+| P5a | `CollectionCard` — cards on shadcn primitives | pending | — |
+| P5b | `Sidebar` — the rest of the rail | pending | — |
+| P6 | **Style unification** — one token system, no hand-styling left | pending | — |
 
 Every phase ends with `./scripts/verify-ui.sh` exiting 0 and one commit named
 `feat(ui): P<N> — <summary>`.
@@ -354,6 +356,141 @@ Acceptance (all required):
 Risk: high. Fallback: L1, immediately.
 
 ---
+
+## Style contract
+
+Binding on every phase from P5 onward. It exists because the codebase currently runs
+**two** styling systems side by side, and "unified UI" is otherwise unfalsifiable. Measured
+at the P5 baseline: **350 inline `var()` colours, 55 raw `<button>`s, 6 radius values,
+7 icon sizes.** Gate 12 ratchets all four — they may only go down.
+
+### Colour — token classes only, zero inline `var()`
+
+No `style={{ … var(--x) }}` in any component. Every legacy variable has a class:
+
+| was | becomes |
+| --- | --- |
+| `var(--bg)` | `bg-background` |
+| `var(--text)` | `text-foreground` |
+| `var(--muted)` | `text-muted-foreground` |
+| `var(--panel-bg)`, `var(--card-bg)` | `bg-card` |
+| `var(--panel-border)`, `var(--card-border)` | `border-border` |
+| `var(--input-bg)` | `bg-background` |
+| `var(--input-border)` | `border-input` |
+| `var(--hover)`, `var(--accent-soft)` | `bg-accent` |
+| `var(--accent)` | `text-primary` / `bg-primary` / `ring-ring`, by role |
+| `var(--btn-primary)` + `var(--btn-primary-text)` | `<Button>` (variant `default`) |
+| `var(--danger)` | `text-destructive`; soft fill → `bg-destructive/10` |
+| `var(--warning)` | `text-warning`; soft fill → `bg-warning/10` |
+| `var(--shadow)` | `shadow-panel` |
+| `var(--sidebar-bg)` | `bg-muted` |
+| `var(--sidebar-hover)` | `hover:bg-accent` |
+| `var(--sidebar-active)` | `bg-secondary` |
+
+`--ui-warning` and `shadow-panel` were added for this table, so there is no colour left
+that needs an inline style. Once the count reaches 0, the legacy alias block in
+`src/index.css` is deleted and `--ui-*` becomes the only palette.
+
+### Radius — four values, no others
+
+| value | for |
+| --- | --- |
+| `rounded-md` | interactive controls: buttons, inputs, select triggers, menu items, badges |
+| `rounded-lg` | surfaces: cards, popovers, menus, toasts, inline panels |
+| `rounded-xl` | dialog panels only |
+| `rounded-full` | pills and circular icon buttons |
+
+`rounded-sm` and `rounded-2xl` are banned. Note `--ui-radius: 0.5rem` already pins
+`rounded-lg`/`rounded-md` to Tailwind's default pixel values.
+
+### Icons — two sizes
+
+`size={16}` everywhere; `size={20}` only for empty-state and illustration icons. Nothing
+else. **Inside `<Button>` pass no `size` prop at all** — the cva's `[&_svg]:size-4` handles
+it, and the `[&_svg]:size-3.5` override P0 added to `Toolbar` is removed as part of this.
+
+### Buttons — no raw `<button>` outside `src/components/ui/`
+
+| variant | for |
+| --- | --- |
+| `default` | the one primary action of a surface |
+| `outline` | secondary and toolbar actions |
+| `ghost` | icon-only affordances, row actions, close buttons — with `size="icon"` when icon-only |
+| `destructive` | a confirmed destructive action (a confirm dialog's confirm button) |
+| `ghost` + `text-destructive` | an inline destructive row action |
+| `link` | inline text actions |
+
+Every icon-only button carries `aria-label`, plus a `Tooltip` where no visible label exists.
+
+### Typography — three roles
+
+`text-base font-semibold` for a dialog or panel title, `text-sm` for body, `text-xs
+text-muted-foreground` for meta. No other size in a component.
+
+### Spacing
+
+Dialog header and footer `px-5 py-4`, dialog body `p-5`, card padding `p-3`, control rows
+`gap-2`, card grids `gap-3`.
+
+---
+
+## P5a — `CollectionCard`
+
+**Owns:** `src/components/CollectionCard.jsx` and its tests. **Nothing else** — not
+`main.jsx`, not `Sidebar.jsx`.
+
+Verified baseline in this file: 23 inline `var()`, 3 raw `<button>`, 1 off-scale radius,
+5 off-scale icon sizes. It carries all three drag-host attributes: `data-card-id`,
+`data-collection-id`, `data-draggable`.
+
+**This is the highest-risk file in the migration.** `main.jsx` drives three Sortable scopes
+against it (`main.jsx:344,376,433`) and reverts SortableJS's DOM mutation before React
+reconciles; the `onEnd` handler indexes `evt.from.children[oldIndex]` and reads
+`evt.to.getAttribute('data-cards-collection-id')` (`main.jsx:499`).
+
+Acceptance:
+- [ ] `./scripts/verify-ui.sh` exits 0, and gate 12's four numbers **drop** (lower the
+      ceilings in the script in the same commit)
+- [ ] the file has 0 inline `var()`, 0 raw `<button>`, 0 off-scale radius, 0 off-scale icons
+- [ ] shadcn `Card` composition where it is a genuine surface; `Button` for the 3 controls
+- [ ] **`data-card-id`, `data-collection-id`, `data-draggable` sit on the same elements at
+      the same depth relative to their Sortable container as at the P5 baseline** — proven
+      by a side-by-side diff of the rendered DOM, not by counts
+- [ ] the `data-cards-collection-id` / `data-parent-id` container is structurally unchanged
+- [ ] `React.memo` is preserved and no new non-stable prop is introduced
+- [ ] tests assert the host structure before and after a re-render
+- [ ] manual (yours): the full drag matrix — reorder in a collection, move across
+      collections, reorder nav, drag with a search filter active, drag in manage mode
+
+## P5b — `Sidebar`
+
+**Owns:** `src/components/Sidebar.jsx` and its tests. **Nothing else.**
+
+Verified baseline: 36 inline `var()`, 10 raw `<button>`, 0 off-scale radius, 8 off-scale
+icons. Carries `data-collection-id` and `data-draggable` on the expanded nav rows, which
+are the `[data-nav-sortable]` scope's children.
+
+Acceptance:
+- [ ] gate exits 0 and gate 12's numbers drop
+- [ ] 0 inline `var()`, 0 raw `<button>`, 0 off-scale icons in this file
+- [ ] the nav rows' drag-host attributes and depth are unchanged
+- [ ] the tooltips, `aria-label`s and the two `Select`s that P4 added still behave; its
+      tests stay green without being weakened
+- [ ] the collapsed rail and the expanded rail are both visually on-contract
+
+## P6 — Style unification
+
+Runs **after P5a and P5b merge**, in three file-disjoint parts:
+**P6a** the nine dialog surfaces · **P6b** `Toolbar`, `ChatPanel`, `UndoToast`,
+`WelcomeCard`, `BookmarkIcon`, `ContextMenu`, `DialogShell` · **P6c** `main.jsx` plus the
+`src/index.css` cleanup.
+
+Acceptance:
+- [ ] gate 12 reads **0 / 0 / 0 / 0**, and the ceilings in `scripts/verify-ui.sh` are set to 0
+- [ ] the legacy alias block is deleted from `src/index.css`; `--ui-*` is the only palette
+- [ ] no test was weakened to get there; total count did not drop
+- [ ] one visual pass over every surface in the browser, on the smoke list
+
 
 ## Manual smoke list (browser-only; no agent can check these)
 
