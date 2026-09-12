@@ -8,7 +8,7 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | P1 | Dialog / AlertDialog (8 dialog surfaces) | merged, reviewed | **not yet — see smoke list** |
 | P2 | ContextMenu / DropdownMenu | merged, reviewed | **not yet — see smoke list** |
 | P3 | Form primitives (Input / Label / Select / Switch / Textarea) | pending | — |
-| P4 | Feedback (Sonner toasts, Tooltip) | pending | — |
+| P4 | Feedback (Sonner, Tooltip) + undo reachability | implemented, needs review | **not yet — see smoke list** |
 | P5 | Cards / Sidebar — **gated, optional** | pending | — |
 
 Every phase ends with `./scripts/verify-ui.sh` exiting 0 and one commit named
@@ -200,8 +200,10 @@ Risk: low. Fallback: L2 per file.
 ## P4 — Feedback (Sonner, Tooltip)
 
 **Owns:** `UndoToast.jsx`, `main.jsx` (mount `Toaster`, plus the Trash overlay below),
-`Sidebar.jsx`, `AICategorizeModal.jsx` (its `title` attributes only),
-`src/test/AICategorizeModal.test.jsx`. **`Toolbar.jsx` belongs to P3** — do not touch it;
+`Sidebar.jsx` (its tooltips *and*, by later agreement, its two native selects),
+`AICategorizeModal.jsx` (its `title` attributes only), `src/test/AICategorizeModal.test.jsx`,
+the new `src/test/undoToast.test.jsx` and `src/test/Sidebar.test.jsx`, and the toast half of
+`src/test/dialog.test.jsx`'s z-order case. **`Toolbar.jsx` belongs to P3** — do not touch it;
 toolbar tooltips are deferred to a later pass so the two waves stay file-disjoint.
 
 **Inherited from P1 — the undo toast is now unreachable while any dialog is open.**
@@ -222,15 +224,95 @@ forbidden to touch `main.jsx` so it survived the dialog sweep, and no phase owne
 it is now below both the new dialogs (z-90) and the toast (z-80). Migrate it to
 `DialogShell` here, or state in this doc that it stays hand-rolled and fix its z-order.
 
+### Implementation notes (implemented)
+
+**One premise above is wrong, and the fix does not depend on it: Sonner does not portal.**
+`sonner@2.0.8` imports `ReactDOM` only for `flushSync`; `grep -c Portal
+node_modules/sonner/dist/index.mjs` is 0, and its `<section>` renders in place in the React
+tree. Portalling to `<body>` would not have helped anyway — `hideOthers` walks `<body>`'s
+*children*, so a direct child of body is marked like any other. What actually spares the
+toast is `aria-hidden`'s explicit live-region exemption
+(`node_modules/aria-hidden/dist/es2015/index.js`: `targets.push(…querySelectorAll(
+'[aria-live], script'))`), which skips the matched node and leaves every ancestor of it
+unmarked too. Sonner earns the exemption structurally: it renders
+`<section aria-live="polite">` even with zero toasts, so mounting the `Toaster` for the life
+of the app puts the exemption in place *before* any dialog opens. The old toast was rendered
+only while a toast existed, so in the "open a dialog, then delete something" order it
+mounted inside an already-`aria-hidden` `#root`.
+
+**Pointer events had to be fixed by hand.** Sonner's stylesheet sets no `pointer-events` on
+its container, so it inherits the `none` that `DismissableLayer` puts on `<body>`.
+`UndoToast` passes `style={{ pointerEvents: 'auto' }}` to the `Toaster` (Sonner spreads
+`style` onto the toast `<ol>`) and repeats it on the toast body. This, not the z-index, is
+the half of the bug that ate the undo click: verified by mutation — deleting both makes
+`undoToast.test.jsx`'s reachability test fail. That test also carries a control element with
+the *old* toast's exact markup (`role=status`, `aria-live`, `z-[80]`) and asserts it is
+pointer-inert.
+
+**Stacking.** Sonner's injected stylesheet gives `[data-sonner-toaster]`
+`position: fixed; z-index: 999999999`, well above P1's z-90/100. The App root is
+`position: relative; z-index: auto`, which creates no stacking context, so that wins
+globally. Asserted on the *computed* z-index, not on a class string.
+
+**The Trash overlay was migrated to `DialogShell`** rather than kept hand-rolled with a
+higher z-index. Three reasons: (1) it can *open* another dialog — Empty trash raises
+`ConfirmModal` at `LAYER_TOP` (z-100) — so ordering it by hand means hand-tracking two
+layers the shells already order by construction; (2) it was the last surface with no focus
+trap, no Escape (it was not in `handleEscape` either), no `role="dialog"` and no accessible
+name, and it is a list of buttons, so that was a real gap rather than a cosmetic one;
+(3) a z-index-only fix keeps a ninth of the overlay logic hand-rolled for no gain, whereas
+now the only `fixed inset-0` left in the source is the vendored `ui/dialog.jsx` /
+`ui/alert-dialog.jsx` overlay (plus the comment in `main.jsx` recording this). Its inner
+scroll region moved from
+`flex-1 overflow-y-auto` on a flex panel to `maxHeight: 60vh`, matching the other eight.
+
+**The two native selects in `Sidebar.jsx`** (source, language) were migrated to shadcn
+`Select` here, at the coordinator's request: P3's acceptance asks for zero bare selects
+repo-wide but P3 does not own this file. Same two workarounds P3 used — `z-[110]` on
+`SelectContent`, and `[&_[data-radix-select-viewport]]:h-auto` from the content, because
+shadcn pins the popper viewport to one row and `Viewport` accepts no `className`. The
+trigger keeps the old control's colours and geometry (the sidebar is a dark panel that
+shadcn's `bg-transparent`/`border-input` defaults disappear into); the floating list keeps
+`bg-popover`, like P2's context menu. Both triggers are now named by their existing visible
+`<label>` via `htmlFor`/`id`.
+
+**The tooltip drag guard reads SortableJS's statics, not React state.** `Sortable.dragged`
+is set on the pointerdown on a handle and cleared by `_nulling()` on drop, so
+`dragInProgress()` in `Sidebar.jsx` covers the whole gesture without a render — a `dragging`
+flag in React state would reconcile mid-drag, which is the failure mode `main.jsx` reverts
+SortableJS's DOM mutation to avoid. The test drives a real `Sortable` instance with a real
+`pointerdown`; removing the guard makes it fail.
+
+**Bundle.** Sonner costs ≈10.4 KB gz (measured: 155,070 B with it against 144,648 B with
+the hand-rolled toast restored and nothing else changed); Tooltip is ≈1.2 KB on top of the
+Popper P2 already pulled in. Gate 11 passes at **155,066 B gz against the 160,000 cap —
+4,934 B of headroom**, and that figure already includes `Select`, so merging P3 should not
+move it. Stated plainly: the reachability fix itself needed only `pointer-events: auto` and
+a permanently mounted live region, both of which a hand-rolled toast could have had for
+0 bytes. Sonner buys the stacking, the queue, and one place for any future toast — but with
+under 5 KB left, **P5 has essentially no bundle budget.**
+
 Acceptance:
-- [ ] gate exits 0
-- [ ] undo still fires inside the 8s window and `src/hooks/useUndoStack.js` timing logic is
+- [x] gate exits 0 — 11 checks, 231 tests (baseline 171; 212 before this phase)
+- [x] undo still fires inside the 8s window and `src/hooks/useUndoStack.js` timing logic is
       **unchanged** (that hook owns the timer; the toast is only the surface) — test it
-- [ ] `Toaster` gets `theme={resolvedTheme}` from `useTheme`, never `next-themes`
-- [ ] icon-only buttons get `Tooltip` **plus** an `aria-label`
-- [ ] `AICategorizeModal.test.jsx` migrated off `getByTitle('接受')` / `getByTitle('拒绝')`
+      (`undoToast.test.jsx`, "the 8s undo window survives the migration": undo fires at
+      7.9s, and a click past the deadline does nothing; `git diff` shows the hook untouched)
+- [x] `Toaster` gets `theme={resolvedTheme}` from `useTheme`, never `next-themes`
+      (asserted through the rendered `data-sonner-theme`, both ways)
+- [x] icon-only buttons get `Tooltip` **plus** an `aria-label` — the collapse toggle and the
+      four collapsed-rail buttons. Two deliberate exceptions, argued in the code: the three
+      theme buttons render their label beside the icon, so they take the `aria-label` and no
+      tooltip; the expanded nav rows are not icon-only and are SortableJS children, so their
+      `title` (the right-click hint) stays.
+- [x] `AICategorizeModal.test.jsx` migrated off `getByTitle('接受')` / `getByTitle('拒绝')`
       to accessible-name queries **in the same commit** that removes those `title` attributes
-- [ ] no tooltip opens while a card is being dragged
+      (`grep -rn getByTitle src/` is empty)
+- [x] no tooltip opens while a card is being dragged — see the drag guard note above
+- [x] the undo toast is reachable while a dialog is open: neither `aria-hidden` nor
+      pointer-inert, proven against two controls that are
+- [x] the ninth overlay is gone — the Trash modal is a `DialogShell`
+- [ ] manual: the browser-only items added to the smoke list below
 
 Risk: low, except the `getByTitle` coupling. Fallback: L1.
 
@@ -273,6 +355,23 @@ with the DevTools console open. Record the result in the status table's last col
   `animate-slide-up` to `bg-popover`/`rounded-md`/`shadow-md` with no entry animation;
   hover moves from `var(--hover)` to `focus:bg-accent`; the vendored item class
   `[&>svg]:size-4` overrides `size={14}` icon props to 16px
+
+**From P4 (implemented):**
+- delete a card, then press `S` while the toast is up: the toast must stay above
+  `SaveTabsModal` and its Undo button must still click. jsdom proves the computed
+  `pointer-events`; only a browser proves the hit test.
+- the toast moved from `right-4 bottom-4` / `animate-slide-in-right` to Sonner's own
+  container (`offset={16}`, 356px max width, Sonner's lift-and-slide transitions), so a long
+  message such as `autoOrganizeResult` now wraps instead of widening
+- hover the collapsed rail's icons: tooltip placement comes from floating-ui and is
+  unverifiable in jsdom. Then start dragging a collection row over them — no tooltip may
+  appear.
+- open the Trash dialog, then Empty trash: the confirm must sit above the trash panel, and
+  Escape must close only the topmost of the two
+- both sidebar selects: the popper list must be full height (not one row) and must not be
+  clipped; `z-[110]` and the viewport override are asserted only as class strings
+- the accept/reject tooltips inside `AICategorizeModal` must render *above* the dialog panel
+  (`z-[110]` against the panel's z-90) — class-string-only in jsdom as well
 
 **From P1 (merged):**
 - open all 8 dialogs; console must stay clean (the RTL stand-in catches React's warnings

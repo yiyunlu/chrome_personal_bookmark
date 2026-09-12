@@ -10,7 +10,6 @@ import { EditBookmarkModal } from '../components/EditBookmarkModal';
 import { PromptModal } from '../components/PromptModal';
 import { SaveTabsModal } from '../components/SaveTabsModal';
 import { SettingsModal } from '../components/SettingsModal';
-import { UndoToast } from '../components/UndoToast';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { clickOverlay, getOverlay, tick, zIndexOf } from './dialogHelpers';
 
@@ -224,21 +223,21 @@ describe('Dialog behaviour (shadcn Dialog / AlertDialog)', () => {
     expect(onEditorClose).not.toHaveBeenCalled();
   });
 
-  it('stacks dialogs above ChatPanel and UndoToast', () => {
+  /* P4 moved the undo toast to Sonner, whose container carries its z-index in
+     Sonner's own injected stylesheet rather than in a Tailwind class, so the
+     toast half of this check now lives in `undoToast.test.jsx` — where it is
+     asserted on the *computed* z-index, and alongside the two properties a
+     z-index cannot express (pointer-events and aria-hidden). */
+  it('stacks dialogs above ChatPanel', () => {
     const chat = render(<ChatPanel open onClose={vi.fn()} onSendMessage={vi.fn()} messages={[]} />);
     const chatZ = zIndexOf(chat.container.firstChild);
-
-    render(<UndoToast undoToast={{ message: 'x', pending: false }} onUndo={vi.fn()} />);
-    const toastZ = zIndexOf(screen.getByRole('status'));
 
     renderEditor();
     const dialogZ = zIndexOf(panel('dialog'));
     const overlayZ = zIndexOf(getOverlay());
 
     expect(chatZ).toBe(50);
-    expect(toastZ).toBe(80);
-    expect(dialogZ).toBeGreaterThan(toastZ);
-    expect(overlayZ).toBeGreaterThan(toastZ);
+    expect(dialogZ).toBeGreaterThan(chatZ);
     expect(overlayZ).toBeGreaterThan(chatZ);
   });
 });
