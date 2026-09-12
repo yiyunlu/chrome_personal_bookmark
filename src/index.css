@@ -30,7 +30,7 @@
      #e5e5e5 #a1a1a1. Hue and saturation are 0 — that is the point. The previous
      slate palette tinted every surface blue, which is why this app did not look
      like the reference. */
-  --ui-radius: 0.5rem;
+  --ui-radius: 0.625rem;
   --ui-background: 0 0% 100%;
   --ui-foreground: 0 0% 3.9%;
   --ui-card: 0 0% 100%;

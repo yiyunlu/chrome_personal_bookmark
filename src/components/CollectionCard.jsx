@@ -55,7 +55,9 @@ export const BookmarkCard = React.memo(function BookmarkCard({
     <Card
       data-card-id={card.id}
       className={cn(
-        'group relative flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 text-left shadow-none',
+        // No radius here on purpose: <Card> ships rounded-xl, which is the reference
+        // app's card radius. Overriding it is what made these boxes look squarer.
+        'group relative flex w-full cursor-pointer items-center gap-3 p-3 text-left shadow-none',
         isSelected && 'border-primary bg-accent'
       )}
       onClick={(e) => onCardClick(e, card)}
@@ -167,7 +169,7 @@ export const CollectionCard = React.memo(function CollectionCard({
     // the `[data-module-sortable]` drag host. It keeps its <article> tag and its
     // Card token classes by hand rather than swapping the host's element type.
     <article
-      className="overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-panel"
+      className="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-panel"
       data-collection-id={collection.id}
       data-draggable={String(moduleDraggable)}
     >
@@ -229,7 +231,7 @@ export const CollectionCard = React.memo(function CollectionCard({
             <div
               data-cards-collection-id={collection.id}
               data-parent-id={collection.id}
-              className="flex items-center justify-center rounded-lg border-2 border-dashed border-border py-6 text-sm text-muted-foreground"
+              className="flex items-center justify-center rounded-xl border-2 border-dashed border-border py-6 text-sm text-muted-foreground"
             >
               {t('dragHere')}
             </div>
