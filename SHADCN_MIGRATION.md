@@ -79,6 +79,11 @@ removes or changes a feature. Where the two disagree, that split decides it:
 | no language switcher | keep it |
 | nothing for the 9 dialogs, the context menu, the chat panel, the toast, the trash | keep them; they inherit the tokens automatically |
 | a grid/list view toggle | **in scope after all** — tags live in the list view, so the grid tile can stay two lines |
+| 11–14px glyphs | **16px.** The icon rule wins over the design here, and the reason is mechanical, not aesthetic: gate 12 counts `size={13}`/`size={14}` as drift, and the only way to get 13px inside a `<Button>` is a `[&_svg]:size-3.5` class — which dodges the counter rather than satisfying it, and is the exact P0 override the contract deleted. Cost, measured: 16²/13² is **51% more ink**, so a glyph out-weighs its own label in a 30px chip. |
+
+Note on ownership: **every phase may add keys to `src/lib/i18n.js`** — ground rule 5 requires
+it and the Owns columns below do not repeat it. Additions are contiguous per dictionary, so
+concurrent phases conflict textually and resolve as "keep both".
 
 That last row is the payoff from P1–P5: every one of those surfaces is already on token
 classes, so a palette swap re-skins them with no edits. They will read as shadcn components
@@ -165,10 +170,31 @@ reach the DOM and CSS source order decides. `shadow-panel` — the contract's ow
 for `var(--shadow)` — would therefore have failed to override shadcn's `shadow`/`shadow-sm`
 on `Button`, `Card`, `Input` and `SelectTrigger`.
 
-`src/lib/cn.js` now registers the project's custom `shadow`, `ease` and `animate` scales
-with `extendTailwindMerge`, so mechanism C is fixed at the root. `src/test/cn.test.js`
-pins all three mechanisms, including the two historical bugs, so an upgrade cannot bring
-them back unnoticed.
+**Mechanism D — a responsive prefix is its own merge group.** An unprefixed override does
+not remove a responsive variant of the same property. shadcn's `Input` ships
+`text-base md:text-sm`, so `text-[12.5px]` deleted `text-base` and left `md:text-sm`
+alive — which then won from 768px up, i.e. on every real window. The search field had been
+rendering 14px instead of 12.5px. **Source order does not save you**: the arbitrary class
+is emitted *before* `md:text-sm` in the bundle.
+
+Every responsive-prefixed class in `src/components/ui/`, so a phase can check before it
+overrides. Nothing in the repo collides with these today — this is prevention:
+
+| file | class | an unprefixed override of… silently fails |
+| --- | --- | --- |
+| `input.jsx`, `textarea.jsx` | `md:text-sm` | any `text-*` → 14px from 768px up |
+| `dialog.jsx`, `alert-dialog.jsx` | `sm:rounded-lg` | any `rounded-*` → 9px from 640px up |
+| `dialog.jsx`, `alert-dialog.jsx` | `sm:flex-row`, `sm:justify-end`, `sm:space-x-2`, `sm:text-left` | the footer's flex, justify, spacing and alignment |
+| `alert-dialog.jsx` | `sm:mt-0` | any `mt-*` |
+
+**P6a overrides all nine dialog surfaces and walks straight into the `sm:` set.** The rule:
+*if a vendored base class carries a responsive prefix, your override must carry the same
+prefix.*
+
+`src/lib/cn.js` registers the project's custom `shadow`, `ease` and `animate` scales with
+`extendTailwindMerge`, which fixes mechanism C at the root. `src/test/cn.test.js` pins all
+four mechanisms, including the three historical bugs, so an upgrade cannot bring them back
+unnoticed.
 
 ### Radius — mirror the primitives, do not invent a scale
 
