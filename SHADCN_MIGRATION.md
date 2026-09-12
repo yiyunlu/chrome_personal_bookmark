@@ -11,6 +11,9 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | P4 | Feedback (Sonner, Tooltip) + undo reachability + Trash dialog | merged, reviewed | **not yet — see smoke list** |
 | P5a | `CollectionCard` — cards on shadcn primitives | merged, reviewed | **not yet — see smoke list** |
 | P5b | `Sidebar` — the rest of the rail | merged, reviewed | **not yet — see smoke list** |
+| S1 | Shell: sidebar | pending | — |
+| S2 | Shell: toolbar | pending | — |
+| S3 | Shell: content area + list view | pending | — |
 | P6 | **Style unification** — one token system, no hand-styling left | pending | — |
 
 Every phase ends with `./scripts/verify-ui.sh` exiting 0 and one commit named
@@ -274,6 +277,75 @@ Acceptance:
 - [ ] the tooltips, `aria-label`s and the two `Select`s that P4 added still behave; its
       tests stay green without being weakened
 - [ ] the collapsed rail and the expanded rail are both visually on-contract
+
+---
+
+## Shell refactor (S1 / S2 / S3)
+
+`TabHub.dc.html` is the visual spec. These three run concurrently and are file-disjoint.
+
+| phase | owns | verified baseline (var() / raw button / off-scale icon) |
+| --- | --- | --- |
+| S1 | `src/components/Sidebar.jsx` | 0 / 0 / 0 — already on the contract |
+| S2 | `src/components/Toolbar.jsx` | **21** / 0 / 0 |
+| S3 | `src/main.jsx`, `src/components/CollectionCard.jsx` | main.jsx **31 / 3** / 0 · CollectionCard 0 / 0 / 0 |
+
+Gate 12 stands at 291 / 42 / 7 / 27. S2 and S3 must lower the ceilings by what they clear.
+
+### The one interface between two phases
+
+The design puts a grid/list segmented control in the header, but the view state belongs to
+`App`. S2 owns `Toolbar.jsx` and cannot touch `main.jsx`; S3 owns `main.jsx` and must not
+touch `Toolbar.jsx`. They meet at this contract, which both implement independently:
+
+```
+Toolbar receives two new OPTIONAL props:
+  view          'grid' | 'list'        — defaults to 'grid' when absent
+  onViewChange  (next: 'grid'|'list') => void   — optional; the control is inert without it
+```
+
+Defaulting matters: it means either phase can merge first and the build still works.
+
+### S1 — sidebar
+
+- logo block: 20px accent tile + wordmark + **total count in mono**, right-aligned
+- source switcher keeps the `Select` (behaviour wins) but takes the design's geometry:
+  full width, 30px, `rounded-sm`, bordered, muted label
+- an "全部收藏" row, then a **`分类` section label** (10px, 600, uppercase-ish tracking,
+  `text-faint`), then the folder rows
+- folder rows: 30px, `rounded-sm`, icon 12.5px, name flexes, **count in mono `text-faint`**,
+  nested folders indent (the design uses 22px vs 8px left padding by depth)
+- bottom bar: a bordered segmented control for theme — **keep all three options**
+  (system/light/dark), the design only drew two — then a spacer, then 设置
+- the collapsed rail keeps its current behaviour and tooltips
+
+### S2 — toolbar
+
+- row 1: search (max 520px, 34px, `rounded-md`, mono `/` kbd inside a bordered chip at the
+  right), spacer, the **grid/list segmented control**, then 管理
+- row 2: **保存当前标签页 filled with the accent**, a 1px vertical divider, then
+  自动整理 / AI 分类 / 失效检测 / 新建分类 as ghost buttons at 30px
+- 失效检测 carries a **count badge** in mono on `bg-primary/10 text-primary` when the
+  dead-link count is non-zero. The count already exists in `App` — if it is not currently
+  passed to `Toolbar`, add an optional prop with the same defaulting rule as above.
+- clear all 21 inline `var()` from this file
+
+### S3 — content area and list view
+
+- **sticky group headers**: `position: sticky; top: 0`, page background, bottom border,
+  folder icon + name + count in mono + a collapse chevron on the right
+- grid: `repeat(auto-fill, minmax(232px, 1fr))` at 8px gap
+- **new list view**: one bordered container per group, 36px rows, 18px favicon tile,
+  title capped at ~42% width, mono URL flexing, **tags on the right** as small outlined
+  chips — this is where `onTagClick` finally gets used again
+- clear main.jsx's 31 inline `var()` and its 3 raw `<button>`
+
+**The risk lives here.** Three SortableJS scopes run against this markup and `main.jsx`
+reverts Sortable's DOM mutation before React reconciles. In list view the rows must still
+carry `data-card-id` and still be **direct children** of `[data-cards-collection-id]`, in
+order, or `evt.from.children[oldIndex]` indexes the wrong node. Prove it the way P5a and
+P5b did: a rendered-DOM comparison in both views, mutation-checked.
+
 
 ## P6 — Style unification
 
