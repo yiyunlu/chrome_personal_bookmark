@@ -1,3 +1,95 @@
+/* ── Fonts ───────────────────────────────────────────────────────────────────
+   IBM Plex, bundled rather than loaded from Google Fonts: a webfont link would
+   put a network request on every new-tab open, which is both a latency and a
+   privacy cost for a page that opens dozens of times a day.
+
+   Latin and latin-ext subsets only, ~230 KB total. CJK is deliberately NOT
+   bundled — Noto Sans SC is several megabytes and IBM Plex has no CJK glyphs
+   anyway, so Chinese text falls through to the system face (PingFang SC,
+   Microsoft YaHei, Noto Sans CJK). `unicode-range` means a browser downloads
+   only the subsets a given page actually needs.
+   ────────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/IBMPlexMono-400-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/IBMPlexMono-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/IBMPlexMono-500-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/IBMPlexMono-500-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-400-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-500-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-500-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-600-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-600-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,11 +105,10 @@
    That means the 384 existing `var(--x)` usages across 18 components adopt
    shadcn's day/night palette without a single component edit.
 
-   NOTE: shadcn's slate `primary` is monochrome (near-black / near-white), so
-   TabHub's blue accent is gone by design. To put it back, override just these
-   two lines and nothing else:
-     :root            { --ui-primary: 217.2 91.2% 59.8%; --ui-primary-foreground: 0 0% 100%; }
-     :root[data-theme='dark'] { --ui-primary: 213.1 93.9% 67.8%; }
+   NOTE: the palette is TabHub.dc.html's, not shadcn's. It has a real brand accent
+   (--ui-primary), which shadcn's monochrome neutral does not. The design ships
+   four accent options; swapping to another is these two lines and nothing else:
+     #e04a37 vermillion · #3b6fd4 blue (current) · #2f8f5b green · #7a4fd0 purple
    ────────────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
@@ -36,7 +127,7 @@
   --ui-card-foreground: 15 8% 9.8%;
   --ui-popover: 0 0% 100%;
   --ui-popover-foreground: 15 8% 9.8%;
-  --ui-primary: 6.7 73.2% 54.7%;          /* --accent #e04a37 */
+  --ui-primary: 219.6 64% 53.1%;          /* --accent #3b6fd4 (design prop) */
   --ui-primary-foreground: 0 0% 100%;
   --ui-secondary: 30 27.3% 95.7%;         /* --cardh #f7f4f1 */
   --ui-secondary-foreground: 15 8% 9.8%;
@@ -46,15 +137,15 @@
   --ui-accent-foreground: 15 8% 9.8%;
   --ui-border: 24 16.1% 87.8%;            /* --line  #e5dfdb */
   --ui-input: 23.1 13.4% 81%;             /* --line2 #d5cdc8 */
-  --ui-ring: 6.7 73.2% 54.7%;
+  --ui-ring: 219.6 64% 53.1%;
   --ui-sidebar: 30 21.4% 94.5%;           /* --panel #f4f1ee */
   /* The design has a THIRD text level (--faint) that shadcn's scale lacks: used
      for counts, URLs and section labels. */
   --ui-faint: 23.1 5.8% 56.3%;            /* --faint #968e89 */
-  /* The design defines no destructive colour and its accent is already red, so a
-     stock red would collide with it. This is a darker, less saturated red that
-     stays legible against the warm surfaces and reads as distinct from --accent. */
-  --ui-destructive: 6 62% 42%;
+  /* The design defines no destructive colour, so this is T.red from its own tint
+     palette (#d0402c). It was a darker, muted red while the accent was vermillion;
+     with a blue accent there is no collision and the natural red can be used. */
+  --ui-destructive: 7.3 65.1% 49.4%;
   --ui-destructive-foreground: 0 0% 100%;
   --ui-warning: 32.1 94.6% 43.7%;
   --ui-warning-foreground: 0 0% 100%;
@@ -103,7 +194,7 @@
   --ui-card-foreground: 24 17.2% 94.3%;
   --ui-popover: 30 6.9% 11.4%;
   --ui-popover-foreground: 24 17.2% 94.3%;
-  --ui-primary: 6.7 73.2% 54.7%;
+  --ui-primary: 219.6 64% 53.1%;
   --ui-primary-foreground: 0 0% 100%;
   --ui-secondary: 15 5.4% 14.5%;          /* --cardh #272423 */
   --ui-secondary-foreground: 24 17.2% 94.3%;
@@ -113,10 +204,10 @@
   --ui-accent-foreground: 24 17.2% 94.3%;
   --ui-border: 20 7.3% 16.1%;             /* --line  #2c2826 */
   --ui-input: 17.1 6.4% 21.4%;            /* --line2 #3a3533 */
-  --ui-ring: 6.7 73.2% 54.7%;
+  --ui-ring: 219.6 64% 53.1%;
   --ui-sidebar: 20 6.1% 9.6%;             /* --panel #1a1817 */
   --ui-faint: 21.8 5% 43.3%;              /* --faint #746d69 */
-  --ui-destructive: 6 70% 58%;
+  --ui-destructive: 7.8 71.3% 57.6%;
   --ui-destructive-foreground: 0 0% 100%;
   --ui-warning: 37.7 92.1% 50.2%;
   --ui-warning-foreground: 0 0% 9.1%;
