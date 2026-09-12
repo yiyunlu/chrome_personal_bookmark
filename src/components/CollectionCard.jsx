@@ -4,6 +4,26 @@ import { ChevronDown, ChevronRight, ExternalLink, FolderOpen, GripVertical, Penc
 import { t } from '../lib/i18n';
 import { logError } from '../lib/utils';
 import { generateTags } from '../lib/enrichmentService';
+import { cn } from '../lib/cn';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+
+// ── SortableJS contract (see SHADCN_MIGRATION.md, P5a) ───────────────────────
+// `main.jsx` drives three Sortable scopes against this markup and, on drop,
+// reverts Sortable's DOM mutation before React reconciles. Four things below are
+// load-bearing and must not move:
+//   1. `data-collection-id` + `data-draggable` sit on the <article>, which is a
+//      DIRECT child of `[data-module-sortable]` (Sortable only sorts direct children).
+//   2. `data-cards-collection-id` + `data-parent-id` sit on the same element, whose
+//      children are exactly the cards, in order — `main.jsx` indexes
+//      `evt.from.children[oldIndex]`, so a stray child there corrupts the revert.
+//   3. `data-card-id` sits on the card root, a direct child of that container.
+//   4. `.card-drag-handle` / `.collection-drag-handle` are the Sortable `handle:`
+//      selectors, and `.card-mini-btn` / `.card-select` are read by
+//      `handleCardClick` (main.jsx) to suppress the card-open click.
+// `src/test/collectionCardDragHost.test.jsx` pins all of it, including depth.
+// Card/Button are plain elements, so the data attributes go ON the shadcn element
+// rather than on a wrapper around it.
 
 // Memoized: with hundreds of bookmarks, unrelated App state changes (toasts,
 // chat, modals) must not re-render every card. All callback props are
@@ -32,99 +52,96 @@ export const BookmarkCard = React.memo(function BookmarkCard({
   );
 
   return (
-    <div
+    <Card
       data-card-id={card.id}
-      className="group relative flex items-center gap-3 w-full rounded-xl border p-3 text-left cursor-pointer"
-      style={{
-        background: isSelected ? 'var(--accent-soft)' : 'var(--card-bg)',
-        borderColor: isSelected ? 'var(--accent)' : 'var(--card-border)'
-      }}
+      className={cn(
+        'group relative flex w-full cursor-pointer items-center gap-3 rounded-lg p-3 text-left shadow-none',
+        isSelected && 'border-primary bg-accent'
+      )}
       onClick={(e) => onCardClick(e, card)}
       onContextMenu={(e) => onContextMenu(e, card)}
       title={card.url}
     >
-      {/* Drag handle — visible on hover */}
-      <span className="card-drag-handle flex-shrink-0 opacity-0 group-hover:opacity-40 cursor-grab">
-        <GripVertical size={14} />
+      {/* Drag handle — visible on hover. Sortable `handle:` selector. */}
+      <span className="card-drag-handle flex-shrink-0 cursor-grab opacity-0 group-hover:opacity-40">
+        <GripVertical size={16} />
       </span>
 
       {manageMode && (
         <input
           type="checkbox"
-          className="card-select flex-shrink-0 w-4 h-4 rounded accent-[var(--accent)]"
+          className="card-select h-4 w-4 flex-shrink-0 rounded-md accent-primary"
           checked={isSelected}
           onChange={() => onToggleSelect(card.id)}
           onClick={(e) => e.stopPropagation()}
+          aria-label={card.title}
         />
       )}
 
       {/* Favicon */}
-      <div
-        className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-        style={{ background: 'var(--accent-soft)' }}
-      >
+      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent">
         <BookmarkIcon url={card.url} title={card.title} />
       </div>
 
       {/* Title + domain + tags */}
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate" style={{ color: 'var(--text)' }}>
-          {card.title}
-        </div>
-        {domain && (
-          <div className="text-[0.7rem] truncate mt-0.5" style={{ color: 'var(--muted)' }}>
-            {domain}
-          </div>
-        )}
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-medium">{card.title}</div>
+        {domain && <div className="mt-0.5 truncate text-xs text-muted-foreground">{domain}</div>}
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="mt-1 flex flex-wrap gap-1">
             {tags.map((tag) => (
-              <span
+              <Button
                 key={tag}
-                className="tag-chip text-[0.6rem] px-1.5 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
-                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-auto rounded-full bg-accent px-1.5 py-0.5 text-xs font-normal text-primary hover:bg-accent hover:opacity-80"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onTagClick) onTagClick(tag);
                 }}
               >
                 {tag}
-              </span>
+              </Button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Manage actions */}
+      {/* Manage actions. `.card-mini-btn` is read by handleCardClick in main.jsx. */}
       {manageMode && (
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button
+        <div className="flex flex-shrink-0 items-center gap-1">
+          <Button
             type="button"
-            className="card-mini-btn p-1 rounded-md hover:opacity-80"
-            style={{ color: 'var(--muted)' }}
+            variant="ghost"
+            size="icon"
+            className="card-mini-btn h-7 w-7 text-muted-foreground"
             onClick={(e) => {
               e.stopPropagation();
               onEdit(card);
             }}
+            aria-label={t('edit')}
             title={t('edit')}
           >
-            <Pencil size={13} />
-          </button>
-          <button
+            <Pencil />
+          </Button>
+          <Button
             type="button"
-            className="card-mini-btn p-1 rounded-md hover:opacity-80"
-            style={{ color: 'var(--danger)' }}
+            variant="ghost"
+            size="icon"
+            className="card-mini-btn h-7 w-7 text-destructive hover:text-destructive"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(card);
             }}
+            aria-label={t('delete')}
             title={t('delete')}
           >
-            <Trash2 size={13} />
-          </button>
+            <Trash2 />
+          </Button>
         </div>
       )}
-    </div>
+    </Card>
   );
 });
 
@@ -146,72 +163,68 @@ export const CollectionCard = React.memo(function CollectionCard({
   onTagClick
 }) {
   return (
+    // Not a shadcn <Card>: Card renders a <div> and has no `asChild`, and this is
+    // the `[data-module-sortable]` drag host. It keeps its <article> tag and its
+    // Card token classes by hand rather than swapping the host's element type.
     <article
-      className="rounded-2xl border overflow-hidden"
+      className="overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-panel"
       data-collection-id={collection.id}
       data-draggable={String(moduleDraggable)}
-      style={{
-        background: 'var(--panel-bg)',
-        borderColor: 'var(--panel-border)',
-        boxShadow: 'var(--shadow)'
-      }}
     >
-      {/* Header */}
-      <button
-        className="group w-full flex items-center gap-2 px-4 py-3 text-left"
-        onClick={() => onToggleCollapse(collection.id)}
+      {/* Header. Right-click anywhere on the row opens the collection menu. */}
+      <div
+        className="group flex w-full items-center gap-2 px-4 py-3"
         onContextMenu={(e) => onCollectionContextMenu?.(e, collection)}
-        type="button"
-        style={{ color: 'var(--text)' }}
       >
         <span
-          className="collection-drag-handle flex-shrink-0 opacity-0 group-hover:opacity-40 cursor-grab"
-          style={{ visibility: moduleDraggable ? 'visible' : 'hidden' }}
+          className={cn(
+            'collection-drag-handle flex-shrink-0 cursor-grab opacity-0 group-hover:opacity-40',
+            !moduleDraggable && 'invisible'
+          )}
         >
-          <GripVertical size={15} />
+          <GripVertical size={16} />
         </span>
-        <FolderOpen size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-        <span className="font-semibold text-sm flex-1 truncate">{collection.title}</span>
-        <span className="text-[0.7rem] tabular-nums mr-1" style={{ color: 'var(--muted)' }}>
-          {collection.cards.length}
-        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-auto flex-1 justify-start gap-2 px-0 py-0 text-left font-normal hover:bg-transparent"
+          onClick={() => onToggleCollapse(collection.id)}
+        >
+          <FolderOpen className="text-primary" />
+          <span className="flex-1 truncate text-sm font-semibold">{collection.title}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">{collection.cards.length}</span>
+          {collapsed ? (
+            <ChevronRight className="text-muted-foreground" />
+          ) : (
+            <ChevronDown className="text-muted-foreground" />
+          )}
+        </Button>
         {collection.cards.length > 0 && onOpenAll && (
-          <span
-            role="button"
-            tabIndex={0}
-            className="flex-shrink-0 p-1 rounded-md opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
-            style={{ color: 'var(--accent)' }}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 flex-shrink-0 text-primary opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100"
+            aria-label={t('openAllTabs')}
             title={t('openAllTabs')}
             onClick={(e) => {
               e.stopPropagation();
               onOpenAll(collection.id);
             }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.stopPropagation();
-                onOpenAll(collection.id);
-              }
-            }}
           >
-            <ExternalLink size={14} />
-          </span>
+            <ExternalLink />
+          </Button>
         )}
-        {collapsed ? (
-          <ChevronRight size={16} style={{ color: 'var(--muted)' }} />
-        ) : (
-          <ChevronDown size={16} style={{ color: 'var(--muted)' }} />
-        )}
-      </button>
+      </div>
 
       {/* Cards grid */}
       {!collapsed && (
-        <div className="px-3 pb-3" style={{ minHeight: '2.5rem' }}>
+        <div className="min-h-10 px-3 pb-3">
           {collection.cards.length === 0 ? (
             <div
               data-cards-collection-id={collection.id}
               data-parent-id={collection.id}
-              className="flex items-center justify-center py-6 rounded-xl border-2 border-dashed text-sm"
-              style={{ borderColor: 'var(--panel-border)', color: 'var(--muted)' }}
+              className="flex items-center justify-center rounded-lg border-2 border-dashed border-border py-6 text-sm text-muted-foreground"
             >
               {t('dragHere')}
             </div>
@@ -219,8 +232,7 @@ export const CollectionCard = React.memo(function CollectionCard({
             <div
               data-cards-collection-id={collection.id}
               data-parent-id={collection.id}
-              className="grid gap-2"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}
+              className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3"
             >
               {collection.cards.map((card) => (
                 <BookmarkCard
