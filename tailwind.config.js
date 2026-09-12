@@ -45,6 +45,7 @@ export default {
           DEFAULT: 'hsl(var(--ui-destructive))',
           foreground: 'hsl(var(--ui-destructive-foreground))'
         },
+        sidebar: 'hsl(var(--ui-sidebar))',
         warning: {
           DEFAULT: 'hsl(var(--ui-warning))',
           foreground: 'hsl(var(--ui-warning-foreground))'
