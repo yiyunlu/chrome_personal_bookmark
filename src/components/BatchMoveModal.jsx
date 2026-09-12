@@ -1,11 +1,11 @@
 import React from 'react';
 import { FolderOpen, X } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { Modal } from './Modal';
+import { DialogShell } from './DialogShell';
 
 export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTargets, selectedCount, onSave, onClose }) {
   return (
-    <Modal open={!!batchMoveState} onClose={onClose} title={t('batchMoveTitle', selectedCount)}>
+    <DialogShell open={!!batchMoveState} onClose={onClose} title={t('batchMoveTitle', selectedCount)}>
       {batchMoveState && (
         <>
           {/* Header */}
@@ -77,6 +77,6 @@ export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTarg
           </div>
         </>
       )}
-    </Modal>
+    </DialogShell>
   );
 }

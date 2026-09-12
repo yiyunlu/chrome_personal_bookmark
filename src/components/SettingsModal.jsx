@@ -3,7 +3,7 @@ import { Download, Eye, EyeOff, Upload, X } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { getApiKey, setApiKey } from '../lib/aiService';
 import { logError } from '../lib/utils';
-import { Modal } from './Modal';
+import { DialogShell } from './DialogShell';
 
 export function SettingsModal({ open, onClose, onExport, onImport }) {
   const [apiKey, setApiKeyLocal] = useState('');
@@ -43,7 +43,7 @@ export function SettingsModal({ open, onClose, onExport, onImport }) {
   }, [apiKey]);
 
   return (
-    <Modal open={open} onClose={onClose} title={t('settings')} className="max-w-md">
+    <DialogShell open={open} onClose={onClose} title={t('settings')} className="max-w-md">
       <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b" style={{ borderColor: 'var(--panel-border)' }}>
         <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{t('settings')}</h2>
         <button onClick={onClose} className="p-1 rounded-md hover:opacity-70" style={{ color: 'var(--muted)' }}>
@@ -164,6 +164,6 @@ export function SettingsModal({ open, onClose, onExport, onImport }) {
           </div>
         </div>
       </div>
-    </Modal>
+    </DialogShell>
   );
 }
