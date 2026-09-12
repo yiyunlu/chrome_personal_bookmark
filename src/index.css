@@ -23,32 +23,48 @@
   color-scheme: light;
 
   /* shadcn slate — light */
+  /* shadcn neutral — light. Converted from the official registry's oklch
+     (ui.shadcn.com/r/colors/neutral.json) to HSL triplets, because the Tailwind 3
+     config consumes them as hsl(var(--ui-x)). Each round-trips to Tailwind's
+     neutral scale exactly: #ffffff #0a0a0a #171717 #fafafa #f5f5f5 #737373
+     #e5e5e5 #a1a1a1. Hue and saturation are 0 — that is the point. The previous
+     slate palette tinted every surface blue, which is why this app did not look
+     like the reference. */
   --ui-radius: 0.5rem;
   --ui-background: 0 0% 100%;
-  --ui-foreground: 222.2 84% 4.9%;
+  --ui-foreground: 0 0% 3.9%;
   --ui-card: 0 0% 100%;
-  --ui-card-foreground: 222.2 84% 4.9%;
+  --ui-card-foreground: 0 0% 3.9%;
   --ui-popover: 0 0% 100%;
-  --ui-popover-foreground: 222.2 84% 4.9%;
-  --ui-primary: 222.2 47.4% 11.2%;
-  --ui-primary-foreground: 210 40% 98%;
-  --ui-secondary: 210 40% 96.1%;
-  --ui-secondary-foreground: 222.2 47.4% 11.2%;
-  --ui-muted: 210 40% 96.1%;
-  --ui-muted-foreground: 215.4 16.3% 46.9%;
-  --ui-accent: 210 40% 96.1%;
-  --ui-accent-foreground: 222.2 47.4% 11.2%;
-  --ui-destructive: 0 84.2% 60.2%;
-  --ui-destructive-foreground: 210 40% 98%;
-  --ui-border: 214.3 31.8% 91.4%;
-  --ui-input: 214.3 31.8% 91.4%;
-  --ui-ring: 222.2 84% 4.9%;
+  --ui-popover-foreground: 0 0% 3.9%;
+  --ui-primary: 0 0% 9.1%;
+  --ui-primary-foreground: 0 0% 98%;
+  --ui-secondary: 0 0% 96.1%;
+  --ui-secondary-foreground: 0 0% 9.1%;
+  --ui-muted: 0 0% 96.1%;
+  --ui-muted-foreground: 0 0% 45.2%;
+  --ui-accent: 0 0% 96.1%;
+  --ui-accent-foreground: 0 0% 9.1%;
+  --ui-destructive: 357.2 100% 45.3%;
+  --ui-destructive-foreground: 0 0% 98%;
+  --ui-border: 0 0% 89.8%;
+  --ui-input: 0 0% 89.8%;
+  --ui-ring: 0 0% 63%;
+  /* shadcn's own sidebar token, so the rail matches the reference app instead of
+     borrowing --ui-muted. */
+  --ui-sidebar: 0 0% 98%;
+  /* Amber has no neutral equivalent, but dead-link warnings need a third
+     semantic colour beside primary and destructive. */
+  --ui-warning: 32.1 94.6% 43.7%;
+  --ui-warning-foreground: 0 0% 100%;
 
   /* ── Legacy variable aliases (theme-independent) ── */
-  --bg: hsl(var(--ui-background));
+  /* Theme-specific on purpose (redefined in the dark block): light content sits
+     on the muted grey so white cards separate from it, as in the reference app. */
+  --bg: hsl(var(--ui-muted));
   --text: hsl(var(--ui-foreground));
   --muted: hsl(var(--ui-muted-foreground));
-  --sidebar-bg: hsl(var(--ui-muted));
+  --sidebar-bg: hsl(var(--ui-sidebar));
   --sidebar-text: hsl(var(--ui-foreground));
   --sidebar-hover: hsl(var(--ui-accent));
   --sidebar-active: hsl(var(--ui-secondary));
@@ -78,27 +94,37 @@
   color-scheme: dark;
 
   /* shadcn slate — dark */
-  --ui-background: 222.2 84% 4.9%;
-  --ui-foreground: 210 40% 98%;
-  --ui-card: 222.2 84% 4.9%;
-  --ui-card-foreground: 210 40% 98%;
-  --ui-popover: 222.2 84% 4.9%;
-  --ui-popover-foreground: 210 40% 98%;
-  --ui-primary: 210 40% 98%;
-  --ui-primary-foreground: 222.2 47.4% 11.2%;
-  --ui-secondary: 217.2 32.6% 17.5%;
-  --ui-secondary-foreground: 210 40% 98%;
-  --ui-muted: 217.2 32.6% 17.5%;
-  --ui-muted-foreground: 215 20.2% 65.1%;
-  --ui-accent: 217.2 32.6% 17.5%;
-  --ui-accent-foreground: 210 40% 98%;
-  --ui-destructive: 0 62.8% 30.6%;
-  --ui-destructive-foreground: 210 40% 98%;
-  --ui-border: 217.2 32.6% 17.5%;
-  --ui-input: 217.2 32.6% 17.5%;
-  --ui-ring: 212.7 26.8% 83.9%;
+  /* shadcn neutral — dark. --ui-card is deliberately LIGHTER than
+     --ui-background here (#171717 on #0a0a0a); that separation is what makes
+     cards read as surfaces in the reference app, and the old slate palette had
+     the two identical. --ui-border/--ui-input are the registry's translucent
+     whites (10%/15%) composited over the background, since an HSL triplet
+     carries no alpha channel. */
+  --ui-background: 0 0% 3.9%;
+  --ui-foreground: 0 0% 98%;
+  --ui-card: 0 0% 9.1%;
+  --ui-card-foreground: 0 0% 98%;
+  --ui-popover: 0 0% 9.1%;
+  --ui-popover-foreground: 0 0% 98%;
+  --ui-primary: 0 0% 89.8%;
+  --ui-primary-foreground: 0 0% 9.1%;
+  --ui-secondary: 0 0% 14.9%;
+  --ui-secondary-foreground: 0 0% 98%;
+  --ui-muted: 0 0% 14.9%;
+  --ui-muted-foreground: 0 0% 63%;
+  --ui-accent: 0 0% 14.9%;
+  --ui-accent-foreground: 0 0% 98%;
+  --ui-destructive: 358.7 100% 69.6%;
+  --ui-destructive-foreground: 0 0% 9.1%;
+  --ui-border: 0 0% 13.5%;
+  --ui-input: 0 0% 18.3%;
+  --ui-ring: 0 0% 45.2%;
+  --ui-sidebar: 0 0% 9.1%;
   --ui-warning: 37.7 92.1% 50.2%;
-  --ui-warning-foreground: 222.2 47.4% 11.2%;
+  --ui-warning-foreground: 0 0% 9.1%;
+
+  /* Dark content sits on the true background; --ui-card is the lighter surface. */
+  --bg: hsl(var(--ui-background));
 
   --shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
 }

@@ -63,12 +63,35 @@ pre-migration pixel values across 82 existing usages.
 
 ## Palette
 
-`--ui-*` are shadcn's **slate** tokens copied verbatim from the registry. The 21 legacy
-variables (`--bg`, `--text`, `--accent`, …) are now thin aliases over them, so all 384
-existing `var(--x)` usages follow shadcn's day/night palette with no component edits.
+`--ui-*` are shadcn's **neutral** tokens — the base colour the reference app at
+ui.shadcn.com actually uses. The 21 legacy variables (`--bg`, `--text`, `--accent`, …) are
+thin aliases over them, so every remaining `var(--x)` usage follows the palette with no
+component edits.
 
-shadcn slate `primary` is monochrome, so TabHub's blue is gone by design. Restoring it is
-a two-line override documented at the top of `src/index.css`.
+**This was slate until the palette review.** Every slate step carries a blue component
+(dark background `222.2 84% 4.9%` = `#020817`), which tinted every surface and is why the
+app did not look like the reference. Neutral is `0 0% L%` throughout — the hue and
+saturation being zero is the whole point.
+
+The registry now publishes only oklch, so the values here are converted to HSL triplets
+(the Tailwind 3 config consumes `hsl(var(--ui-x))`). Each one round-trips to Tailwind's
+neutral scale exactly: `#ffffff #0a0a0a #171717 #fafafa #f5f5f5 #737373 #e5e5e5 #a1a1a1`.
+
+Two deliberate departures from a straight copy, both to match the reference app's
+*appearance* rather than its token file:
+- **dark `--ui-card` is lighter than `--ui-background`** (`#171717` on `#0a0a0a`). That
+  separation is what makes cards read as surfaces; slate had the two identical.
+- **`--bg` is theme-specific** — light content sits on `--ui-muted` so white cards
+  separate from it, dark content sits on `--ui-background`. Every other alias stays
+  theme-independent.
+
+`--ui-sidebar` is shadcn's own sidebar token, so the rail matches the reference instead of
+borrowing `--ui-muted`. `--ui-warning` (amber) is the one colour with no neutral
+equivalent, kept for dead-link warnings.
+
+`primary` is monochrome (near-black on light, near-white on dark), which is the reference
+app's look. Restoring a brand accent is a two-line override documented at the top of
+`src/index.css`.
 
 ---
 

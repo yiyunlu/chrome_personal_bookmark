@@ -65,13 +65,20 @@ else
     || bad "base layer missing — bare \`border\` will fall back to preflight #e5e7eb"
 fi
 
-echo "== 5. every --ui-* the Tailwind config reads is defined =="
+echo "== 5. every --ui-* the Tailwind config reads has a light-mode value =="
+# Per theme, not per file: a token defined only in the dark block resolves to an
+# invalid value in light mode and the property is simply dropped. That is exactly
+# how --ui-warning shipped light-mode-broken and this gate passed it.
+awk '/^:root \{/{t="light"} /^:root\[data-theme=.dark.\] \{/{t="dark"} t&&/--ui-[a-z-]+:/{match($0,/--ui-[a-z-]+/); print t" "substr($0,RSTART,RLENGTH)}' src/index.css | sort -u > /tmp/verify-ui-tokens.txt
+# :root and :root[data-theme="dark"] are the SAME element, so a token declared
+# only in :root is inherited by dark and needs no redefinition (--ui-radius).
+# The broken shape is the reverse: declared only in dark, undefined in light.
 missing=""
 for tok in $(grep -oE '\-\-ui-[a-z-]+' tailwind.config.js | sort -u); do
-  grep -qE "(^|[;{[:space:]])${tok}:" src/index.css || missing="$missing $tok"
+  grep -q "^light $tok$" /tmp/verify-ui-tokens.txt || missing="$missing $tok"
 done
-[ -z "$missing" ] && pass "all --ui-* tokens defined in src/index.css" \
-  || bad "undefined tokens:$missing"
+[ -z "$missing" ] && pass "every --ui-* the config reads has a light-mode value" \
+  || bad "declared only in the dark block, so undefined in light mode:$missing"
 
 echo "== 6. no unprefixed shadcn token shadowing the legacy palette =="
 shadow=""

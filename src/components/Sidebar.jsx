@@ -123,7 +123,7 @@ export function Sidebar({
     <TooltipProvider delayDuration={300}>
       <aside
         className={cn(
-          'flex flex-col flex-shrink-0 min-h-screen select-none border-r border-border bg-muted text-foreground',
+          'flex flex-col flex-shrink-0 min-h-screen select-none border-r border-border bg-sidebar text-foreground',
           // was an inline `transition: width 0.2s cubic-bezier(0.4,0,0.2,1)`;
           // `ease-smooth` is that curve, registered in tailwind.config.js.
           'transition-[width] duration-200 ease-smooth',
