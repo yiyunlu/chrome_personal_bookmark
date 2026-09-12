@@ -6,7 +6,7 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | --- | --- | --- | --- |
 | P0 | Foundation + shadcn slate palette + Toolbar pilot | done | not yet |
 | P1 | Dialog / AlertDialog (8 dialog surfaces) | pending | — |
-| P2 | ContextMenu / DropdownMenu | pending | — |
+| P2 | ContextMenu / DropdownMenu | merged, reviewed | **not yet — see smoke list** |
 | P3 | Form primitives (Input / Label / Select / Switch / Textarea) | pending | — |
 | P4 | Feedback (Sonner toasts, Tooltip) | pending | — |
 | P5 | Cards / Sidebar — **gated, optional** | pending | — |
@@ -140,7 +140,7 @@ focus, `Escape`, dismissal, collision handling and ARIA. `modal={false}` so the
 menu never locks body scroll or disables pointer events on the Sortable lists below.
 
 Acceptance:
-- [x] gate exits 0 — 11 checks, 185 tests (baseline 171)
+- [x] gate exits 0 — 11 checks, 186 tests (baseline 171)
 - [x] the 190-line hand-rolled `ArrowUp`/`ArrowDown`/`Tab` handler is gone
 - [x] right-click opens the menu at the pointer, for both a bookmark card and a collection
       header (the card header trigger is new: `CollectionCard`'s header button now takes
@@ -149,11 +149,17 @@ Acceptance:
       (`src/test/ContextMenu.test.jsx`, 15 tests)
 - [x] Radix keyboard nav (`Arrow`, `Home`, `End`, `Escape`) — covered by jsdom tests;
       **still unverified in a real browser**
-- [x] **opening a menu on a draggable card must not start a drag**, and closing it must not
-      leave a `.card-dragging` class behind — all three Sortable scopes use an explicit
-      `handle:` selector and SortableJS ignores `button !== 0`
+- [~] **opening a menu on a draggable card must not start a drag**, and closing it must not
+      leave a `.card-dragging` class behind — **code-verified only, not test-covered.**
+      All three Sortable scopes use an explicit `handle:` (`main.jsx:355,387,442`) and
+      sortablejs bails on `evt.button !== 0` (`sortable.esm.js:1196`). The assertions that
+      originally claimed this box were vacuous — `.card-dragging` is only ever Sortable's
+      `ghostClass` and the test harness instantiates no Sortable — and have been removed.
+      On the manual smoke list.
 - [x] `data-card-id` / `data-collection-id` remain on the *same* DOM nodes — they appear in
-      no diff hunk at all; asserted structurally in `ContextMenu.test.jsx`
+      no diff hunk at all; asserted structurally in `ContextMenu.test.jsx`. (Gate 9 now
+      counts with `--exclude-dir=test`, so selectors added in a test file can no longer
+      mask an attribute removed from a component.)
 - [x] `[data-radix-popper-content-wrapper] { transition: none }` still present in `index.css`
       (removing it makes menus slide in from their previous position)
 - [ ] manual: drag a card → right-click it → drag it again; no `removeChild` crash
@@ -213,6 +219,33 @@ Acceptance (all required):
       that also contains subfolders
 
 Risk: high. Fallback: L1, immediately.
+
+---
+
+## Manual smoke list (browser-only; no agent can check these)
+
+The gate script and the RTL suites cannot reach drag-and-drop, real popper placement or
+the extension runtime. Build, load `dist/` as an unpacked extension, and walk this list
+with the DevTools console open. Record the result in the status table's last column.
+
+**From P2 (merged):**
+- right-click a bookmark card, then right-click a *different* card without dismissing —
+  the menu repositions by mutating the anchor's inline `left/top` rather than remounting,
+  so placement depends on floating-ui's layout-shift observer
+- drag a card → right-click it → drag it again; no `removeChild` crash
+- right-click a collection header (this trigger is **new** in P2 — it did not exist before)
+- keyboard: `Arrow`, `Home`, `End`, `Escape` inside an open menu
+- a left-click outside the menu both dismisses it *and* activates what was clicked. This
+  matches the old hand-rolled behaviour but differs from a native OS context menu.
+- visual deltas to eyeball: menu surface moves from `var(--panel-bg)`/`rounded-xl`/
+  `animate-slide-up` to `bg-popover`/`rounded-md`/`shadow-md` with no entry animation;
+  hover moves from `var(--hover)` to `focus:bg-accent`; the vendored item class
+  `[&>svg]:size-4` overrides `size={14}` icon props to 16px
+
+**Known open item, not a P2 defect:** after a menu closes, focus lands on `<body>`, so a
+keyboard user's next Tab restarts at the top of the page. Identical to the pre-migration
+behaviour. Restoring focus to the right-clicked element needs that element in the
+`contextMenu` state object — deliberately deferred.
 
 ---
 
