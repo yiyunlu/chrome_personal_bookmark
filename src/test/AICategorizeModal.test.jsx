@@ -56,8 +56,11 @@ describe('AICategorizeModal', () => {
 
     render(<AICategorizeModal aiState={aiState} {...defaultProps} />);
     expect(screen.getByText('My Repo')).toBeInTheDocument();
-    expect(screen.getByTitle('接受')).toBeInTheDocument();
-    expect(screen.getByTitle('拒绝')).toBeInTheDocument();
+    // P4 replaced the `title` attributes with a Radix tooltip, so these are now
+    // found by accessible name — which is what `aria-label` supplies, and what a
+    // tooltip (aria-describedby) could not.
+    expect(screen.getByRole('button', { name: '接受' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '拒绝' })).toBeInTheDocument();
   });
 
   it('calls onAcceptSuggestion when accept is clicked', () => {
@@ -72,7 +75,7 @@ describe('AICategorizeModal', () => {
     };
 
     render(<AICategorizeModal aiState={aiState} {...defaultProps} onAcceptSuggestion={onAccept} />);
-    fireEvent.click(screen.getByTitle('接受'));
+    fireEvent.click(screen.getByRole('button', { name: '接受' }));
     expect(onAccept).toHaveBeenCalledWith(0);
   });
 
@@ -88,7 +91,7 @@ describe('AICategorizeModal', () => {
     };
 
     render(<AICategorizeModal aiState={aiState} {...defaultProps} onRejectSuggestion={onReject} />);
-    fireEvent.click(screen.getByTitle('拒绝'));
+    fireEvent.click(screen.getByRole('button', { name: '拒绝' }));
     expect(onReject).toHaveBeenCalledWith(0);
   });
 

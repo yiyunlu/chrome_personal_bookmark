@@ -41,6 +41,7 @@ import { WelcomeCard } from './components/WelcomeCard';
 import { Toolbar, BatchToolbar } from './components/Toolbar';
 import { CollectionCard } from './components/CollectionCard';
 import { ContextMenu } from './components/ContextMenu';
+import { DialogShell } from './components/DialogShell';
 import { EditBookmarkModal } from './components/EditBookmarkModal';
 import { BatchMoveModal } from './components/BatchMoveModal';
 import { AICategorizeModal } from './components/AICategorizeModal';
@@ -108,7 +109,7 @@ function App() {
   const suppressCardOpenUntilRef = useRef(0);
   const suppressNextCardClickRef = useRef(false);
 
-  const { themeMode, handleThemeModeChange } = useTheme();
+  const { themeMode, resolvedTheme, handleThemeModeChange } = useTheme();
   const { undoToast, showUndo, handleUndo } = useUndoStack();
 
   const dragEnabled = search.trim() === '';
@@ -1568,16 +1569,21 @@ function App() {
         onImport={handleImport}
       />
 
-      {showTrash && trashItems && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.4)' }}
-          onClick={(e) => e.target === e.currentTarget && setShowTrash(false)}
-        >
-          <div
-            className="rounded-2xl border shadow-xl w-full max-w-lg mx-4 max-h-[70vh] flex flex-col animate-fade-in"
-            style={{ background: 'var(--panel-bg)', borderColor: 'var(--panel-border)' }}
-          >
+      {/* The ninth overlay. P1 owned the dialog sweep but was forbidden to touch
+          main.jsx, so this one kept its hand-rolled `fixed inset-0 z-50`
+          backdrop and ended up *below* both the new dialogs (z-90) and the
+          toast. On DialogShell it gets the same Radix focus trap, Escape,
+          outside-click dismissal and accessible name as the other eight, and
+          the confirm it can open (Empty trash, LAYER_TOP z-100) lands above it
+          by construction rather than by luck. */}
+      <DialogShell
+        open={showTrash && !!trashItems}
+        onClose={() => setShowTrash(false)}
+        title={t('trash')}
+        className="max-w-lg"
+      >
+        {trashItems && (
+          <>
             <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b" style={{ borderColor: 'var(--panel-border)' }}>
               <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{t('trash')}</h2>
               <div className="flex gap-2">
@@ -1593,7 +1599,7 @@ function App() {
                 <button onClick={() => setShowTrash(false)} className="text-sm" style={{ color: 'var(--muted)' }}>{t('close')}</button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-5 py-3">
+            <div className="px-5 py-3" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
               {trashItems.length === 0 ? (
                 <p className="text-sm text-center py-6" style={{ color: 'var(--muted)' }}>{t('trashEmpty')}</p>
               ) : (
@@ -1620,9 +1626,9 @@ function App() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </DialogShell>
 
       <ConfirmModal
         open={!!confirmDialog}
@@ -1635,7 +1641,13 @@ function App() {
         onCancel={() => setPromptDialog(null)}
       />
 
-      <UndoToast undoToast={undoToast} onUndo={() => handleUndo(() => refresh(activeSourceRef.current))} />
+      {/* Sonner's Toaster lives inside UndoToast; `theme` is this app's own
+          resolved theme (shadcn's stock wrapper would read next-themes). */}
+      <UndoToast
+        undoToast={undoToast}
+        onUndo={() => handleUndo(() => refresh(activeSourceRef.current))}
+        theme={resolvedTheme}
+      />
     </div>
   );
 }
