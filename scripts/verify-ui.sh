@@ -122,10 +122,12 @@ echo "== 12. style ratchet (see the Style contract in SHADCN_MIGRATION.md) =="
 # UI style": every inline var() is a colour decided outside the token system,
 # every raw <button> is a control styled by hand, and the radius/icon counts are
 # scale drift. P6 drives all four to 0; until then a phase must not add to them.
-CEIL_INLINE_VAR=350
-CEIL_RAW_BUTTON=55
+# Lowered by P5b (Sidebar): 350->314 var(), 55->45 <button>, 40->32 icon sizes.
+# Off-scale radius is untouched at 9 — Sidebar had none of it to give back.
+CEIL_INLINE_VAR=314
+CEIL_RAW_BUTTON=45
 CEIL_OFF_RADIUS=9
-CEIL_OFF_ICON=40
+CEIL_OFF_ICON=32
 style_scope=(--exclude-dir=ui --exclude-dir=test)
 iv=$(grep -roh "${style_scope[@]}" 'var(--' src/components src/main.jsx | wc -l | tr -d ' ')
 rb=$(grep -roh "${style_scope[@]}" '<button' src/components src/main.jsx | wc -l | tr -d ' ')
