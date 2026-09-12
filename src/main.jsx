@@ -183,12 +183,16 @@ function App() {
     }
   }, [sidebarCollapsed, initialLoadDoneRef]);
 
+  // The context menu is a Radix DropdownMenu, so outside-click dismissal is
+  // owned by its DismissableLayer. A window-level `click` listener would fight
+  // it: the menu is portaled to document.body, so a click on the menu's own
+  // padding or scrollbar reaches window and would close the menu before Radix
+  // decides. Scroll-to-close stays — the menu is anchored to fixed viewport
+  // coordinates and cannot follow the list it was opened from.
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
-    window.addEventListener('click', closeMenu);
     window.addEventListener('scroll', closeMenu, true);
     return () => {
-      window.removeEventListener('click', closeMenu);
       window.removeEventListener('scroll', closeMenu, true);
     };
   }, []);
@@ -1433,6 +1437,7 @@ function App() {
                   onToggleCollapse={toggleCollection}
                   onCardClick={handleCardClick}
                   onCardContextMenu={openCardContextMenu}
+                  onCollectionContextMenu={openCollectionContextMenu}
                   onEditCard={openEditorByCard}
                   onDeleteCard={handleDeleteCardByCard}
                   onToggleCardSelect={toggleCardSelection}

@@ -138,6 +138,7 @@ export const CollectionCard = React.memo(function CollectionCard({
   onToggleCollapse,
   onCardClick,
   onCardContextMenu,
+  onCollectionContextMenu,
   onEditCard,
   onDeleteCard,
   onToggleCardSelect,
@@ -159,6 +160,7 @@ export const CollectionCard = React.memo(function CollectionCard({
       <button
         className="group w-full flex items-center gap-2 px-4 py-3 text-left"
         onClick={() => onToggleCollapse(collection.id)}
+        onContextMenu={(e) => onCollectionContextMenu?.(e, collection)}
         type="button"
         style={{ color: 'var(--text)' }}
       >
