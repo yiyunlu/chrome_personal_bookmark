@@ -1,11 +1,11 @@
 import React from 'react';
 import { FolderOpen, X } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { Modal } from './Modal';
+import { DialogShell } from './DialogShell';
 
 export function EditBookmarkModal({ editorState, setEditorState, filteredTargets, onSave, onClose }) {
   return (
-    <Modal open={!!editorState} onClose={onClose} title={t('editBookmark')}>
+    <DialogShell open={!!editorState} onClose={onClose} title={t('editBookmark')}>
       {editorState && (
         <>
           {/* Header */}
@@ -101,6 +101,6 @@ export function EditBookmarkModal({ editorState, setEditorState, filteredTargets
           </div>
         </>
       )}
-    </Modal>
+    </DialogShell>
   );
 }

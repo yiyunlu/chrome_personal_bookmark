@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check, FolderOpen, Sparkles, X } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { Modal } from './Modal';
+import { DialogShell } from './DialogShell';
 
 export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggestion, onApplyAll, onClose }) {
   const open = !!aiState;
@@ -10,7 +10,7 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
   const accepted = (suggestions || []).filter((s) => s.status === 'accepted');
 
   return (
-    <Modal open={open} onClose={onClose} title={t('aiCategorizeTitle')} className="max-w-xl">
+    <DialogShell open={open} onClose={onClose} title={t('aiCategorizeTitle')} className="max-w-xl">
       {aiState && (
         <>
           {/* Header */}
@@ -155,6 +155,6 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
           )}
         </>
       )}
-    </Modal>
+    </DialogShell>
   );
 }
