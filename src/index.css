@@ -23,45 +23,46 @@
   color-scheme: light;
 
   /* shadcn slate — light */
-  /* shadcn neutral — light. Converted from the official registry's oklch
-     (ui.shadcn.com/r/colors/neutral.json) to HSL triplets, because the Tailwind 3
-     config consumes them as hsl(var(--ui-x)). Each round-trips to Tailwind's
-     neutral scale exactly: #ffffff #0a0a0a #171717 #fafafa #f5f5f5 #737373
-     #e5e5e5 #a1a1a1. Hue and saturation are 0 — that is the point. The previous
-     slate palette tinted every surface blue, which is why this app did not look
-     like the reference. */
-  --ui-radius: 0.625rem;
-  --ui-background: 0 0% 100%;
-  --ui-foreground: 0 0% 3.9%;
-  --ui-card: 0 0% 100%;
-  --ui-card-foreground: 0 0% 3.9%;
+  /* ── Design tokens: TabHub.dc.html (Claude Design) ────────────────────────
+     The palette is the design's, converted to HSL triplets because the Tailwind
+     config consumes hsl(var(--ui-x)). It is a WARM neutral — every grey carries a
+     15-30 degree hue — and it has a real brand accent. That is a deliberate
+     departure from shadcn's achromatic neutral: the design file is the source of
+     truth for visuals, the app is the source of truth for behaviour. */
+  --ui-radius: 0.5rem;
+  --ui-background: 30 28.6% 97.3%;        /* --bg    #faf8f6 */
+  --ui-foreground: 15 8% 9.8%;            /* --ink   #1b1817 */
+  --ui-card: 0 0% 100%;                   /* --card  #ffffff */
+  --ui-card-foreground: 15 8% 9.8%;
   --ui-popover: 0 0% 100%;
-  --ui-popover-foreground: 0 0% 3.9%;
-  --ui-primary: 0 0% 9.1%;
-  --ui-primary-foreground: 0 0% 98%;
-  --ui-secondary: 0 0% 96.1%;
-  --ui-secondary-foreground: 0 0% 9.1%;
-  --ui-muted: 0 0% 96.1%;
-  --ui-muted-foreground: 0 0% 45.2%;
-  --ui-accent: 0 0% 96.1%;
-  --ui-accent-foreground: 0 0% 9.1%;
-  --ui-destructive: 357.2 100% 45.3%;
-  --ui-destructive-foreground: 0 0% 98%;
-  --ui-border: 0 0% 89.8%;
-  --ui-input: 0 0% 89.8%;
-  --ui-ring: 0 0% 63%;
-  /* shadcn's own sidebar token, so the rail matches the reference app instead of
-     borrowing --ui-muted. */
-  --ui-sidebar: 0 0% 98%;
-  /* Amber has no neutral equivalent, but dead-link warnings need a third
-     semantic colour beside primary and destructive. */
+  --ui-popover-foreground: 15 8% 9.8%;
+  --ui-primary: 6.7 73.2% 54.7%;          /* --accent #e04a37 */
+  --ui-primary-foreground: 0 0% 100%;
+  --ui-secondary: 30 27.3% 95.7%;         /* --cardh #f7f4f1 */
+  --ui-secondary-foreground: 15 8% 9.8%;
+  --ui-muted: 30 27.3% 95.7%;
+  --ui-muted-foreground: 18 4.9% 40%;     /* --dim   #6b6461 */
+  --ui-accent: 30 27.3% 95.7%;            /* hover surface = --cardh */
+  --ui-accent-foreground: 15 8% 9.8%;
+  --ui-border: 24 16.1% 87.8%;            /* --line  #e5dfdb */
+  --ui-input: 23.1 13.4% 81%;             /* --line2 #d5cdc8 */
+  --ui-ring: 6.7 73.2% 54.7%;
+  --ui-sidebar: 30 21.4% 94.5%;           /* --panel #f4f1ee */
+  /* The design has a THIRD text level (--faint) that shadcn's scale lacks: used
+     for counts, URLs and section labels. */
+  --ui-faint: 23.1 5.8% 56.3%;            /* --faint #968e89 */
+  /* The design defines no destructive colour and its accent is already red, so a
+     stock red would collide with it. This is a darker, less saturated red that
+     stays legible against the warm surfaces and reads as distinct from --accent. */
+  --ui-destructive: 6 62% 42%;
+  --ui-destructive-foreground: 0 0% 100%;
   --ui-warning: 32.1 94.6% 43.7%;
   --ui-warning-foreground: 0 0% 100%;
 
   /* ── Legacy variable aliases (theme-independent) ── */
-  /* Theme-specific on purpose (redefined in the dark block): light content sits
-     on the muted grey so white cards separate from it, as in the reference app. */
-  --bg: hsl(var(--ui-muted));
+  /* Theme-specific on purpose (redefined in the dark block). The design gives the
+     page its own warm off-white, distinct from the pure-white card. */
+  --bg: hsl(var(--ui-background));
   --text: hsl(var(--ui-foreground));
   --muted: hsl(var(--ui-muted-foreground));
   --sidebar-bg: hsl(var(--ui-sidebar));
@@ -94,36 +95,32 @@
   color-scheme: dark;
 
   /* shadcn slate — dark */
-  /* shadcn neutral — dark. --ui-card is deliberately LIGHTER than
-     --ui-background here (#171717 on #0a0a0a); that separation is what makes
-     cards read as surfaces in the reference app, and the old slate palette had
-     the two identical. --ui-border/--ui-input are the registry's translucent
-     whites (10%/15%) composited over the background, since an HSL triplet
-     carries no alpha channel. */
-  --ui-background: 0 0% 3.9%;
-  --ui-foreground: 0 0% 98%;
-  --ui-card: 0 0% 9.1%;
-  --ui-card-foreground: 0 0% 98%;
-  --ui-popover: 0 0% 9.1%;
-  --ui-popover-foreground: 0 0% 98%;
-  --ui-primary: 0 0% 89.8%;
-  --ui-primary-foreground: 0 0% 9.1%;
-  --ui-secondary: 0 0% 14.9%;
-  --ui-secondary-foreground: 0 0% 98%;
-  --ui-muted: 0 0% 14.9%;
-  --ui-muted-foreground: 0 0% 63%;
-  --ui-accent: 0 0% 14.9%;
-  --ui-accent-foreground: 0 0% 98%;
-  --ui-destructive: 358.7 100% 69.6%;
-  --ui-destructive-foreground: 0 0% 9.1%;
-  --ui-border: 0 0% 13.5%;
-  --ui-input: 0 0% 18.3%;
-  --ui-ring: 0 0% 45.2%;
-  --ui-sidebar: 0 0% 9.1%;
+  /* Design tokens — dark. Warm near-black; --ui-card is lighter than the page,
+     as in the design (#1f1d1b on #131110). */
+  --ui-background: 20 8.6% 6.9%;          /* --bg    #131110 */
+  --ui-foreground: 24 17.2% 94.3%;        /* --ink   #f3f0ee */
+  --ui-card: 30 6.9% 11.4%;               /* --card  #1f1d1b */
+  --ui-card-foreground: 24 17.2% 94.3%;
+  --ui-popover: 30 6.9% 11.4%;
+  --ui-popover-foreground: 24 17.2% 94.3%;
+  --ui-primary: 6.7 73.2% 54.7%;
+  --ui-primary-foreground: 0 0% 100%;
+  --ui-secondary: 15 5.4% 14.5%;          /* --cardh #272423 */
+  --ui-secondary-foreground: 24 17.2% 94.3%;
+  --ui-muted: 15 5.4% 14.5%;
+  --ui-muted-foreground: 25 6.2% 62%;     /* --dim   #a49d98 */
+  --ui-accent: 15 5.4% 14.5%;
+  --ui-accent-foreground: 24 17.2% 94.3%;
+  --ui-border: 20 7.3% 16.1%;             /* --line  #2c2826 */
+  --ui-input: 17.1 6.4% 21.4%;            /* --line2 #3a3533 */
+  --ui-ring: 6.7 73.2% 54.7%;
+  --ui-sidebar: 20 6.1% 9.6%;             /* --panel #1a1817 */
+  --ui-faint: 21.8 5% 43.3%;              /* --faint #746d69 */
+  --ui-destructive: 6 70% 58%;
+  --ui-destructive-foreground: 0 0% 100%;
   --ui-warning: 37.7 92.1% 50.2%;
   --ui-warning-foreground: 0 0% 9.1%;
 
-  /* Dark content sits on the true background; --ui-card is the lighter surface. */
   --bg: hsl(var(--ui-background));
 
   --shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
@@ -148,10 +145,24 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: -apple-system, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  /* The design's stack. IBM Plex is not bundled yet, so these resolve to the
+     system fallbacks until the woff2 files are added; the cascade means adding
+     them later needs no code change. Noto Sans SC carries the CJK text. */
+  font-family: 'IBM Plex Sans', 'Noto Sans SC', -apple-system, system-ui, sans-serif;
+  /* The design is dense: 13px base, not the browser's 16px. */
+  font-size: 13px;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+}
+
+/* URLs, counts and section labels are monospaced in the design — its strongest
+   identifying feature. Use the `font-mono` utility; this is just the fallback
+   chain for it. */
+code,
+kbd,
+samp {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 }
 
 /* ── Transitions ── */
