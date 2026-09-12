@@ -116,6 +116,34 @@ else
   info "bundle budget skipped (no build output)"
 fi
 
+
+echo "== 12. style ratchet (see the Style contract in SHADCN_MIGRATION.md) =="
+# These four numbers may only ever go DOWN. They are the measurable form of "one
+# UI style": every inline var() is a colour decided outside the token system,
+# every raw <button> is a control styled by hand, and the radius/icon counts are
+# scale drift. P6 drives all four to 0; until then a phase must not add to them.
+CEIL_INLINE_VAR=350
+CEIL_RAW_BUTTON=55
+CEIL_OFF_RADIUS=9
+CEIL_OFF_ICON=40
+style_scope=(--exclude-dir=ui --exclude-dir=test)
+iv=$(grep -roh "${style_scope[@]}" 'var(--' src/components src/main.jsx | wc -l | tr -d ' ')
+rb=$(grep -roh "${style_scope[@]}" '<button' src/components src/main.jsx | wc -l | tr -d ' ')
+orad=$(grep -rohE "${style_scope[@]}" 'rounded-(sm|2xl)\b' src/components src/main.jsx | wc -l | tr -d ' ')
+oico=$(grep -rohE "${style_scope[@]}" 'size=\{(10|11|12|13|14|15|17|18|19|21|22|24)\}' src/components src/main.jsx | wc -l | tr -d ' ')
+ratchet() { # name current ceiling
+  if [ "$2" -le "$3" ]; then
+    if [ "$2" -lt "$3" ]; then pass "$1: $2 (was $3, ratchet down — lower the ceiling in this script)"
+    else pass "$1: $2 (at ceiling $3)"; fi
+  else
+    bad "$1: $2 exceeds ceiling $3 — this phase added hand-styling"
+  fi
+}
+ratchet "inline var() colours" "$iv" "$CEIL_INLINE_VAR"
+ratchet "raw <button> elements" "$rb" "$CEIL_RAW_BUTTON"
+ratchet "off-scale radius (sm/2xl)" "$orad" "$CEIL_OFF_RADIUS"
+ratchet "off-scale icon sizes" "$oico" "$CEIL_OFF_ICON"
+
 echo
 [ "$fail" -eq 0 ] && echo "ALL GATES PASSED" || echo "GATES FAILED"
 exit $fail

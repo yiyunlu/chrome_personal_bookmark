@@ -45,6 +45,10 @@ export default {
           DEFAULT: 'hsl(var(--ui-destructive))',
           foreground: 'hsl(var(--ui-destructive-foreground))'
         },
+        warning: {
+          DEFAULT: 'hsl(var(--ui-warning))',
+          foreground: 'hsl(var(--ui-warning-foreground))'
+        },
         border: 'hsl(var(--ui-border))',
         input: 'hsl(var(--ui-input))',
         ring: 'hsl(var(--ui-ring))'
@@ -57,6 +61,9 @@ export default {
         sm: 'calc(var(--ui-radius) - 4px)'
       },
       boxShadow: {
+        // The project's elevation shadow, so panels can say `shadow-panel`
+        // instead of an inline style={{ boxShadow: 'var(--shadow)' }}.
+        panel: 'var(--shadow)',
         soft: '0 6px 20px rgba(15, 23, 42, 0.08)',
         'soft-lg': '0 10px 30px rgba(15, 23, 42, 0.12)',
         'dark-soft': '0 8px 24px rgba(2, 6, 23, 0.4)'

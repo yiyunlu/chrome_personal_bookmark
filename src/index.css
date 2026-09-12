@@ -68,9 +68,8 @@
   --danger: hsl(var(--ui-destructive));
   --danger-soft: hsl(var(--ui-destructive) / 0.1);
 
-  /* Amber warning has no shadcn slate equivalent; kept as-is. */
-  --warning: #d97706;
-  --warning-soft: rgba(217, 119, 6, 0.1);
+  --warning: hsl(var(--ui-warning));
+  --warning-soft: hsl(var(--ui-warning) / 0.1);
 
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 6px 16px rgba(15, 23, 42, 0.06);
 }
@@ -98,9 +97,8 @@
   --ui-border: 217.2 32.6% 17.5%;
   --ui-input: 217.2 32.6% 17.5%;
   --ui-ring: 212.7 26.8% 83.9%;
-
-  --warning: #f59e0b;
-  --warning-soft: rgba(245, 158, 11, 0.15);
+  --ui-warning: 37.7 92.1% 50.2%;
+  --ui-warning-foreground: 222.2 47.4% 11.2%;
 
   --shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
 }
