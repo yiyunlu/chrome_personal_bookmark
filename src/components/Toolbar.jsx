@@ -1,11 +1,18 @@
 import React from 'react';
 import { AlertTriangle, Brain, CheckSquare, Download, Plus, Search, Sparkles, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { t } from '../lib/i18n';
 
 // Keeps shadcn's Button visually identical to the previous hand-rolled toolbar
 // buttons: 14px icons (cva defaults to size-4) and a 6px gap (cva uses gap-2).
 const TOOLBAR_BTN = 'text-sm gap-1.5 [&_svg]:size-3.5';
+
+// Same idea for the search field: shadcn's Input is h-9/rounded-md/shadow-sm with
+// a 1px `ring` in the shadcn ring colour.
+const SEARCH_INPUT =
+  'h-auto w-full max-w-2xl rounded-xl py-2.5 pl-9 pr-16 text-sm shadow-none ' +
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
 
 export function Toolbar({
   activeSource,
@@ -32,12 +39,17 @@ export function Toolbar({
           className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
           style={{ color: 'var(--muted)' }}
         />
-        <input
+        <Input
           ref={searchInputRef}
+          id="tabhub-search"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={t('searchPlaceholder')}
-          className="w-full max-w-2xl pl-9 pr-16 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
+          aria-label={t('searchPlaceholder')}
+          // Overrides of shadcn's Input base (cn() is twMerge, so these win):
+          // the toolbar search keeps its 2xl pill shape, 10px vertical padding,
+          // 14px text, no elevation and the project's accent focus ring.
+          className={SEARCH_INPUT}
           style={{
             background: 'var(--input-bg)',
             borderColor: 'var(--input-border)',

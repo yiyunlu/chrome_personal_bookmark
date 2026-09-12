@@ -1,10 +1,32 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { t } from '../lib/i18n';
 import { DialogShell } from './DialogShell';
 import { BookmarkIcon } from './BookmarkIcon';
 
 const NEW_COLLECTION_VALUE = '__new__';
+
+// shadcn's Input / SelectTrigger are h-9 / rounded-md / shadow-sm; the dialog
+// fields are rounded-lg with 8px padding and the project's accent focus ring.
+const FIELD_CLASS =
+  'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
+// SelectTrigger focuses with :focus, not :focus-visible.
+const TRIGGER_CLASS =
+  'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
+  'focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30';
+/* Two overrides of the vendored SelectContent, neither of which needs the file
+   edited (cn() is twMerge, and the viewport override outranks the vendored class
+   on specificity):
+   - z-[110]: the listbox portals to document.body, *outside* the dialog's
+     portal, so shadcn's z-50 would put it behind the z-[90] dialog panel.
+   - the viewport override: shadcn pins the popper viewport to
+     h-[var(--radix-select-trigger-height)], i.e. one row tall with the rest
+     scrolled out of sight. The Viewport takes no className from callers. */
+const CONTENT_CLASS = 'z-[110] max-h-72 [&_[data-radix-select-viewport]]:h-auto';
 
 export function SaveTabsModal({ open, tabs, defaultFolderName, collections, onSave, onClose }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set((tabs || []).map((tab) => tab.id)));
@@ -90,11 +112,12 @@ export function SaveTabsModal({ open, tabs, defaultFolderName, collections, onSa
       <div className="px-5 py-4 space-y-3">
         {/* Folder name */}
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
+          <Label htmlFor="tabhub-save-folder" className="block text-xs leading-normal mb-1" style={{ color: 'var(--muted)' }}>
             {t('folderName')}
-          </label>
-          <input
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
+          </Label>
+          <Input
+            id="tabhub-save-folder"
+            className={FIELD_CLASS}
             style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
             value={folderName}
             onChange={(e) => setFolderName(e.target.value)}
@@ -104,22 +127,27 @@ export function SaveTabsModal({ open, tabs, defaultFolderName, collections, onSa
 
         {/* Target collection */}
         <div>
-          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
+          <Label htmlFor="tabhub-save-target" className="block text-xs leading-normal mb-1" style={{ color: 'var(--muted)' }}>
             {t('targetCollection')}
-          </label>
-          <select
-            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
-            style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
-            value={targetId}
-            onChange={(e) => setTargetId(e.target.value)}
-          >
-            <option value={NEW_COLLECTION_VALUE}>{t('newCollectionOption')}</option>
-            {(collections || []).map((col) => (
-              <option key={col.id} value={col.id}>
-                {col.title}
-              </option>
-            ))}
-          </select>
+          </Label>
+          <Select value={targetId} onValueChange={setTargetId}>
+            <SelectTrigger
+              id="tabhub-save-target"
+              aria-label={t('targetCollection')}
+              className={TRIGGER_CLASS}
+              style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className={CONTENT_CLASS}>
+              <SelectItem value={NEW_COLLECTION_VALUE}>{t('newCollectionOption')}</SelectItem>
+              {(collections || []).map((col) => (
+                <SelectItem key={col.id} value={col.id}>
+                  {col.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Select all / Deselect all + count */}
@@ -143,13 +171,18 @@ export function SaveTabsModal({ open, tabs, defaultFolderName, collections, onSa
           style={{ borderColor: 'var(--panel-border)', background: 'var(--input-bg)' }}
         >
           {tabs.map((tab) => (
-            <label
+            <Label
               key={tab.id}
-              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 cursor-pointer text-sm hover:opacity-80"
+              // `font-normal leading-normal` undo shadcn's Label defaults: this
+              // one wraps a whole row, and font-medium would inherit into the
+              // tab title below.
+              className="flex items-center gap-2.5 rounded-md px-2.5 py-2 cursor-pointer text-sm font-normal leading-normal hover:opacity-80"
               style={{
                 background: selectedIds.has(tab.id) ? 'var(--accent-soft)' : 'transparent'
               }}
             >
+              {/* A plain checkbox: shadcn's Input is a text field (h-9, w-full,
+                  border) and `checkbox` is a separate primitive, not vendored. */}
               <input
                 type="checkbox"
                 checked={selectedIds.has(tab.id)}
@@ -166,7 +199,7 @@ export function SaveTabsModal({ open, tabs, defaultFolderName, collections, onSa
                   {getDomain(tab.url)}
                 </div>
               </div>
-            </label>
+            </Label>
           ))}
         </div>
       </div>

@@ -1,7 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Input } from '@/components/ui/input';
 import { t } from '../lib/i18n';
 import { DialogShell, LAYER_TOP } from './DialogShell';
 import { DialogDescription, DialogTitle } from './ui/dialog';
+
+// shadcn's Input is h-9/rounded-md/shadow-sm/text-base; this keeps the dialog
+// field look (rounded-lg, 14px, accent focus ring).
+const FIELD_CLASS =
+  'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
 
 export function PromptModal({
   open,
@@ -55,8 +62,11 @@ export function PromptModal({
             {message}
           </DialogDescription>
         )}
-        <input
-          className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
+        <Input
+          // The dialog's own title is the field's name: this modal has exactly
+          // one control, and a visible <Label> would duplicate the heading.
+          aria-label={typeof title === 'string' ? title : undefined}
+          className={FIELD_CLASS}
           style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
           value={value}
           placeholder={placeholder}
