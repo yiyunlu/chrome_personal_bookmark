@@ -187,7 +187,12 @@ export const CollectionCard = React.memo(function CollectionCard({
         <Button
           type="button"
           variant="ghost"
-          className="h-auto flex-1 justify-start gap-2 px-0 py-0 text-left font-normal hover:bg-transparent"
+          // `-my-3 py-3` puts the row's vertical padding back inside the button's
+          // box. Without it the header's 12px top/bottom strip stopped toggling
+          // the collection, which the baseline's whole-row native control used to
+          // cover. `hover:bg-transparent` is deliberate parity, not an oversight:
+          // that baseline control had no hover style at all.
+          className="-my-3 h-auto flex-1 justify-start gap-2 px-0 py-3 text-left font-normal hover:bg-transparent"
           onClick={() => onToggleCollapse(collection.id)}
         >
           <FolderOpen className="text-primary" />

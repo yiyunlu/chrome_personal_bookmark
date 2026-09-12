@@ -9,7 +9,7 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | P2 | ContextMenu / DropdownMenu | merged, reviewed | **not yet — see smoke list** |
 | P3 | Form primitives (Input / Label / Select) | merged, reviewed | **not yet — see smoke list** |
 | P4 | Feedback (Sonner, Tooltip) + undo reachability + Trash dialog | merged, reviewed | **not yet — see smoke list** |
-| P5a | `CollectionCard` — cards on shadcn primitives | pending | — |
+| P5a | `CollectionCard` — cards on shadcn primitives | merged, reviewed | **not yet — see smoke list** |
 | P5b | `Sidebar` — the rest of the rail | pending | — |
 | P6 | **Style unification** — one token system, no hand-styling left | pending | — |
 
@@ -424,8 +424,15 @@ Every icon-only button carries `aria-label`, plus a `Tooltip` where no visible l
 
 ### Typography — three roles
 
-`text-base font-semibold` for a dialog or panel title, `text-sm` for body, `text-xs
-text-muted-foreground` for meta. No other size in a component.
+| role | classes |
+| --- | --- |
+| dialog / panel title | `text-base font-semibold` |
+| section or card title | `text-sm font-semibold` |
+| body | `text-sm` |
+| meta / secondary | `text-xs text-muted-foreground` |
+
+No other size in a component. The card-title row exists because a collection header is
+a card title, not a dialog title, and matching the baseline there was the right call.
 
 ### Spacing
 
@@ -541,6 +548,19 @@ with the DevTools console open. Record the result in the status table's last col
   pre-existing, not a P1 regression, but check it does not clip on a short window
 - confirm dialogs no longer dismiss on a backdrop click (AlertDialog semantics, intended)
   and now autofocus Cancel
+
+**From P5a (merged):**
+- **dark mode, every bookmark card.** Tailwind's `border` sets width only; without a base
+  layer it falls back to preflight's `#e5e7eb`, which is invisible against light mode's
+  `--ui-border` and a near-white outline in dark. Fixed at the root with shadcn's
+  `* { border-color }` base layer and guarded by gate 4 — but eyeball it in dark mode.
+- the collection header: clicking the title, the count, the chevron, **and the 12px strip
+  above and below them** must all toggle the collection. The drag handle deliberately no
+  longer does, and neither does the 16px left gutter.
+- "open all" has moved from left of the chevron to the far right of the header
+- collection panels are now 8px-cornered, not 16px; cards and drop zones 8px, not 12px
+- tag chips are real buttons now, so a long collection adds three tab stops per card —
+  check the tab order is not unreasonable
 
 **From P3 (merged):**
 - open **Save tabs** and the target dropdown: it must render *above* the dialog panel
