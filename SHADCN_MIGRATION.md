@@ -5,7 +5,7 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | Phase | Scope | Status | dist/ smoke-tested in Chrome |
 | --- | --- | --- | --- |
 | P0 | Foundation + shadcn slate palette + Toolbar pilot | done | not yet |
-| P1 | Dialog / AlertDialog (8 dialog surfaces) | pending | — |
+| P1 | Dialog / AlertDialog (8 dialog surfaces) | merged, reviewed | **not yet — see smoke list** |
 | P2 | ContextMenu / DropdownMenu | merged, reviewed | **not yet — see smoke list** |
 | P3 | Form primitives (Input / Label / Select / Switch / Textarea) | pending | — |
 | P4 | Feedback (Sonner toasts, Tooltip) | pending | — |
@@ -92,6 +92,17 @@ patched forward. `dist/` is a build artifact — always rebuild after a revert.
 
 ## P1 — Dialog / AlertDialog
 
+**Implementation note (merged):** the phase does **not** use shadcn's `DialogContent` /
+`AlertDialogContent`. Those wrappers unconditionally render a second close button (all 8
+surfaces already have one) and render their own `Portal` + `Overlay` internally at a fixed
+`z-50` with no className passthrough, which would put a nested confirm's scrim *under* the
+dialog that opened it. Neither is reachable through `className`. So `DialogShell.jsx` owns
+the panel geometry, centering, radius, border, shadow, backdrop colour and both animation
+sets; from `src/components/ui/*` we take only `Root`, `Portal`, `Overlay`, `Title` and
+`Description`. For this phase "using shadcn" means Radix behaviour + shadcn tokens, not
+shadcn's dialog chrome — which also means a future `npx shadcn add dialog --overwrite`
+buys less here than it looks.
+
 **Owns:** `src/components/Modal.jsx` (delete), `ConfirmModal.jsx`, `PromptModal.jsx`,
 `EditBookmarkModal.jsx`, `BatchMoveModal.jsx`, `SaveTabsModal.jsx`, `SettingsModal.jsx`,
 `AICategorizeModal.jsx`, `DeadLinkModal.jsx`, `src/test/AICategorizeModal.test.jsx`.
@@ -169,9 +180,10 @@ Risk: medium-high — SortableJS adjacency. Fallback: L1.
 
 ## P3 — Form primitives
 
-**Owns:** `Toolbar.jsx` (search input), `SettingsModal.jsx`, `EditBookmarkModal.jsx`,
-`PromptModal.jsx`, `SaveTabsModal.jsx`, `BatchMoveModal.jsx`, `ChatPanel.jsx`.
-Runs **after P1** (shares files).
+**Owns:** `Toolbar.jsx` (the whole file — P4 must not touch it), `SettingsModal.jsx`,
+`EditBookmarkModal.jsx`, `PromptModal.jsx`, `SaveTabsModal.jsx`, `BatchMoveModal.jsx`,
+`ChatPanel.jsx`. Runs **after P1** (shares files). Note P1 rewrote all five modal files
+listed here; build on the merged `DialogShell` versions, not the originals.
 
 Acceptance:
 - [ ] gate exits 0
@@ -187,8 +199,28 @@ Risk: low. Fallback: L2 per file.
 
 ## P4 — Feedback (Sonner, Tooltip)
 
-**Owns:** `UndoToast.jsx`, `main.jsx` (mount `Toaster`), `Sidebar.jsx` + `Toolbar.jsx`
-(tooltips), `src/test/AICategorizeModal.test.jsx`.
+**Owns:** `UndoToast.jsx`, `main.jsx` (mount `Toaster`, plus the Trash overlay below),
+`Sidebar.jsx`, `AICategorizeModal.jsx` (its `title` attributes only),
+`src/test/AICategorizeModal.test.jsx`. **`Toolbar.jsx` belongs to P3** — do not touch it;
+toolbar tooltips are deferred to a later pass so the two waves stay file-disjoint.
+
+**Inherited from P1 — the undo toast is now unreachable while any dialog is open.**
+P1 raised dialogs to z-90/100 to clear `ChatPanel` (z-50) and the toast (z-80), so the
+toast sits behind the scrim. But z-order is only part of it: Radix's modal Dialog sets
+`disableOutsidePointerEvents`, which puts `pointer-events: none` on `document.body`, and
+calls `hideOthers(content)`, which puts `aria-hidden` on `#root`. So the toast is also
+pointer-inert and hidden from screen readers regardless of its z-index. **A z-index bump
+alone will not fix this** — the toast needs `pointer-events: auto` and to sit outside
+`hideOthers`' scope, i.e. in its own portal, which is what Sonner does anyway. Soft-delete
+keeps its 8s timer running (`useUndoStack.js:27-30`) and the flows genuinely coexist
+(delete a card, then `S` opens SaveTabsModal), so this is a real reachability bug, not a
+cosmetic one.
+
+**Also inherited: a ninth hand-rolled overlay.** `src/main.jsx:1571` renders the Trash
+modal as an inline `fixed inset-0 z-50` with its own backdrop-click dismissal. P1 was
+forbidden to touch `main.jsx` so it survived the dialog sweep, and no phase owned it —
+it is now below both the new dialogs (z-90) and the toast (z-80). Migrate it to
+`DialogShell` here, or state in this doc that it stays hand-rolled and fix its z-order.
 
 Acceptance:
 - [ ] gate exits 0
@@ -241,6 +273,19 @@ with the DevTools console open. Record the result in the status table's last col
   `animate-slide-up` to `bg-popover`/`rounded-md`/`shadow-md` with no entry animation;
   hover moves from `var(--hover)` to `focus:bg-accent`; the vendored item class
   `[&>svg]:size-4` overrides `size={14}` icon props to 16px
+
+**From P1 (merged):**
+- open all 8 dialogs; console must stay clean (the RTL stand-in catches React's warnings
+  but Radix 1.1.23 emits none of its own, so a missing `DialogTitle` would only show here)
+- does `RemoveScroll`'s body lock cause a scrollbar-width layout shift when a dialog opens?
+  `<main>` (`main.jsx:1348`) is `overflow-y-auto` inside a `min-h-screen`, so which element
+  actually scrolls is ambiguous from the source alone
+- the nested confirm-over-dialog scrim: the z-order test only parses class strings, it
+  proves nothing about rendered stacking
+- `SettingsModal` is the one surface with no inner scroll region and no panel max-height —
+  pre-existing, not a P1 regression, but check it does not clip on a short window
+- confirm dialogs no longer dismiss on a backdrop click (AlertDialog semantics, intended)
+  and now autofocus Cancel
 
 **Known open item, not a P2 defect:** after a menu closes, focus lands on `<body>`, so a
 keyboard user's next Tab restarts at the top of the page. Identical to the pre-migration

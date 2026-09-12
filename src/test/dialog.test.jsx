@@ -326,8 +326,11 @@ describe('Dialog accessible names', () => {
     expect(document.getElementById(labelId)?.textContent?.trim()).not.toBe('');
   });
 
-  // Stand-in for the manual "no console errors" check: Radix complains loudly
-  // about a missing Title or Description, and React about unknown props.
+  // Catches React's own errors and warnings (unknown props, bad nesting, state
+  // updates outside act). NOT a11y coverage: @radix-ui/react-dialog@1.1.23 has
+  // no console.* calls at all and no Title/Description warning, so a missing
+  // DialogTitle would slip past this. Accessible names are covered by the
+  // aria-labelledby test above.
   it.each(surfaces)('%s mounts without console errors or warnings', async (_name, mount) => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
