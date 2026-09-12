@@ -2,6 +2,25 @@ import React from 'react';
 import { Check, FolderOpen, Sparkles, X } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { DialogShell } from './DialogShell';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+
+/* The accept / reject buttons are icon-only, so the label has to be the
+   button's `aria-label` (a Radix tooltip only ever *describes* its trigger) as
+   well as the tooltip text. `z-[110]` because the tooltip is portalled to
+   <body> while this dialog sits at DialogShell's z-90 — shadcn's stock
+   `TooltipContent` is z-50 and would render behind the panel. No drag guard
+   here: the only draggables are the bookmark cards behind this dialog's scrim,
+   which cannot be dragged while it is open. */
+function ActionTooltip({ label, children }) {
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent className="z-[110]">{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggestion, onApplyAll, onClose }) {
   const open = !!aiState;
@@ -92,22 +111,26 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
                     </div>
                     {suggestion.status === 'pending' && (
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => onAcceptSuggestion(idx)}
-                          className="p-1 rounded-md hover:opacity-80"
-                          style={{ color: 'var(--accent)' }}
-                          title={t('aiAccept')}
-                        >
-                          <Check size={14} />
-                        </button>
-                        <button
-                          onClick={() => onRejectSuggestion(idx)}
-                          className="p-1 rounded-md hover:opacity-80"
-                          style={{ color: 'var(--muted)' }}
-                          title={t('aiReject')}
-                        >
-                          <X size={14} />
-                        </button>
+                        <ActionTooltip label={t('aiAccept')}>
+                          <button
+                            onClick={() => onAcceptSuggestion(idx)}
+                            className="p-1 rounded-md hover:opacity-80"
+                            style={{ color: 'var(--accent)' }}
+                            aria-label={t('aiAccept')}
+                          >
+                            <Check size={14} />
+                          </button>
+                        </ActionTooltip>
+                        <ActionTooltip label={t('aiReject')}>
+                          <button
+                            onClick={() => onRejectSuggestion(idx)}
+                            className="p-1 rounded-md hover:opacity-80"
+                            style={{ color: 'var(--muted)' }}
+                            aria-label={t('aiReject')}
+                          >
+                            <X size={14} />
+                          </button>
+                        </ActionTooltip>
                       </div>
                     )}
                     {suggestion.status === 'accepted' && (
