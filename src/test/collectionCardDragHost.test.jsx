@@ -317,17 +317,26 @@ describe('CollectionCard — behaviour preserved by the restyle', () => {
     expect(onToggleCardSelect).toHaveBeenCalledWith('card-0');
   });
 
-  it('filters by a tag without opening the card', () => {
+  // The design's grid tile is two lines: title, then the URL. Tags used to render
+  // here and no longer do — they belong to the list view, which uses the same
+  // onTagClick prop. This replaces the old "filters by a tag" test: the behaviour
+  // did not regress, it moved, and this pins the grid tile's shape so it cannot
+  // silently grow a third line again.
+  it('renders exactly two lines and no tag controls in the grid tile', () => {
     const onTagClick = vi.fn();
-    const onCardClick = vi.fn();
-    const { host } = mount({ onTagClick, onCardClick });
+    const { host } = mount({ onTagClick });
     const expected = generateTags({ url: collection.cards[0].url, title: collection.cards[0].title })[0];
-    expect(expected).toBeTruthy(); // the fixture must actually produce a tag
+    expect(expected).toBeTruthy(); // the fixture would produce a tag if we rendered them
 
-    const card = within(host.querySelector('[data-card-id="card-0"]'));
-    fireEvent.click(card.getByRole('button', { name: expected }));
-    expect(onTagClick).toHaveBeenCalledWith(expected);
-    expect(onCardClick).not.toHaveBeenCalled();
+    const card = host.querySelector('[data-card-id="card-0"]');
+    expect(within(card).queryByRole('button', { name: expected })).toBeNull();
+    expect(onTagClick).not.toHaveBeenCalled();
+
+    // The text column holds the title and the domain, and nothing else.
+    const column = card.querySelector('.min-w-0.flex-1');
+    expect(column.children).toHaveLength(2);
+    expect(column.children[0]).toHaveTextContent(collection.cards[0].title);
+    expect(column.children[1].className).toMatch(/\bfont-mono\b/);
   });
 
   it('shows the card domain and the card url tooltip', () => {
@@ -351,8 +360,11 @@ describe('CollectionCard — style contract', () => {
     const classes = Array.from(host.querySelectorAll('*'))
       .map((el) => (typeof el.className === 'string' ? el.className : ''))
       .join(' ');
+    // The banned set is 2xl/3xl. rounded-sm is legal and used deliberately: it is
+    // 6px in this scale and what shadcn's own dense elements ship, so the favicon
+    // tile uses it.
     expect(classes).not.toMatch(/\brounded-2xl\b/);
-    expect(classes).not.toMatch(/\brounded-sm\b/);
+    expect(classes).not.toMatch(/\brounded-3xl\b/);
   });
 
   it('names every icon-only control', () => {

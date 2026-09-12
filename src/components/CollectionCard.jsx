@@ -1,9 +1,8 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { BookmarkIcon } from './BookmarkIcon';
 import { ChevronDown, ChevronRight, ExternalLink, FolderOpen, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { logError } from '../lib/utils';
-import { generateTags } from '../lib/enrichmentService';
 import { cn } from '../lib/cn';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
@@ -37,6 +36,9 @@ export const BookmarkCard = React.memo(function BookmarkCard({
   onEdit,
   onDelete,
   onToggleSelect,
+  // Accepted but unused: the grid tile is two lines by design. Tags render in the
+  // list view, which uses the same prop. Kept so the prop API does not churn.
+  // eslint-disable-next-line no-unused-vars
   onTagClick
 }) {
   let domain = '';
@@ -46,18 +48,16 @@ export const BookmarkCard = React.memo(function BookmarkCard({
     logError('BookmarkCard.domain', err);
   }
 
-  const tags = useMemo(
-    () => generateTags({ url: card.url, title: card.title }).slice(0, 3),
-    [card.url, card.title]
-  );
-
   return (
     <Card
       data-card-id={card.id}
       className={cn(
         // No radius here on purpose: <Card> ships rounded-xl, which is the reference
         // app's card radius. Overriding it is what made these boxes look squarer.
-        'group relative flex w-full cursor-pointer items-center gap-3 p-3 text-left shadow-none',
+        // The design's grid tile: 11px padding, 10px gap, top-aligned, and a hover
+        // that changes surface and border rather than lifting the card.
+        'group relative flex w-full cursor-pointer items-start gap-2.5 p-[11px] text-left shadow-none',
+        'transition-colors hover:bg-accent hover:border-input',
         isSelected && 'border-primary bg-accent'
       )}
       onClick={(e) => onCardClick(e, card)}
@@ -80,33 +80,19 @@ export const BookmarkCard = React.memo(function BookmarkCard({
         />
       )}
 
-      {/* Favicon */}
-      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent">
+      {/* Favicon. The design draws a flat tinted letter tile here; we keep the real
+          favicon inside the same 22px container — BookmarkIcon already falls back
+          on its own when every candidate fails. */}
+      <div className="mt-px flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center overflow-hidden rounded-sm bg-secondary">
         <BookmarkIcon url={card.url} title={card.title} />
       </div>
 
-      {/* Title + domain + tags */}
+      {/* Two lines only, per the design: title, then the URL in mono. Tags are
+          deliberately not rendered here — they belong to the list view. */}
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{card.title}</div>
-        {domain && <div className="mt-0.5 truncate text-xs text-muted-foreground">{domain}</div>}
-        {tags.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <Button
-                key={tag}
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-auto rounded-full bg-accent px-1.5 py-0.5 text-xs font-normal text-primary hover:bg-accent hover:opacity-80"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onTagClick) onTagClick(tag);
-                }}
-              >
-                {tag}
-              </Button>
-            ))}
-          </div>
+        <div className="truncate text-[12.5px] font-medium leading-[1.35] text-foreground">{card.title}</div>
+        {domain && (
+          <div className="mt-[3px] truncate font-mono text-[10.5px] text-faint">{domain}</div>
         )}
       </div>
 

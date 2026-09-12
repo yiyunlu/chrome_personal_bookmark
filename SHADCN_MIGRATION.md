@@ -75,11 +75,23 @@ removes or changes a feature. Where the two disagree, that split decides it:
 | light/dark only | keep system/light/dark |
 | no language switcher | keep it |
 | nothing for the 9 dialogs, the context menu, the chat panel, the toast, the trash | keep them; they inherit the tokens automatically |
+| a grid/list view toggle | **in scope after all** — tags live in the list view, so the grid tile can stay two lines |
 
 That last row is the payoff from P1–P5: every one of those surfaces is already on token
 classes, so a palette swap re-skins them with no edits. They will read as shadcn components
 wearing the new palette rather than bespoke design work, because the design file does not
 cover them.
+
+## Bookmark tile
+
+Two lines, per the design: title, then the domain in mono. **Tags do not render in the
+grid** — they belong to the list view. The favicon keeps its place inside the design's
+22px tile rather than being replaced by a tinted letter block; `BookmarkIcon` already
+falls back on its own when every candidate URL fails.
+
+Hover changes surface and border (`hover:bg-accent hover:border-input`), not elevation.
+The old `[data-card-id]:hover` rule in `index.css` lifted the card and added a shadow, and
+its `!important` beat any component-level hover — it is gone.
 
 ## Palette
 

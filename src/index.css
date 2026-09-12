@@ -298,11 +298,9 @@ samp {
   transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
-[data-card-id]:hover {
-  background: var(--hover) !important;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
+/* Hover is a surface + border change now (see CollectionCard), not a lift. The
+   old rule raised the card and added a shadow, and its !important beat the
+   component's own hover classes. */
 
 /* ── Drag states ── */
 .card-dragging {
