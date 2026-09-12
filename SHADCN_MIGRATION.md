@@ -10,7 +10,7 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | P3 | Form primitives (Input / Label / Select) | merged, reviewed | **not yet — see smoke list** |
 | P4 | Feedback (Sonner, Tooltip) + undo reachability + Trash dialog | merged, reviewed | **not yet — see smoke list** |
 | P5a | `CollectionCard` — cards on shadcn primitives | merged, reviewed | **not yet — see smoke list** |
-| P5b | `Sidebar` — the rest of the rail | pending | — |
+| P5b | `Sidebar` — the rest of the rail | merged, reviewed | **not yet — see smoke list** |
 | P6 | **Style unification** — one token system, no hand-styling left | pending | — |
 
 Every phase ends with `./scripts/verify-ui.sh` exiting 0 and one commit named
@@ -391,6 +391,38 @@ No `style={{ … var(--x) }}` in any component. Every legacy variable has a clas
 that needs an inline style. Once the count reaches 0, the legacy alias block in
 `src/index.css` is deleted and `--ui-*` becomes the only palette.
 
+### The tailwind-merge hazard — read this before overriding any vendored class
+
+Three separate bugs in this migration came from `cn()` resolving a class string
+differently than the source reads. All three are **silent**: the literal is still in the
+source, the CSS rule is still in the bundle, only the resolved `className` is wrong. No
+grep, no gate and no jsdom test can see any of them. **Resolve the real string through
+`cn()` before believing an override works.**
+
+**Mechanism A — a class deletes a differently-named one.** tailwind-merge's
+`conflictingClassGroups` makes `text-*` remove `leading-*`, `flex-1` remove `shrink-0`,
+`line-clamp-*` remove `flex` and `overflow-hidden`, `size-*` remove `w-*`/`h-*`, and the
+familiar `p-*`/`m-*`/`gap-*`/`rounded-*`/`inset-*` shorthand families. *Restate anything
+you did not mean to lose* — this is why `Label` overrides carry an explicit `leading-*`.
+
+**Mechanism B — an arbitrary value loses to a later named one in the same group.**
+`ring-[var(--accent)]` followed by `ring-opacity-30` resolves to just the opacity, which
+is how the accent focus ring disappeared on nine controls. `bg-[var(--panel-bg)] bg-card`
+likewise keeps only `bg-card`. **P6 converts 291 inline `var()` colours and will meet this
+repeatedly.**
+
+**Mechanism C — custom utilities are not merged at all.** This is the sneakiest, because
+"is the class present?" checks pass: tailwind-merge only knows Tailwind's stock scales, so
+a project utility it has never heard of does **not** displace the stock one. Both classes
+reach the DOM and CSS source order decides. `shadow-panel` — the contract's own mapping
+for `var(--shadow)` — would therefore have failed to override shadcn's `shadow`/`shadow-sm`
+on `Button`, `Card`, `Input` and `SelectTrigger`.
+
+`src/lib/cn.js` now registers the project's custom `shadow`, `ease` and `animate` scales
+with `extendTailwindMerge`, so mechanism C is fixed at the root. `src/test/cn.test.js`
+pins all three mechanisms, including the two historical bugs, so an upgrade cannot bring
+them back unnoticed.
+
 ### Radius — four values, no others
 
 | value | for |
@@ -492,6 +524,20 @@ Runs **after P5a and P5b merge**, in three file-disjoint parts:
 `WelcomeCard`, `BookmarkIcon`, `ContextMenu`, `DialogShell` · **P6c** `main.jsx` plus the
 `src/index.css` cleanup.
 
+Carry-ins from the P5 reviews, to be done inside P6:
+- **delete `src/test/fixtures/SidebarP5Baseline.jsx`.** A frozen 384-line copy of a
+  component proves something only at the moment of the migration; after that it rots, and
+  a drifted copy proves nothing while still costing a rebuild. Replace the
+  diff-against-frozen-copy with an inline literal snapshot of `dragHostShape()`'s object —
+  same protection, no duplicate component, and a reader checks one literal instead of
+  trusting that 384 lines were never touched. Lose no assertion.
+- give `SettingsModal`'s "Data" heading the `<div id>` + `role="group" aria-labelledby`
+  treatment P5b used for the theme group; right now the two surfaces diverge.
+- pick one: `Label` overrides use `leading-none` in `Sidebar.jsx` and `leading-normal` in
+  the five P3 files.
+- decide whether a cva-supplied `text-xs` paired with `text-primary` counts as a fourth
+  typographic combination or is allowed.
+
 Acceptance:
 - [ ] gate 12 reads **0 / 0 / 0 / 0**, and the ceilings in `scripts/verify-ui.sh` are set to 0
 - [ ] the legacy alias block is deleted from `src/index.css`; `--ui-*` is the only palette
@@ -548,6 +594,14 @@ with the DevTools console open. Record the result in the status table's last col
   pre-existing, not a P1 regression, but check it does not clip on a short window
 - confirm dialogs no longer dismiss on a backdrop click (AlertDialog semantics, intended)
   and now autofocus Cancel
+
+**From P5b (merged):**
+- nav rows moved from `display:flex` to the Button cva's `inline-flex`. `w-full` keeps one
+  row per line, but each row now sits on a line box and may pick up a few px of baseline
+  descender space — jsdom cannot see this, so look at the row rhythm.
+- the two select triggers grow 34px → 36px and the section labels tighten to `leading-none`
+- collapsed-rail **inactive** rows move from `color: inherit` at 60% opacity to a solid
+  `text-muted-foreground`
 
 **From P5a (merged):**
 - **dark mode, every bookmark card.** Tailwind's `border` sets width only; without a base
