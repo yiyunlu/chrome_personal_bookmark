@@ -1,51 +1,37 @@
+/* FROZEN FIXTURE — the P5 baseline `Sidebar` exactly as it stood at
+   commit c74233a, with only its import paths rebased and the export renamed.
+   It exists so `src/test/SidebarDragHost.test.jsx` can diff the *rendered* DOM
+   of the migrated component against the DOM SortableJS was wired against, node
+   by node, rather than trusting a grep count. Do not "modernise" this file: the
+   moment it is edited to match the new component the comparison stops proving
+   anything. */
 import React from 'react';
 import { Bookmark, ChevronLeft, ChevronRight, FolderOpen, GripVertical, Monitor, Moon, Settings, Sun, Trash2 } from 'lucide-react';
 import Sortable from 'sortablejs';
-import { t } from '../lib/i18n';
-import { cn } from '../lib/cn';
-import { Button } from './ui/button';
-import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Separator } from './ui/separator';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { t } from '../../lib/i18n';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
 
-/* The two sidebar selects.
-
-   P4 gave the trigger the geometry and inline surface colours of the bare
-   native select it replaced, because shadcn's `bg-transparent` / `border-input`
-   defaults disappear into the sidebar's own panel. P5b keeps that *intent* but
-   expresses it in token classes — `bg-background border-input text-foreground`,
-   which is exactly what the legacy --input-bg / --input-border / --text
-   aliases resolve to — and drops the geometry override, because the contract puts
-   select triggers on `rounded-md` and shadcn's own `h-9 px-3` is the one control
-   height in the system. tailwind-merge resolves `bg-transparent` → `bg-background`
-   and `shadow-sm` → `shadow-none`; nothing here touches a ring class, so the
-   `ring-<colour>` / `ring-opacity-*` conflict-group trap P3 hit cannot bite. */
-const SELECT_TRIGGER_CLASS = 'w-full bg-background border-input text-foreground shadow-none';
+/* The two sidebar selects. The *trigger* keeps the geometry and surface colours
+   of the bare native select it replaces, which matters more here than anywhere
+   else in the app: the sidebar has its own dark panel, and shadcn's
+   `border-input` / `bg-transparent` defaults read as an invisible control on it.
+   tailwind-merge resolves the overlaps (h-9 → h-auto, rounded-md → rounded-lg,
+   …). The floating list keeps shadcn's `bg-popover`, matching the context menu
+   P2 migrated — it hovers over the page, not over the sidebar. */
+const SELECT_SURFACE = {
+  background: 'var(--input-bg)',
+  borderColor: 'var(--input-border)',
+  color: 'var(--text)'
+};
+const SELECT_TRIGGER_CLASS = 'w-full h-auto rounded-lg px-2.5 py-1.5 text-sm shadow-none';
 /* `z-[110]` matches P3's value (it needs to clear DialogShell's z-90/z-100 in
    the dialogs; these two are not in a dialog, but the two files should not
    disagree). The viewport override undoes shadcn's
-   arbitrary --radix-select-trigger-height height, which pins the popper list to one
+   `h-[var(--radix-select-trigger-height)]`, which pins the popper list to one
    row tall; `Viewport` takes no className from callers, so it is reached from
    its ancestor. */
 const SELECT_CONTENT_CLASS = 'z-[110] [&_[data-radix-select-viewport]]:h-auto';
-
-/* The meta type role from the style contract (`text-xs text-muted-foreground`),
-   plus the sidebar's own uppercase treatment.
-
-   `leading-none` is restated on purpose. tailwind-merge puts `leading-*` in
-   `font-size`'s conflicting groups, so overriding shadcn `Label`'s `text-sm`
-   with `text-xs` silently deletes the `leading-none` that came *before* it —
-   the same class of trap as P3's `ring-opacity-*` / `ring-<colour>` deletion,
-   found by resolving the merged string rather than reading the source. */
-const SECTION_LABEL_CLASS = 'block text-xs leading-none uppercase tracking-wider mb-1.5 text-muted-foreground';
-/* A full-width nav row: the expanded rail's list items and bottom actions.
-   `h-auto py-1.5` replaces the `h-9 px-4 py-2` of Button's default size, and
-   `justify-start` the cva's `justify-center`. */
-const NAV_ROW_CLASS = 'w-full justify-start gap-2 px-2 h-auto py-1.5 text-sm text-left';
-/* The collapsed rail's icon rows. Not `size="icon"` (h-9 w-9): the rail is
-   3.5rem wide and these stretch across it, the way the expanded rows do. */
-const RAIL_ROW_CLASS = 'w-full h-auto px-0 py-1.5';
 
 /**
  * Is a SortableJS gesture in flight anywhere on the page?
@@ -92,7 +78,7 @@ function IconTooltip({ label, side = 'right', children }) {
   );
 }
 
-export function Sidebar({
+export function SidebarP5Baseline({
   sources,
   activeSourceId,
   onSourceChange,
@@ -122,35 +108,38 @@ export function Sidebar({
     // depth and child list.
     <TooltipProvider delayDuration={300}>
       <aside
-        className={cn(
-          'flex flex-col flex-shrink-0 min-h-screen select-none border-r border-border bg-muted text-foreground',
-          // was an inline `transition: width 0.2s cubic-bezier(0.4,0,0.2,1)`;
-          // `ease-smooth` is that curve, registered in tailwind.config.js.
-          'transition-[width] duration-200 ease-smooth',
-          collapsed ? 'w-14' : 'w-64'
-        )}
+        className="flex flex-col flex-shrink-0 min-h-screen border-r border-[var(--panel-border)] select-none"
+        style={{
+          width: collapsed ? '3.5rem' : '16rem',
+          background: 'var(--sidebar-bg)',
+          color: 'var(--sidebar-text)',
+          transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
       >
         {/* Header */}
-        <div className={cn('flex items-center px-3 pt-4 pb-3', collapsed ? 'justify-center' : 'justify-between')}>
+        <div className={`flex items-center px-3 pt-4 pb-3 ${collapsed ? 'justify-center' : 'justify-between'}`}>
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent">
-                {/* Not inside a Button, so it carries the contract's size={16}. */}
-                <Bookmark size={16} className="text-primary" />
+              <div
+                className="flex items-center justify-center w-8 h-8 rounded-lg"
+                style={{ background: 'var(--accent-soft)' }}
+              >
+                <Bookmark size={16} style={{ color: 'var(--accent)' }} />
               </div>
-              <div className="text-sm font-semibold tracking-wide">TabHub</div>
+              <div>
+                <div className="text-sm font-semibold tracking-wide">TabHub</div>
+              </div>
             </div>
           )}
           <IconTooltip label={collapseLabel}>
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
               onClick={onToggleCollapse}
-              className="h-7 w-7 flex-shrink-0 bg-accent hover:bg-accent/80"
+              className="flex items-center justify-center w-7 h-7 rounded-md hover:opacity-80"
+              style={{ background: 'var(--sidebar-hover)' }}
               aria-label={collapseLabel}
             >
-              {collapsed ? <ChevronRight /> : <ChevronLeft />}
-            </Button>
+              {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            </button>
           </IconTooltip>
         </div>
 
@@ -159,39 +148,40 @@ export function Sidebar({
             {/* Collapsed rail: logo */}
             <div className="flex items-center justify-center py-2">
               <IconTooltip label={t('allCollections')}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    'h-8 w-8',
-                    activeCollectionId === 'all' ? 'bg-accent text-primary' : 'text-muted-foreground'
-                  )}
+                <button
+                  className="flex items-center justify-center w-8 h-8 rounded-lg"
+                  style={{
+                    background: activeCollectionId === 'all' ? 'var(--accent-soft)' : 'transparent',
+                    color: activeCollectionId === 'all' ? 'var(--accent)' : 'var(--muted)'
+                  }}
                   aria-label={t('allCollections')}
                   onClick={() => onCollectionSelect('all')}
                 >
-                  <Bookmark />
-                </Button>
+                  <Bookmark size={16} />
+                </button>
               </IconTooltip>
             </div>
 
             {/* Collapsed rail: divider */}
-            <Separator className="mx-2 mb-1 w-auto" />
+            <div className="mx-2 mb-1 border-t" style={{ borderColor: 'var(--panel-border)' }} />
 
-            {/* Collapsed rail: collection icons.
-                No ScrollArea here — see the note on the expanded nav below. */}
+            {/* Collapsed rail: collection icons */}
             <nav className="flex-1 min-h-0 overflow-y-auto px-1.5 pb-2 space-y-0.5">
               {collections.map((collection) => {
                 const isActive = activeCollectionId === collection.id;
                 return (
                   <IconTooltip key={collection.id} label={collection.title}>
-                    <Button
-                      variant="ghost"
-                      className={cn(RAIL_ROW_CLASS, isActive ? 'bg-secondary text-primary' : 'text-muted-foreground')}
+                    <button
+                      className="w-full flex items-center justify-center py-1.5 rounded-lg"
+                      style={{
+                        background: isActive ? 'var(--sidebar-active)' : 'transparent',
+                        color: isActive ? 'var(--accent)' : 'inherit'
+                      }}
                       aria-label={collection.title}
                       onClick={() => onCollectionSelect(collection.id)}
                     >
-                      <FolderOpen />
-                    </Button>
+                      <FolderOpen size={16} style={{ opacity: isActive ? 1 : 0.6 }} />
+                    </button>
                   </IconTooltip>
                 );
               })}
@@ -199,28 +189,28 @@ export function Sidebar({
 
             {/* Collapsed rail: bottom icons */}
             <div className="px-1.5 pb-3 mt-auto space-y-0.5">
-              <Separator className="mx-0.5 mb-1 w-auto" />
+              <div className="mx-0.5 mb-1 border-t" style={{ borderColor: 'var(--panel-border)' }} />
               {hasTrash && (
                 <IconTooltip label={t('trash')}>
-                  <Button
-                    variant="ghost"
-                    className={cn(RAIL_ROW_CLASS, 'text-muted-foreground')}
+                  <button
+                    className="w-full flex items-center justify-center py-1.5 rounded-lg hover:opacity-80"
+                    style={{ color: 'var(--muted)' }}
                     aria-label={t('trash')}
                     onClick={onViewTrash}
                   >
-                    <Trash2 />
-                  </Button>
+                    <Trash2 size={16} style={{ opacity: 0.6 }} />
+                  </button>
                 </IconTooltip>
               )}
               <IconTooltip label={t('settings')}>
-                <Button
-                  variant="ghost"
-                  className={cn(RAIL_ROW_CLASS, 'text-muted-foreground')}
+                <button
+                  className="w-full flex items-center justify-center py-1.5 rounded-lg hover:opacity-80"
+                  style={{ color: 'var(--muted)' }}
                   aria-label={t('settings')}
                   onClick={onOpenSettings}
                 >
-                  <Settings />
-                </Button>
+                  <Settings size={16} style={{ opacity: 0.6 }} />
+                </button>
               </IconTooltip>
             </div>
           </>
@@ -228,14 +218,19 @@ export function Sidebar({
           <>
             {/* Source selector */}
             <div className="px-3 mb-3">
-              <Label htmlFor="tabhub-source-select" className={SECTION_LABEL_CLASS}>
+              <label
+                htmlFor="tabhub-source-select"
+                className="block text-[0.68rem] uppercase tracking-wider mb-1.5"
+                style={{ color: 'var(--muted)' }}
+              >
                 {t('bookmarkSource')}
-              </Label>
+              </label>
               <Select value={activeSourceId} onValueChange={onSourceChange}>
                 <SelectTrigger
                   id="tabhub-source-select"
                   aria-label={t('bookmarkSource')}
                   className={SELECT_TRIGGER_CLASS}
+                  style={SELECT_SURFACE}
                 >
                   <SelectValue placeholder={t('bookmarkSource')} />
                 </SelectTrigger>
@@ -249,32 +244,24 @@ export function Sidebar({
               </Select>
             </div>
 
-            {/* Theme toggle.
-                The heading names three buttons, not a control, so it is a <div>
-                naming a role="group" rather than a <label> with no `for` —
-                P3 made the same call for SettingsModal's "Data" heading. */}
+            {/* Theme toggle */}
             <div className="px-3 mb-4">
-              <div id="tabhub-theme-label" className={SECTION_LABEL_CLASS}>
+              <label className="block text-[0.68rem] uppercase tracking-wider mb-1.5" style={{ color: 'var(--muted)' }}>
                 {t('theme')}
-              </div>
+              </label>
               <div
-                role="group"
-                aria-labelledby="tabhub-theme-label"
-                className="flex rounded-lg border border-input bg-background p-0.5"
+                className="flex rounded-lg border p-0.5"
+                style={{ borderColor: 'var(--input-border)', background: 'var(--input-bg)' }}
               >
                 {themeOptions.map(({ value, icon: Icon, label }) => (
-                  <Button
+                  <button
                     key={value}
-                    variant="ghost"
-                    size="sm"
                     onClick={() => onThemeModeChange(value)}
-                    /* px-0 and gap-1 because three of these share a 16rem rail
-                       and the contract's 16px icon is 3px wider than the 13px
-                       one it replaces. */
-                    className={cn(
-                      'flex-1 min-w-0 h-7 gap-1 px-0',
-                      themeMode === value ? 'bg-accent text-primary' : 'text-muted-foreground'
-                    )}
+                    className="flex-1 flex items-center justify-center gap-1 py-1 rounded-md text-xs"
+                    style={{
+                      background: themeMode === value ? 'var(--accent-soft)' : 'transparent',
+                      color: themeMode === value ? 'var(--accent)' : 'var(--muted)'
+                    }}
                     /* Not an IconTooltip: the label is rendered next to the icon
                        (it only hides below 640px, where a hover tooltip is no
                        use anyway), so a tooltip would just repeat visible text.
@@ -282,23 +269,28 @@ export function Sidebar({
                        from assistive tech at narrow widths. */
                     aria-label={label}
                   >
-                    <Icon />
-                    <span className="hidden sm:inline truncate">{label}</span>
-                  </Button>
+                    <Icon size={13} />
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
                 ))}
               </div>
             </div>
 
             {/* Language selector */}
             <div className="px-3 mb-4">
-              <Label htmlFor="tabhub-language-select" className={SECTION_LABEL_CLASS}>
+              <label
+                htmlFor="tabhub-language-select"
+                className="block text-[0.68rem] uppercase tracking-wider mb-1.5"
+                style={{ color: 'var(--muted)' }}
+              >
                 {t('language')}
-              </Label>
+              </label>
               <Select value={languageSetting} onValueChange={onLanguageChange}>
                 <SelectTrigger
                   id="tabhub-language-select"
                   aria-label={t('language')}
                   className={SELECT_TRIGGER_CLASS}
+                  style={SELECT_SURFACE}
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -311,94 +303,78 @@ export function Sidebar({
             </div>
 
             {/* Divider */}
-            <Separator className="mx-3 mb-2 w-auto" />
+            <div className="mx-3 mb-2 border-t" style={{ borderColor: 'var(--panel-border)' }} />
 
-            {/* Collections nav.
-                Deliberately NOT a shadcn ScrollArea. This <nav> is the
-                `[data-nav-sortable]` host `main.jsx:344` finds by query, and
-                `main.jsx:359` reads its order back by querying the container
-                for the draggable rows below. (Spelled out rather than quoted
-                so gate 9's attribute count stays a count of real attributes.)
-                Radix's
-                Viewport renders its children inside a
-                `style={{minWidth:'100%',display:'table'}}` div
-                (@radix-ui/react-scroll-area/dist/index.mjs:125) and moves the
-                scroll container off this element, which is precisely the kind
-                of structural change SortableJS's auto-scroll and main.jsx's
-                mid-drag DOM revert are sensitive to. A native `overflow-y-auto`
-                keeps the host, its child list and its scroll parent identical
-                to the P5 baseline. The collapsed rail matches it so that
-                toggling the sidebar does not change how the list scrolls. */}
+            {/* Collections nav */}
             <nav className="flex-1 min-h-0 overflow-y-auto px-2 pb-3 space-y-0.5" data-nav-sortable="true">
-              <Button
-                variant="ghost"
-                className={cn(
-                  NAV_ROW_CLASS,
-                  activeCollectionId === 'all' ? 'bg-secondary text-primary font-semibold' : 'font-normal'
-                )}
+              <button
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left"
+                style={{
+                  background: activeCollectionId === 'all' ? 'var(--sidebar-active)' : 'transparent',
+                  color: activeCollectionId === 'all' ? 'var(--accent)' : 'inherit',
+                  fontWeight: activeCollectionId === 'all' ? 600 : 400
+                }}
                 onClick={() => onCollectionSelect('all')}
               >
-                <Bookmark className="opacity-70" />
+                <Bookmark size={15} style={{ opacity: 0.7 }} />
                 <span className="truncate">{t('allCollections')}</span>
-              </Button>
+              </button>
 
               {collections.map((collection) => {
                 const isActive = activeCollectionId === collection.id;
                 const isDraggable = canSortCollections && collection.editable && collection.parentId === activeSourceId;
                 return (
-                  <Button
+                  <button
                     key={collection.id}
                     data-collection-id={collection.id}
                     data-draggable={String(isDraggable)}
-                    variant="ghost"
-                    className={cn(
-                      'group',
-                      NAV_ROW_CLASS,
-                      isActive ? 'bg-secondary text-primary font-semibold' : 'font-normal'
-                    )}
+                    className="group w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left"
+                    style={{
+                      background: isActive ? 'var(--sidebar-active)' : 'transparent',
+                      color: isActive ? 'var(--accent)' : 'inherit',
+                      fontWeight: isActive ? 600 : 400
+                    }}
                     onClick={() => onCollectionSelect(collection.id)}
                     onContextMenu={(e) => onCollectionContextMenu(e, collection)}
                     title={collection.editable || collection.deletable ? t('rightClickHint') : ''}
                   >
                     <span
-                      className={cn(
-                        'nav-drag-handle flex-shrink-0 opacity-0 group-hover:opacity-40 cursor-grab',
-                        !isDraggable && 'invisible'
-                      )}
+                      className="nav-drag-handle flex-shrink-0 opacity-0 group-hover:opacity-40 cursor-grab"
+                      style={{ visibility: isDraggable ? 'visible' : 'hidden' }}
                     >
-                      <GripVertical />
+                      <GripVertical size={13} />
                     </span>
-                    <FolderOpen className="opacity-60" />
+                    <FolderOpen size={15} style={{ opacity: 0.6, flexShrink: 0 }} />
                     <span className="truncate flex-1">{collection.title}</span>
-                    <span className="flex-shrink-0 text-xs tabular-nums text-muted-foreground">
+                    <span className="text-[0.65rem] tabular-nums flex-shrink-0" style={{ color: 'var(--muted)' }}>
                       {collection.cards.length}
                     </span>
-                  </Button>
+                  </button>
                 );
               })}
             </nav>
 
             {/* Bottom actions */}
             <div className="px-3 pb-3 mt-auto space-y-1">
-              <Separator className="mb-2 w-auto" />
+              <div className="border-t mb-2" style={{ borderColor: 'var(--panel-border)' }} />
               {hasTrash && (
-                <Button
-                  variant="ghost"
-                  className={cn(NAV_ROW_CLASS, 'font-normal text-muted-foreground')}
+                <button
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left hover:opacity-80"
+                  style={{ color: 'var(--muted)' }}
                   onClick={onViewTrash}
                 >
-                  <Trash2 className="opacity-60" />
+                  <Trash2 size={15} style={{ opacity: 0.6 }} />
                   <span>{t('trash')}</span>
-                </Button>
+                </button>
               )}
-              <Button
-                variant="ghost"
-                className={cn(NAV_ROW_CLASS, 'font-normal text-muted-foreground')}
+              <button
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm text-left hover:opacity-80"
+                style={{ color: 'var(--muted)' }}
                 onClick={onOpenSettings}
               >
-                <Settings className="opacity-60" />
+                <Settings size={15} style={{ opacity: 0.6 }} />
                 <span>{t('settings')}</span>
-              </Button>
+              </button>
             </div>
           </>
         )}
