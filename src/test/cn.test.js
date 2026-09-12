@@ -23,6 +23,36 @@ describe('cn()', () => {
     });
   });
 
+  describe('mechanism D — a responsive prefix is its own merge group', () => {
+    // An unprefixed override does NOT remove a responsive variant of the same
+    // property. S2 hit this live: shadcn's Input ships `text-base md:text-sm`, so
+    // `text-[12.5px]` deleted text-base and left md:text-sm, which then won from
+    // 768px up — i.e. on every real window. Source order does not save you: the
+    // arbitrary class is emitted BEFORE md:text-sm in the bundle.
+    it('leaves md:text-sm alive when only the unprefixed size is overridden', () => {
+      expect(cn('text-base md:text-sm', 'text-[12.5px]')).toBe('md:text-sm text-[12.5px]');
+    });
+
+    it('removes it when the override carries the same prefix', () => {
+      expect(cn('text-base md:text-sm', 'text-[12.5px] md:text-[12.5px]')).toBe(
+        'text-[12.5px] md:text-[12.5px]'
+      );
+    });
+
+    // The same shape in dialog.jsx / alert-dialog.jsx, which P6a will override.
+    it('leaves sm:rounded-lg alive when only the unprefixed radius is overridden', () => {
+      expect(cn('rounded-lg sm:rounded-lg', 'rounded-xl')).toBe('sm:rounded-lg rounded-xl');
+    });
+
+    it('leaves the dialog footer trio alive when overridden without the prefix', () => {
+      const footer = 'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2';
+      const merged = cn(footer, 'flex-row justify-start gap-2');
+      expect(merged).toContain('sm:flex-row');
+      expect(merged).toContain('sm:justify-end');
+      expect(merged).toContain('sm:space-x-2');
+    });
+  });
+
   describe('mechanism B — an arbitrary value loses to a later named one', () => {
     it('drops bg-[var(--panel-bg)] in favour of bg-card', () => {
       expect(cn('bg-[var(--panel-bg)]', 'bg-card')).toBe('bg-card');
