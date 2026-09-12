@@ -172,6 +172,9 @@ const dictionaries = {
     // Open tabs
     openAllTabs: '全部打开',
     openInNewTab: '在新标签页中打开',
+    // Group header
+    collapseCollection: '收起分类',
+    expandCollection: '展开分类',
     // Save Tabs Preview
     saveTabsTitle: '保存标签页',
     folderName: '文件夹名称',
@@ -371,6 +374,9 @@ const dictionaries = {
     // Open tabs
     openAllTabs: 'Open All',
     openInNewTab: 'Open in New Tab',
+    // Group header
+    collapseCollection: 'Collapse category',
+    expandCollection: 'Expand category',
     // Save Tabs Preview
     saveTabsTitle: 'Save Tabs',
     folderName: 'Folder Name',

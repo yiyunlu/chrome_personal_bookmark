@@ -136,10 +136,11 @@ echo "== 12. style ratchet (see the Style contract in SHADCN_MIGRATION.md) =="
 # every raw <button> is a control styled by hand, and the radius/icon counts are
 # scale drift. P6 drives all four to 0; until then a phase must not add to them.
 # Lowered by P5a (CollectionCard, -23/-3/-1/-5) and P5b (Sidebar, -36/-10/0/-8)
-# from the 350/55/9/40 baseline. Measured after the merge, not computed.
-CEIL_INLINE_VAR=291
-CEIL_RAW_BUTTON=42
-CEIL_OFF_RADIUS=7
+# from the 350/55/9/40 baseline, then by S3 (main.jsx, -31/-3/-4/0).
+# Measured after the change, not computed.
+CEIL_INLINE_VAR=260
+CEIL_RAW_BUTTON=39
+CEIL_OFF_RADIUS=3
 CEIL_OFF_ICON=27
 style_scope=(--exclude-dir=ui --exclude-dir=test)
 iv=$(grep -roh "${style_scope[@]}" 'var(--' src/components src/main.jsx | wc -l | tr -d ' ')
