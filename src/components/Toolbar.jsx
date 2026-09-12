@@ -1,6 +1,11 @@
 import React from 'react';
 import { AlertTriangle, Brain, CheckSquare, Download, Plus, Search, Sparkles, Square } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { t } from '../lib/i18n';
+
+// Keeps shadcn's Button visually identical to the previous hand-rolled toolbar
+// buttons: 14px icons (cva defaults to size-4) and a 6px gap (cva uses gap-2).
+const TOOLBAR_BTN = 'text-sm gap-1.5 [&_svg]:size-3.5';
 
 export function Toolbar({
   activeSource,
@@ -49,91 +54,88 @@ export function Toolbar({
 
       {/* Action buttons */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button
+        <Button
+          type="button"
+          size="sm"
+          className={TOOLBAR_BTN}
           onClick={onSaveTabs}
           disabled={!activeSourceId && !tabHubRootId}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: 'var(--btn-primary)', color: 'var(--btn-primary-text)' }}
           title={t('shortcutSaveKey')}
         >
-          <Download size={14} />
+          <Download />
           <span>{t('saveTabs')}</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
+          className={TOOLBAR_BTN}
           onClick={onAutoOrganize}
           disabled={autoOrganizing}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{
-            background: 'var(--panel-bg)',
-            borderColor: 'var(--input-border)',
-            color: 'var(--text)'
-          }}
           title={t('shortcutOrganizeKey')}
         >
-          <Sparkles size={14} style={{ color: 'var(--accent)' }} />
+          <Sparkles style={{ color: 'var(--accent)' }} />
           <span>{autoOrganizing ? t('autoOrganizing') : t('autoOrganize')}</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
+          className={TOOLBAR_BTN}
           onClick={onAICategorize}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
-          style={{
-            background: 'var(--panel-bg)',
-            borderColor: 'var(--input-border)',
-            color: 'var(--text)'
-          }}
           title={t('shortcutAICategorize')}
         >
-          <Brain size={14} style={{ color: 'var(--accent)' }} />
+          <Brain style={{ color: 'var(--accent)' }} />
           <span>{t('aiCategorize')}</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
+          className={TOOLBAR_BTN}
           onClick={onCheckDeadLinks}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
-          style={{
-            background: 'var(--panel-bg)',
-            borderColor: 'var(--input-border)',
-            color: 'var(--text)'
-          }}
           title={t('shortcutDeadLink')}
         >
-          <AlertTriangle size={14} style={{ color: 'var(--danger)' }} />
+          <AlertTriangle style={{ color: 'var(--danger)' }} />
           <span>{t('deadLinkCheck')}</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
+          className={TOOLBAR_BTN}
           onClick={onNewCollection}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
-          style={{
-            background: 'var(--panel-bg)',
-            borderColor: 'var(--input-border)',
-            color: 'var(--text)'
-          }}
         >
-          <Plus size={14} style={{ color: 'var(--accent)' }} />
+          <Plus style={{ color: 'var(--accent)' }} />
           <span>{t('newCollection')}</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
+          className={TOOLBAR_BTN}
           onClick={onToggleManage}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
-          style={{
-            background: manageMode ? 'var(--accent-soft)' : 'var(--panel-bg)',
-            borderColor: manageMode ? 'var(--accent)' : 'var(--input-border)',
-            color: manageMode ? 'var(--accent)' : 'var(--text)'
-          }}
           title={t('shortcutManageKey')}
+          // Active state keeps the project's accent-soft look rather than
+          // shadcn's `secondary` surface, so manage mode reads the same as before.
+          style={
+            manageMode
+              ? {
+                  background: 'var(--accent-soft)',
+                  borderColor: 'var(--accent)',
+                  color: 'var(--accent)'
+                }
+              : undefined
+          }
         >
-          {manageMode ? <CheckSquare size={14} /> : <Square size={14} />}
+          {manageMode ? <CheckSquare /> : <Square />}
           <span>{manageMode ? t('exitManageMode') : t('enterManageMode')}</span>
-        </button>
+        </Button>
 
         {activeSource && (
           <span className="text-xs ml-1" style={{ color: 'var(--muted)' }}>
@@ -158,32 +160,38 @@ export function BatchToolbar({ selectedCount, onBatchMove, onBatchTrash, onClear
         {t('selectedCount', selectedCount)}
       </span>
       <div className="flex-1" />
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
+        className="h-auto px-2.5 py-1 text-xs"
         disabled={selectedCount === 0}
         onClick={onBatchMove}
-        className="px-2.5 py-1 rounded-lg border text-xs font-medium disabled:opacity-40"
-        style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
       >
         {t('batchMove')}
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
+        className="h-auto px-2.5 py-1 text-xs"
         disabled={selectedCount === 0}
         onClick={onBatchTrash}
-        className="px-2.5 py-1 rounded-lg text-xs font-medium"
+        // Soft-danger fill, not shadcn's solid `destructive`, to match the old look.
         style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}
       >
         {t('delete')}
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
+        className="h-auto px-2.5 py-1 text-xs font-normal"
         onClick={onClearSelections}
-        className="px-2.5 py-1 rounded-lg border text-xs"
-        style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--muted)' }}
+        style={{ color: 'var(--muted)' }}
       >
         {t('clearSelection')}
-      </button>
+      </Button>
     </div>
   );
 }

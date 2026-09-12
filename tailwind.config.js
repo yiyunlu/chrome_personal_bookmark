@@ -1,5 +1,10 @@
+import tailwindcssAnimate from 'tailwindcss-animate';
+
 /** @type {import('tailwindcss').Config} */
 export default {
+  // Project toggles dark mode via `data-theme` on <html> (see src/hooks/useTheme.js),
+  // not via a `.dark` class, so shadcn's dark variants must key off that attribute.
+  darkMode: ['class', ':root[data-theme="dark"]'],
   content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   theme: {
     extend: {
@@ -7,7 +12,49 @@ export default {
         'tabhub-bg': '#F4F7F9',
         'tabhub-sidebar': '#121727',
         'tabhub-card': '#FFFFFF',
-        'tabhub-text': '#202736'
+        'tabhub-text': '#202736',
+        // shadcn/ui tokens. Namespaced as --ui-* so they never collide with the
+        // project's own --accent / --muted (which mean different things).
+        background: 'hsl(var(--ui-background))',
+        foreground: 'hsl(var(--ui-foreground))',
+        card: {
+          DEFAULT: 'hsl(var(--ui-card))',
+          foreground: 'hsl(var(--ui-card-foreground))'
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--ui-popover))',
+          foreground: 'hsl(var(--ui-popover-foreground))'
+        },
+        primary: {
+          DEFAULT: 'hsl(var(--ui-primary))',
+          foreground: 'hsl(var(--ui-primary-foreground))'
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--ui-secondary))',
+          foreground: 'hsl(var(--ui-secondary-foreground))'
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--ui-muted))',
+          foreground: 'hsl(var(--ui-muted-foreground))'
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--ui-accent))',
+          foreground: 'hsl(var(--ui-accent-foreground))'
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--ui-destructive))',
+          foreground: 'hsl(var(--ui-destructive-foreground))'
+        },
+        border: 'hsl(var(--ui-border))',
+        input: 'hsl(var(--ui-input))',
+        ring: 'hsl(var(--ui-ring))'
+      },
+      borderRadius: {
+        // --ui-radius is 0.5rem, so lg/md keep Tailwind's default pixel values
+        // and the 82 existing rounded-lg / rounded-md usages are unchanged.
+        lg: 'var(--ui-radius)',
+        md: 'calc(var(--ui-radius) - 2px)',
+        sm: 'calc(var(--ui-radius) - 4px)'
       },
       boxShadow: {
         soft: '0 6px 20px rgba(15, 23, 42, 0.08)',
@@ -43,5 +90,5 @@ export default {
       }
     }
   },
-  plugins: []
+  plugins: [tailwindcssAnimate]
 };
