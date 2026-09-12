@@ -9,7 +9,7 @@ import { DialogShell } from './DialogShell';
 // dialog's rounded-lg, 14px, 8px-padding look and the project's accent ring.
 const FIELD_CLASS =
   'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
-  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
 
 export function EditBookmarkModal({ editorState, setEditorState, filteredTargets, onSave, onClose }) {
   const saving = !!editorState?.saving;

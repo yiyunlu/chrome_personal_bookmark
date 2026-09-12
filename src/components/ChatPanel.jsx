@@ -149,7 +149,7 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
           // shadcn's Input is h-9/w-full/rounded-md/shadow-sm/text-base.
           className={
             'h-auto w-auto flex-1 rounded-lg px-3 py-2 text-sm shadow-none ' +
-            'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30'
+            'focus-visible:ring-2 focus-visible:ring-[var(--accent)]'
           }
           style={{
             background: 'var(--input-bg)',

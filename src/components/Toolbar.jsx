@@ -12,7 +12,7 @@ const TOOLBAR_BTN = 'text-sm gap-1.5 [&_svg]:size-3.5';
 // a 1px `ring` in the shadcn ring colour.
 const SEARCH_INPUT =
   'h-auto w-full max-w-2xl rounded-xl py-2.5 pl-9 pr-16 text-sm shadow-none ' +
-  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
 
 export function Toolbar({
   activeSource,
