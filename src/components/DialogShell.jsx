@@ -98,6 +98,24 @@ function useReturnFocus() {
   return { onOpenAutoFocus, onCloseAutoFocus };
 }
 
+/**
+ * Radix dismisses a modal Dialog on any pointer-down outside its content, and it
+ * defers the decision to a document-level `click`. The undo toast lives outside
+ * the dialog's portal (deliberately — see UndoToast.jsx), so it is "outside" by
+ * Radix's reckoning and is not a registered dismissable branch. Without this,
+ * clicking Undo while a dialog is open runs the undo AND closes the dialog:
+ * delete a card, press `S`, click Undo, and SaveTabsModal's tab selection is
+ * gone. Invisible to jsdom, which dispatches no pointerdown for fireEvent.click.
+ */
+const TOAST_ROOT_SELECTOR = '[data-sonner-toaster]';
+
+function ignoreToastInteractions(event) {
+  const target = event.target;
+  if (target instanceof Element && target.closest(TOAST_ROOT_SELECTOR)) {
+    event.preventDefault();
+  }
+}
+
 /** Replacement for the old `Modal` — identical props. */
 export function DialogShell({ open, onClose, title, className, children, layer = LAYER_BASE }) {
   const returnFocus = useReturnFocus();
@@ -115,11 +133,15 @@ export function DialogShell({ open, onClose, title, className, children, layer =
           className={cn(PANEL_CLASS, layer, className || 'max-w-lg')}
           style={PANEL_STYLE}
           onEscapeKeyDown={stopEscapePropagation}
+          onPointerDownOutside={ignoreToastInteractions}
+          onInteractOutside={ignoreToastInteractions}
           onOpenAutoFocus={returnFocus.onOpenAutoFocus}
           onCloseAutoFocus={returnFocus.onCloseAutoFocus}
         >
-          {/* Accessible name. Callers that render their own visible title use
-              `DialogTitle` directly and pass no `title`. */}
+          {/* Accessible name, rendered sr-only. Every caller also renders its own
+              visible heading inside `children`; that heading is a plain <h2>, so
+              the dialog's name comes from here and the heading stays a heading.
+              Do not "deduplicate" one surface without doing all nine. */}
           {title ? <DialogTitle className="sr-only">{title}</DialogTitle> : null}
           {children}
         </DialogPrimitive.Content>
