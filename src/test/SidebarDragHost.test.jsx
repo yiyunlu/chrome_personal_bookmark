@@ -227,34 +227,54 @@ describe('Sidebar is free of hand-written style', () => {
 describe('tailwind-merge resolves the overrides the way the file intends', () => {
   const classesOf = (el) => el.className.split(/\s+/);
 
-  it('the select trigger swaps surface colours without losing its focus ring', () => {
+  it('the select trigger takes the design geometry without losing its focus ring', () => {
     const { container } = renderNav(Sidebar);
     const trigger = classesOf(container.querySelector('#tabhub-source-select'));
 
-    // the swap P4's inline style used to make
-    expect(trigger).toContain('bg-background');
-    expect(trigger).not.toContain('bg-transparent');
+    // S1: the design's control is 30px tall, 6px-cornered (its 7px rounded to
+    // the nearest value the scale has), on --line rather than shadcn's
+    // --ui-input, with 12px text and no shadow. Every one of these displaces a
+    // vendored class, so each assertion fails if tailwind-merge resolves the
+    // pair the other way round.
+    expect(trigger).toContain('h-[30px]');
+    expect(trigger).not.toContain('h-9'); // SelectTrigger's own height
+    expect(trigger).toContain('rounded-sm');
+    expect(trigger).not.toContain('rounded-md');
+    expect(trigger).toContain('border-border');
+    expect(trigger).not.toContain('border-input');
+    expect(trigger).toContain('px-2');
+    expect(trigger).not.toContain('px-3');
+    expect(trigger).toContain('text-xs');
+    expect(trigger).not.toContain('text-sm');
     expect(trigger).toContain('shadow-none');
     expect(trigger).not.toContain('shadow-sm');
     // …and the ring survives it, colour included. `ring-1` and `ring-<colour>`
     // sit in conflicting groups; a ring opacity written here would delete it.
     expect(trigger).toContain('focus:ring-1');
     expect(trigger).toContain('focus:ring-ring');
-    // the contract's radius for a select trigger
-    expect(trigger).toContain('rounded-md');
   });
 
-  it('the section labels keep leading-none through the text-xs override', () => {
+  /* P5b pinned this mechanism on the `<label>` above the source select. S1
+     deletes that label — the design's switcher shows a glyph and the value and
+     nothing else — so the same mechanism is pinned on the two places S1 does
+     write a font-size override next to a `leading-*`: the nav row and the mono
+     count. Nothing is lost: it is the same conflicting group, on live strings. */
+  it('a font-size override does not delete the leading it sits next to', () => {
     const { container } = renderNav(Sidebar);
-    const label = classesOf(container.querySelector('label[for="tabhub-source-select"]'));
-    expect(label).toContain('text-xs');
-    expect(label).not.toContain('text-sm');
-    // font-size lists leading-* as a conflicting group in tailwind-merge, so
-    // this only holds because SECTION_LABEL_CLASS restates it after text-xs.
-    expect(label).toContain('leading-none');
+
+    const row = classesOf(container.querySelector('[data-collection-id="c1"]'));
+    expect(row).toContain('text-[13px]');
+    // tailwind-merge lists leading-* among font-size's conflicting groups, so
+    // this only holds because NAV_ROW_CLASS restates it *after* text-[13px].
+    expect(row).toContain('leading-none');
+
+    const count = classesOf(container.querySelector('[data-collection-id="c1"] [data-nav-count]'));
+    expect(count).toContain('text-[10.5px]');
+    expect(count).toContain('leading-none');
+    expect(count).toContain('font-mono');
   });
 
-  it('nav rows beat the cva: left-aligned, auto-height, weight driven by state', () => {
+  it('nav rows beat the cva: left-aligned, 30px, weight driven by state', () => {
     const { container } = renderNav(Sidebar, { activeCollectionId: 'c1' });
     const active = classesOf(container.querySelector('[data-collection-id="c1"]'));
     const idle = classesOf(container.querySelector('[data-collection-id="c2"]'));
@@ -262,16 +282,21 @@ describe('tailwind-merge resolves the overrides the way the file intends', () =>
     for (const row of [active, idle]) {
       expect(row).toContain('justify-start');
       expect(row).not.toContain('justify-center'); // Button's cva default
-      expect(row).toContain('h-auto');
+      expect(row).toContain('h-[30px]'); // the design's row height
       expect(row).not.toContain('h-9'); // Button's default size
+      expect(row).toContain('rounded-sm'); // the design's 6px row corner
+      expect(row).not.toContain('rounded-md'); // Button's cva default
       expect(row).toContain('px-2');
       expect(row).not.toContain('px-4');
+      expect(row).toContain('font-normal');
       expect(row).not.toContain('font-medium'); // Button's cva default
     }
-    expect(active).toContain('font-semibold');
-    expect(active).toContain('bg-secondary');
-    expect(idle).toContain('font-normal');
-    expect(idle).not.toContain('bg-secondary');
+    // Active is the design's --accentSoft fill with the accent text, not a
+    // heavier weight.
+    expect(active).toContain('bg-primary/10');
+    expect(active).toContain('text-primary');
+    expect(idle).not.toContain('bg-primary/10');
+    expect(idle).toContain('text-muted-foreground');
   });
 
   it('the collapse toggle keeps its filled surface and its own hover', () => {
@@ -332,5 +357,133 @@ describe('the traps P5a found do not exist here', () => {
       expect(scroller.className).toContain('overflow-y-auto');
       unmount();
     }
+  });
+});
+
+/* S1 — the elements the TabHub design adds to the rail. Each of these asserts
+   something the component actually renders, and each was mutation-checked by
+   breaking the source and confirming this exact test went red. */
+describe('S1: the design’s sidebar elements', () => {
+  const classesOf = (el) => el.className.split(/\s+/);
+  // 2 + 0 + 1 + 0 across the four fixture collections.
+  const TOTAL_CARDS = 3;
+
+  it('shows the rail’s total bookmark count in the logo block, in mono', () => {
+    const { container } = renderNav(Sidebar);
+    const total = container.querySelector('aside [data-total-count]');
+
+    expect(total).not.toBeNull();
+    expect(total.textContent).toBe(String(TOTAL_CARDS));
+    // It is the count that moves with the data, not a constant.
+    expect(TOTAL_CARDS).toBe(collections.reduce((n, c) => n + c.cards.length, 0));
+
+    const cls = classesOf(total);
+    expect(cls).toContain('font-mono');
+    expect(cls).toContain('text-[10.5px]');
+    expect(cls).toContain('text-faint'); // the design's third text level
+    expect(cls).toContain('ml-auto'); // right-aligned in the logo row
+  });
+
+  it('re-counts when the collections change', () => {
+    const { container, rerender } = renderNav(Sidebar);
+    expect(container.querySelector('aside [data-total-count]').textContent).toBe('3');
+
+    rerender(
+      <Sidebar
+        {...baseProps}
+        collections={[{ ...collections[0], cards: [{ id: 'x' }, { id: 'y' }, { id: 'z' }, { id: 'w' }] }]}
+      />
+    );
+    expect(container.querySelector('aside [data-total-count]').textContent).toBe('4');
+  });
+
+  it('labels the folder list with the design’s section label', () => {
+    const { container, host } = renderNav(Sidebar);
+    const label = container.querySelector('[data-nav-section-label]');
+
+    expect(label).not.toBeNull();
+    expect(label.textContent).toBe('分类');
+
+    const cls = classesOf(label);
+    expect(cls).toContain('text-[10px]');
+    expect(cls).toContain('font-semibold');
+    expect(cls).toContain('uppercase');
+    expect(cls).toContain('tracking-[0.09em]');
+    expect(cls).toContain('text-faint');
+
+    // It must NOT be inside the Sortable host: every element child of that
+    // container is a row SortableJS indexes by position.
+    expect(host.contains(label)).toBe(false);
+  });
+
+  it('renders no section label in the collapsed rail', () => {
+    const { container } = renderNav(Sidebar, { collapsed: true });
+    expect(container.querySelector('[data-nav-section-label]')).toBeNull();
+  });
+
+  it('encodes folder depth as the width of a leading spacer', () => {
+    const { container } = renderNav(Sidebar);
+    const indentOf = (id) => container.querySelector(`[data-collection-id="${id}"] [data-nav-indent]`);
+
+    // c3's parent is not the active source, so it is nested; the rest are not.
+    expect(indentOf('c3').getAttribute('data-nav-indent')).toBe('nested');
+    expect(classesOf(indentOf('c3'))).toContain('w-3.5'); // 14px: the design's 22px - 8px
+    for (const id of ['c1', 'c2', 'c4']) {
+      expect(indentOf(id).getAttribute('data-nav-indent')).toBe('root');
+      expect(classesOf(indentOf(id))).toContain('w-0');
+    }
+    // The spacer is decoration, and must not reach the row's accessible name.
+    expect(indentOf('c3').getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('follows the active source: the same folder is nested or not by prop', () => {
+    const { container, rerender } = renderNav(Sidebar);
+    const indent = () => container.querySelector('[data-collection-id="c3"] [data-nav-indent]');
+    expect(indent().getAttribute('data-nav-indent')).toBe('nested');
+
+    rerender(<Sidebar {...baseProps} activeSourceId="other" />);
+    expect(indent().getAttribute('data-nav-indent')).toBe('root');
+  });
+
+  it('sets every nav count in mono, faint on folders and accent on the all row', () => {
+    const { host } = renderNav(Sidebar);
+    const counts = host.querySelectorAll('[data-nav-count]');
+    // one per row: the "all collections" row plus the four folders
+    expect(counts).toHaveLength(5);
+    for (const el of counts) expect(classesOf(el)).toContain('font-mono');
+
+    // the "all collections" row carries the rail total, in the accent
+    expect(counts[0].textContent).toBe(String(TOTAL_CARDS));
+    expect(classesOf(counts[0])).toContain('text-primary');
+
+    // folder counts are the design's --faint, and read their own card list
+    expect(Array.from(counts).slice(1).map((el) => el.textContent)).toEqual(['2', '0', '1', '0']);
+    expect(classesOf(host.querySelector('[data-collection-id="c1"] [data-nav-count]'))).toContain('text-faint');
+    // ...except the selected one, which takes the accent with the rest of the row
+    expect(classesOf(host.querySelector('[data-collection-id="c2"] [data-nav-count]'))).toContain('text-primary');
+  });
+
+  it('keeps all three theme options in the bottom bar segmented control', () => {
+    const { container } = renderNav(Sidebar);
+    const group = container.querySelector('aside [role="group"]');
+
+    expect(group).not.toBeNull();
+    expect(group.getAttribute('aria-label')).toBe('主题');
+    const buttons = group.querySelectorAll('button');
+    // The design drew two; behaviour keeps three.
+    expect(buttons).toHaveLength(3);
+    expect(Array.from(buttons).map((b) => b.getAttribute('aria-label'))).toEqual(['跟随系统', '浅色', '深色']);
+    // 26x22 inside a 2px-padded, bordered, 6px-cornered track
+    expect(classesOf(buttons[0])).toEqual(expect.arrayContaining(['h-[22px]', 'w-[26px]', 'rounded-sm']));
+    expect(classesOf(group)).toEqual(expect.arrayContaining(['rounded-sm', 'border', 'border-border', 'p-0.5']));
+  });
+
+  it('takes the design’s 232px rail width, and the collapsed rail keeps its own', () => {
+    const { container, unmount } = renderNav(Sidebar);
+    expect(classesOf(container.querySelector('aside'))).toContain('w-[232px]');
+    unmount();
+
+    const collapsedRail = renderNav(Sidebar, { collapsed: true });
+    expect(classesOf(collapsedRail.container.querySelector('aside'))).toContain('w-14');
   });
 });
