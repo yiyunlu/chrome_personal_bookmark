@@ -1,7 +1,14 @@
 import React from 'react';
 import { FolderOpen, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { t } from '../lib/i18n';
 import { DialogShell } from './DialogShell';
+
+// See EditBookmarkModal: keeps the dialog field look over shadcn's Input base.
+const FIELD_CLASS =
+  'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
 
 export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTargets, selectedCount, onSave, onClose }) {
   return (
@@ -23,11 +30,12 @@ export function BatchMoveModal({ batchMoveState, setBatchMoveState, filteredTarg
 
           {/* Body */}
           <div className="px-5 py-4">
-            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
+            <Label htmlFor="tabhub-batch-folder" className="block text-xs leading-normal mb-1" style={{ color: 'var(--muted)' }}>
               {t('selectTargetFolder')}
-            </label>
-            <input
-              className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
+            </Label>
+            <Input
+              id="tabhub-batch-folder"
+              className={FIELD_CLASS}
               style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
               placeholder={t('searchFolder')}
               value={batchMoveState.folderQuery}

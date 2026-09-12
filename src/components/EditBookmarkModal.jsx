@@ -1,9 +1,32 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { FolderOpen, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { t } from '../lib/i18n';
 import { DialogShell } from './DialogShell';
 
+// shadcn's Input is h-9/rounded-md/shadow-sm/text-base; these fields keep the
+// dialog's rounded-lg, 14px, 8px-padding look and the project's accent ring.
+const FIELD_CLASS =
+  'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30';
+
 export function EditBookmarkModal({ editorState, setEditorState, filteredTargets, onSave, onClose }) {
+  const saving = !!editorState?.saving;
+
+  // Enter submits from the two text fields, like PromptModal. Not wired on the
+  // folder filter below it: that field only narrows the list, and the target is
+  // chosen by clicking a row.
+  const handleFieldKeyDown = useCallback(
+    (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (!saving) onSave?.();
+      }
+    },
+    [onSave, saving]
+  );
+
   return (
     <DialogShell open={!!editorState} onClose={onClose} title={t('editBookmark')}>
       {editorState && (
@@ -24,33 +47,38 @@ export function EditBookmarkModal({ editorState, setEditorState, filteredTargets
           {/* Body */}
           <div className="px-5 py-4 space-y-3">
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
+              <Label htmlFor="tabhub-edit-title" className="block text-xs leading-normal mb-1" style={{ color: 'var(--muted)' }}>
                 {t('titleLabel')}
-              </label>
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
+              </Label>
+              <Input
+                id="tabhub-edit-title"
+                className={FIELD_CLASS}
                 style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
                 value={editorState.title}
                 onChange={(e) => setEditorState((prev) => (prev ? { ...prev, title: e.target.value } : prev))}
+                onKeyDown={handleFieldKeyDown}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
+              <Label htmlFor="tabhub-edit-url" className="block text-xs leading-normal mb-1" style={{ color: 'var(--muted)' }}>
                 URL
-              </label>
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
+              </Label>
+              <Input
+                id="tabhub-edit-url"
+                className={FIELD_CLASS}
                 style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
                 value={editorState.url}
                 onChange={(e) => setEditorState((prev) => (prev ? { ...prev, url: e.target.value } : prev))}
+                onKeyDown={handleFieldKeyDown}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>
+              <Label htmlFor="tabhub-edit-folder" className="block text-xs leading-normal mb-1" style={{ color: 'var(--muted)' }}>
                 {t('moveToFolder')}
-              </label>
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
+              </Label>
+              <Input
+                id="tabhub-edit-folder"
+                className={FIELD_CLASS}
                 style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
                 placeholder={t('searchFolder')}
                 value={editorState.folderQuery}
