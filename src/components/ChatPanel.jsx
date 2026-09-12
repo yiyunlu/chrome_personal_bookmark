@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { ExternalLink, MessageCircle, Send, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { t } from '../lib/i18n';
 
 export function ChatPanel({ open, onClose, onSendMessage, messages }) {
@@ -135,13 +136,21 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
         className="flex items-center gap-2 px-4 py-3 border-t flex-shrink-0"
         style={{ borderColor: 'var(--panel-border)' }}
       >
-        <input
+        {/* Deliberately shadcn's `Input`, not `Textarea`: the send-key contract
+            below is unchanged, and in a textarea Shift+Enter would start
+            inserting newlines instead of doing nothing. */}
+        <Input
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t('chatPlaceholder')}
-          className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
+          aria-label={t('chatPlaceholder')}
+          // shadcn's Input is h-9/w-full/rounded-md/shadow-sm/text-base.
+          className={
+            'h-auto w-auto flex-1 rounded-lg px-3 py-2 text-sm shadow-none ' +
+            'focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-opacity-30'
+          }
           style={{
             background: 'var(--input-bg)',
             borderColor: 'var(--input-border)',

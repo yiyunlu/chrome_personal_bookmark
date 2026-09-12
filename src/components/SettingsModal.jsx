@@ -1,9 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Download, Eye, EyeOff, Upload, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { t } from '../lib/i18n';
 import { getApiKey, setApiKey } from '../lib/aiService';
 import { logError } from '../lib/utils';
 import { DialogShell } from './DialogShell';
+
+// shadcn's Input is h-9/rounded-md/shadow-sm/text-base; the dialog fields are
+// rounded-lg, 14px, 8px vertical padding, with the project's accent focus ring.
+const FIELD_CLASS =
+  'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
+  'focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
 
 export function SettingsModal({ open, onClose, onExport, onImport }) {
   const [apiKey, setApiKeyLocal] = useState('');
@@ -53,22 +61,25 @@ export function SettingsModal({ open, onClose, onExport, onImport }) {
 
       <div className="px-5 py-4 space-y-4">
         <div>
-          <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text)' }}>
+          <Label htmlFor="tabhub-api-key" className="block text-xs leading-normal mb-1.5" style={{ color: 'var(--text)' }}>
             {t('apiKeyLabel')}
-          </label>
+          </Label>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <input
+              <Input
+                id="tabhub-api-key"
+                // Stays a password field; the eye button below toggles it.
                 type={showKey ? 'text' : 'password'}
                 value={loaded ? apiKey : ''}
                 onChange={(e) => setApiKeyLocal(e.target.value)}
                 placeholder={t('apiKeyPlaceholder')}
-                className="w-full px-3 py-2 pr-9 rounded-lg border text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                className={FIELD_CLASS + ' pr-9'}
                 style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
               />
               <button
                 type="button"
                 onClick={() => setShowKey((s) => !s)}
+                aria-label={showKey ? t('hideApiKey') : t('showApiKey')}
                 className="absolute right-2 top-1/2 -translate-y-1/2"
                 style={{ color: 'var(--muted)' }}
               >
@@ -125,9 +136,11 @@ export function SettingsModal({ open, onClose, onExport, onImport }) {
         </div>
 
         <div className="pt-2 border-t" style={{ borderColor: 'var(--panel-border)' }}>
-          <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text)' }}>
+          {/* A section heading, not a field label: it names the two buttons
+              below, so shadcn's Label here would be an orphan label element. */}
+          <div className="block text-xs font-medium mb-2" style={{ color: 'var(--text)' }}>
             {t('dataSection')}
-          </label>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => onExport?.()}
@@ -145,10 +158,11 @@ export function SettingsModal({ open, onClose, onExport, onImport }) {
               <Upload size={14} />
               {t('importData')}
             </button>
-            <input
+            <Input
               ref={fileInputRef}
               type="file"
               accept=".json"
+              aria-label={t('importData')}
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
