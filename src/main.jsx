@@ -93,7 +93,17 @@ function App() {
   // Confirmed dead links from the last completed check. Separate from
   // `deadLinkState`, which is the modal's own state and is cleared the moment the
   // modal closes — the toolbar badge has to outlive that.
-  const [deadLinkCount, setDeadLinkCount] = useState(0);
+  const [deadLinkResults, setDeadLinkResults] = useState(null);
+  // Derived, not counted. A maintained counter drifted both ways: it never
+  // dropped when a dead link was removed through the context menu or batch
+  // trash, and it never came back when a delete was undone. Reconciling the
+  // last check's dead set against allCards makes every one of those paths
+  // correct for free, because they all change allCards.
+  const deadLinkCount = useMemo(() => {
+    if (!deadLinkResults) return 0;
+    const present = new Set(allCards.map((c) => c.id));
+    return deadLinkResults.filter((r) => r.linkStatus === 'dead' && present.has(r.bookmarkId)).length;
+  }, [deadLinkResults, allCards]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -119,7 +129,6 @@ function App() {
   const cardDragActiveRef = useRef(false);
   const suppressCardOpenUntilRef = useRef(0);
   const suppressNextCardClickRef = useRef(false);
-  const deadLinkResultsRef = useRef(null);
 
   const { themeMode, resolvedTheme, handleThemeModeChange } = useTheme();
   const { undoToast, showUndo, handleUndo } = useUndoStack();
@@ -891,10 +900,9 @@ function App() {
       });
       // Functional guard: never re-open the modal the user already closed.
       setDeadLinkState((prev) => (prev ? { loading: false, progress: null, results, error: null } : prev));
-      // The badge counts confirmed dead links only, the same set DeadLinkModal
-      // lists under "confirmed" — `results` also carries the alive and unknown ones.
-      deadLinkResultsRef.current = results;
-      setDeadLinkCount(results.filter((r) => r.linkStatus === 'dead').length);
+      // The badge derives its count from this (confirmed dead only, the same
+      // set DeadLinkModal lists under "confirmed") reconciled against allCards.
+      setDeadLinkResults(results);
     } catch (err) {
       setDeadLinkState((prev) =>
         prev ? { loading: false, progress: null, results: null, error: err?.message || t('deadLinkCheckFailed') } : prev
@@ -913,12 +921,8 @@ function App() {
         onConfirm: async () => {
           setConfirmDialog(null);
           await moveCardsToTrash([card]);
-          // Read the status off the ref, not inside the setState updater: an
-          // updater must stay pure, and the badge's count lives outside the modal.
-          const removed = deadLinkResultsRef.current?.find((r) => r.bookmarkId === bookmarkId);
-          if (removed?.linkStatus === 'dead') {
-            setDeadLinkCount((n) => Math.max(0, n - 1));
-          }
+          // No manual decrement: the badge re-derives from allCards, which the
+          // trash move just changed.
           setDeadLinkState((prev) => {
             if (!prev?.results) return prev;
             return { ...prev, results: prev.results.filter((r) => r.bookmarkId !== bookmarkId) };

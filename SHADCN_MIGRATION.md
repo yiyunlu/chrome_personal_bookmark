@@ -11,10 +11,10 @@ Branch: `ui/shadcn-migration`. Base before migration: `rebase-review-fixes` @ `c
 | P4 | Feedback (Sonner, Tooltip) + undo reachability + Trash dialog | merged, reviewed | **not yet — see smoke list** |
 | P5a | `CollectionCard` — cards on shadcn primitives | merged, reviewed | **not yet — see smoke list** |
 | P5b | `Sidebar` — the rest of the rail | merged, reviewed | **not yet — see smoke list** |
-| S1 | Shell: sidebar | pending | — |
-| S2 | Shell: toolbar | pending | — |
-| S3 | Shell: content area + list view | pending | — |
-| P6 | **Style unification** — one token system, no hand-styling left | pending | — |
+| S1 | Shell: sidebar | merged, reviewed | **not yet — see smoke list** |
+| S2 | Shell: toolbar | merged, reviewed | **not yet — see smoke list** |
+| S3 | Shell: content area + list view | merged, reviewed | **not yet — see smoke list** |
+| P6 | **Style unification** — one token system, no hand-styling left | **done — gate 12 at 0/0/0/0** | **not yet — see smoke list** |
 
 Every phase ends with `./scripts/verify-ui.sh` exiting 0 and one commit named
 `feat(ui): P<N> — <summary>`.
@@ -79,7 +79,7 @@ removes or changes a feature. Where the two disagree, that split decides it:
 | no language switcher | keep it |
 | nothing for the 9 dialogs, the context menu, the chat panel, the toast, the trash | keep them; they inherit the tokens automatically |
 | a grid/list view toggle | **in scope after all** — tags live in the list view, so the grid tile can stay two lines |
-| 11–14px glyphs | **16px.** The icon rule wins over the design here, and the reason is mechanical, not aesthetic: gate 12 counts `size={13}`/`size={14}` as drift, and the only way to get 13px inside a `<Button>` is a `[&_svg]:size-3.5` class — which dodges the counter rather than satisfying it, and is the exact P0 override the contract deleted. Cost, measured: 16²/13² is **51% more ink**, so a glyph out-weighs its own label in a 30px chip. |
+| 11–14px glyphs | **sized by the control they sit in** — see the icon table. The first version of this row said 16px wins, on the argument that gate 12 counted anything else as drift; that was the two-size rule overriding the design it was meant to serve, and it was replaced. |
 
 Note on ownership: **every phase may add keys to `src/lib/i18n.js`** — ground rule 5 requires
 it and the Owns columns below do not repeat it. Additions are contiguous per dictionary, so
@@ -105,7 +105,7 @@ its `!important` beat any component-level hover — it is gone.
 
 `--ui-*` carry the design's palette, converted to HSL triplets because the Tailwind config
 consumes `hsl(var(--ui-x))`. It is a **warm** neutral — every grey carries a 15-30° hue —
-with a real brand accent at `#e04a37`. Both are deliberate departures from shadcn's
+with a real brand accent at `#3b6fd4` (the design ships four; this is its blue). Both are deliberate departures from shadcn's
 achromatic neutral and monochrome primary.
 
 Three additions the shadcn scale does not have:
@@ -191,36 +191,24 @@ overrides. Nothing in the repo collides with these today — this is prevention:
 *if a vendored base class carries a responsive prefix, your override must carry the same
 prefix.*
 
+**Mechanism E — a `hover:` variant is its own merge group.** Setting a base colour over a
+`ghost` or `outline` Button leaves the variant's `hover:bg-accent hover:text-accent-foreground`
+alive, and `.hover\:bg-accent:hover` out-specifies `.bg-primary\/10`, so **the pointer erases
+the selection colour**. Three phases hit this independently (S2, P6a, P6b) and two reviews
+enumerated the survivors: every active sidebar row and the theme control lost their tint on
+hover. The one blessed idiom, and its single home in `Sidebar.jsx`'s `ACTIVE_ROW_CLASS`:
+
+```
+bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary
+```
+
+Resting `/10`, hover `/15`: hover nudges. `secondary`, `default` and `destructive` carry no
+`hover:text-*`, so a colour over those is safe.
+
 `src/lib/cn.js` registers the project's custom `shadow`, `ease` and `animate` scales with
-`extendTailwindMerge`, which fixes mechanism C at the root. `src/test/cn.test.js` pins all
-four mechanisms, including the three historical bugs, so an upgrade cannot bring them back
-unnoticed.
-
-### Radius — mirror the primitives, do not invent a scale
-
-The first version of this table was invented, and it contradicted shadcn on three of four
-rows: it sent card surfaces to `rounded-lg` (shadcn's `Card` ships `rounded-xl`), sent
-dialogs to `rounded-xl` (shadcn's `DialogContent` ships `rounded-lg`), and banned
-`rounded-sm` (which shadcn uses for dense inner elements — the dialog close button,
-`SelectItem`, `DropdownMenuItem`). P5a dutifully overrode `Card`'s own radius to comply,
-which is most of why the bookmark boxes looked squarer than the reference app.
-
-**The rule is: let a primitive keep its own radius, and match the nearest primitive when
-hand-rolling a surface.**
-
-| value | for | matches |
-| --- | --- | --- |
-| `rounded-xl` | card-like surfaces | `Card` |
-| `rounded-lg` | dialog and alert-dialog panels | `DialogContent`, `AlertDialogContent` |
-| `rounded-md` | controls: button, input, select trigger, badge, menu | `Button`, `Input`, `Select`, `Badge`, `DropdownMenu` |
-| `rounded-sm` | dense affordances inside a menu or dialog | `DialogClose`, `SelectItem`, `DropdownMenuItem` |
-| `rounded-full` | pills and circular icon buttons | — |
-
-Banned: `rounded-2xl` and `rounded-3xl`. Nothing in shadcn uses them.
-
-`--ui-radius` is **0.625rem**, the registry's own value, so `rounded-lg` is 10px,
-`rounded-md` 8px and `rounded-xl` 12px — the reference app's proportions. It was 0.5rem
-until the palette review, chosen to keep the pre-migration pixel values.
+`extendTailwindMerge`, which fixes mechanism C at the root. `src/test/cn.test.js` pins the
+first four mechanisms, including the three historical bugs, so an upgrade cannot bring
+them back unnoticed; mechanism E is pinned at each of its sites.
 
 ### Icons — sized by the control they sit in
 
@@ -391,8 +379,15 @@ P5b did: a rendered-DOM comparison in both views, mutation-checked.
 ## P6 — Style unification
 
 Runs **after P5a and P5b merge**, in three file-disjoint parts:
-**P6a** the nine dialog surfaces · **P6b** `Toolbar`, `ChatPanel`, `UndoToast`,
-`WelcomeCard`, `BookmarkIcon`, `ContextMenu`, `DialogShell` · **P6c** `main.jsx` plus the
+**As shipped** (S2 and S3 had already cleared `Toolbar.jsx` and `main.jsx`, so the split
+was re-cut on the measured 237): **P6a** `SettingsModal`, `SaveTabsModal`,
+`AICategorizeModal`, `EditBookmarkModal` (115) · **P6b** `DeadLinkModal`, `BatchMoveModal`,
+`PromptModal`, `ConfirmModal`, `DialogShell` (69) · **P6c** `ChatPanel`, `WelcomeCard`,
+`UndoToast`, `ContextMenu` (53). The `src/index.css` alias deletion, the fixture
+replacement, the `--ui-scrim`/`--ui-ring` work and the mechanism-E sweep were done by the
+integrator after all three merged. The original plan text read: P6a the nine dialogs ·
+P6b `Toolbar`, `ChatPanel`, `UndoToast`, `WelcomeCard`, `BookmarkIcon`, `ContextMenu`,
+`DialogShell` · P6c `main.jsx` plus the
 `src/index.css` cleanup.
 
 Carry-ins from the P5 reviews, to be done inside P6:
@@ -402,12 +397,25 @@ Carry-ins from the P5 reviews, to be done inside P6:
   diff-against-frozen-copy with an inline literal snapshot of `dragHostShape()`'s object —
   same protection, no duplicate component, and a reader checks one literal instead of
   trusting that 384 lines were never touched. Lose no assertion.
-- give `SettingsModal`'s "Data" heading the `<div id>` + `role="group" aria-labelledby`
+- **done (P6a)**, with a correction to this line's own claim: P5b's theme group actually
+  uses `role="group" aria-label`, not `aria-labelledby` — no `aria-labelledby` existed in
+  `Sidebar.jsx`. P6a used `aria-labelledby`, which is the better of the two (the name is
+  the visible text, no duplicated string). The surfaces still differ; align P5b to it later.
+- ~~give `SettingsModal`'s "Data" heading the `<div id>` + `role="group" aria-labelledby`
   treatment P5b used for the theme group; right now the two surfaces diverge.
 - pick one: `Label` overrides use `leading-none` in `Sidebar.jsx` and `leading-normal` in
   the five P3 files.
-- decide whether a cva-supplied `text-xs` paired with `text-primary` counts as a fourth
-  typographic combination or is allowed.
+- **decided:** a cva-supplied size is not a component-authored size. The typography table
+  governs sizes a component writes itself; `<Button size="sm">` carrying `text-xs` beside
+  a `text-primary` is the primitive's own scale and is allowed.
+- **done:** `src/test/fixtures/SidebarP5Baseline.jsx` is deleted, replaced by a literal
+  snapshot dumped from the real render. The `分类` label now sits between the
+  all-collections row and the folders, where the design puts it — the SortableJS host moved
+  to an inner `<div>` holding only the folder rows, which the S1 review had already proved
+  safe. One real drag is on the smoke list for the scroll-parent move.
+- **done:** `deadLinkCount` is derived from the last check's dead set reconciled against
+  `allCards`, so removal by any path and undo are all correct for free. The maintained
+  counter it replaces drifted both ways.
 
 Acceptance:
 - [ ] gate 12 reads **0 / 0 / 0 / 0**, and the ceilings in `scripts/verify-ui.sh` are set to 0
