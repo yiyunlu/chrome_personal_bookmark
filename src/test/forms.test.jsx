@@ -368,6 +368,34 @@ describe('ChatPanel send keys (unchanged by the Input migration)', () => {
     expect(field).toHaveValue('draft');
   });
 
+  /* P6c turned the hand-styled send button into a <Button>. It had no
+     accessible name at all before — it is icon-only — so this is both a
+     regression guard and the first coverage the control has had. */
+  it('the send button sends what is in the box', async () => {
+    const { field, onSendMessage } = renderChat();
+
+    fireEvent.change(field, { target: { value: '  find github  ' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: t('chatSend') }));
+    });
+
+    expect(onSendMessage).toHaveBeenCalledWith('find github');
+    expect(field).toHaveValue('');
+  });
+
+  it('the send button is disabled until there is something to send', () => {
+    const { field } = renderChat();
+    const send = screen.getByRole('button', { name: t('chatSend') });
+
+    expect(send).toBeDisabled();
+
+    fireEvent.change(field, { target: { value: 'x' } });
+    expect(send).toBeEnabled();
+
+    fireEvent.change(field, { target: { value: '   ' } });
+    expect(send).toBeDisabled();
+  });
+
   it('Enter on a blank box does not send', async () => {
     const { field, onSendMessage } = renderChat();
 
