@@ -409,6 +409,25 @@ describe('CollectionCard — list view behaviour', () => {
     expect(onCardClick).not.toHaveBeenCalled();
   });
 
+  it('activates a tag from the keyboard (Enter and Space), but not on an unrelated key', () => {
+    // Badge renders a <div>, not a <button>, so it has no native activation
+    // keys — Enter/Space are wired by hand and must be pinned by a test.
+    const onTagClick = vi.fn();
+    const { host } = mount({ view: 'list', onTagClick });
+    const tag = firstTags()[0];
+    const row = host.querySelector('[data-card-id="card-0"]');
+    const tagEl = within(row).getByRole('button', { name: tag });
+
+    fireEvent.keyDown(tagEl, { key: 'A' });
+    expect(onTagClick).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(tagEl, { key: 'Enter' });
+    expect(onTagClick).toHaveBeenCalledWith(tag);
+
+    fireEvent.keyDown(tagEl, { key: ' ' });
+    expect(onTagClick).toHaveBeenCalledTimes(2);
+  });
+
   it('opens a row, raises its context menu and selects it in manage mode', () => {
     const onCardClick = vi.fn();
     const onCardContextMenu = vi.fn();
