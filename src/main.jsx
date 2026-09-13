@@ -39,6 +39,7 @@ import { processChat } from './lib/chatService';
 
 import { Sidebar } from './components/Sidebar';
 import { WelcomeCard } from './components/WelcomeCard';
+import { EmptyState } from './components/EmptyState';
 import { Toolbar, BatchToolbar } from './components/Toolbar';
 import { CollectionCard } from './components/CollectionCard';
 import { ContextMenu } from './components/ContextMenu';
@@ -331,6 +332,17 @@ function App() {
     () => visibleCollections.reduce((sum, c) => sum + c.cards.length, 0),
     [visibleCollections]
   );
+
+  // --- V2-C: filtered-empty state ---
+  // Two distinct "nothing to show" shapes, per the design: a search with no
+  // hits (visibleCollections itself goes to []), or a single active-collection
+  // filter on a collection that simply has no cards yet (visibleCollections
+  // still holds that one collection — its own empty drop zone would otherwise
+  // render — so this is detected separately via visibleCardCount).
+  const hasActiveQuery = deferredSearch.trim().length > 0;
+  const isEmptyCollectionFilter =
+    !hasActiveQuery && activeCollectionId !== 'all' && visibleCardCount === 0;
+  const showFilteredEmptyState = visibleCollections.length === 0 || isEmptyCollectionFilter;
 
   useEffect(() => {
     const keyword = search.trim();
@@ -1187,6 +1199,12 @@ function App() {
     forceUpdate((n) => n + 1);
   };
 
+  // V2-C empty state's "clear filters" action: clears the search box and the
+  // active-collection filter independently, so either flavour of the
+  // filtered-empty state can reach "all collections" without touching the other.
+  const handleClearSearch = useCallback(() => setSearch(''), []);
+  const handleClearCollectionFilter = useCallback(() => setActiveCollectionId('all'), []);
+
   // Stable identities: these flow into React.memo'd CollectionCard/BookmarkCard,
   // where a fresh function per render would defeat the memo entirely.
   const toggleCollection = useCallback((collectionId) => {
@@ -1498,7 +1516,7 @@ function App() {
               <div className="mt-3 rounded-lg border border-border bg-card p-6 text-center text-destructive">
                 {error}
               </div>
-            ) : visibleCollections.length === 0 ? (
+            ) : showFilteredEmptyState ? (
               showOnboarding ? (
                 <WelcomeCard
                   onSaveTabs={handleSaveTabs}
@@ -1507,12 +1525,11 @@ function App() {
                   onDismiss={handleDismissOnboarding}
                 />
               ) : (
-                /* The design's empty state: no panel, just centred faint text. */
-                <div className="py-20 text-center text-[12.5px] text-faint">
-                  <div className="mb-3 text-4xl">📑</div>
-                  <div className="font-medium">{t('noBookmarks')}</div>
-                  <div className="mt-1">{t('noBookmarksHint')}</div>
-                </div>
+                <EmptyState
+                  variant={hasActiveQuery ? 'search' : 'collection'}
+                  onClearSearch={handleClearSearch}
+                  onClearCollectionFilter={handleClearCollectionFilter}
+                />
               )
             ) : (
               /* No `space-y-*`: each group carries the design's own 26px bottom

@@ -1,12 +1,22 @@
 import React, { useMemo } from 'react';
 import { BookmarkIcon } from './BookmarkIcon';
-import { ChevronDown, ChevronRight, ExternalLink, FolderOpen, GripVertical, Pencil, Trash2 } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  FolderOpen,
+  GripVertical,
+  Pencil,
+  Trash2
+} from 'lucide-react';
 import { t } from '../lib/i18n';
 import { logError } from '../lib/utils';
 import { generateTags } from '../lib/enrichmentService';
 import { cn } from '../lib/cn';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import { Badge } from './ui/badge';
 
 // ── SortableJS contract (see SHADCN_MIGRATION.md, P5a / S3) ──────────────────
 // `main.jsx` drives three Sortable scopes against this markup and, on drop,
@@ -41,6 +51,7 @@ const EMPTY_TAGS = [];
 export const BookmarkCard = React.memo(function BookmarkCard({
   card,
   view = 'grid',
+  cardDragEnabled = true,
   manageMode,
   isSelected,
   onCardClick,
@@ -65,22 +76,45 @@ export const BookmarkCard = React.memo(function BookmarkCard({
   );
 
   /* Drag handle — visible on hover. Sortable `handle:` selector. The design draws
-     no handles because it is a static render and these only appear on hover. */
+     no handles because it is a static render and these only appear on hover.
+     When card drag is disabled (search active / manage mode / sort ≠ manual,
+     V2-A's isCardDragEnabled), the cursor drops to default rather than grab —
+     nothing here would actually reorder. */
   const dragHandle = (
-    <span className="card-drag-handle flex-shrink-0 cursor-grab opacity-0 group-hover:opacity-40">
+    <span
+      className={cn(
+        'card-drag-handle flex-shrink-0 opacity-0 group-hover:opacity-40',
+        cardDragEnabled ? 'cursor-grab' : 'cursor-default'
+      )}
+    >
       <GripVertical size={16} />
     </span>
   );
 
+  /* The native checkbox stays for a11y and click semantics (`.card-select`,
+     `type="checkbox"`, `checked` — all read by existing tests and by
+     handleCardClick in main.jsx); the design's 18px box + 10px Check glyph is
+     a sibling visual that mirrors its checked state. */
   const selectBox = manageMode ? (
-    <input
-      type="checkbox"
-      className="card-select h-4 w-4 flex-shrink-0 rounded-md accent-primary"
-      checked={isSelected}
-      onChange={() => onToggleSelect(card.id)}
-      onClick={(e) => e.stopPropagation()}
-      aria-label={card.title}
-    />
+    <span className="relative flex h-[18px] w-[18px] flex-shrink-0 items-center justify-center">
+      <input
+        type="checkbox"
+        className="card-select absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        checked={isSelected}
+        onChange={() => onToggleSelect(card.id)}
+        onClick={(e) => e.stopPropagation()}
+        aria-label={card.title}
+      />
+      <span
+        aria-hidden="true"
+        className={cn(
+          'flex h-[18px] w-[18px] items-center justify-center rounded-sm border transition-colors',
+          isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-input'
+        )}
+      >
+        {isSelected && <Check className="size-[10px]" />}
+      </span>
+    </span>
   ) : null;
 
   /* Manage actions. `.card-mini-btn` is read by handleCardClick in main.jsx. */
@@ -131,8 +165,8 @@ export const BookmarkCard = React.memo(function BookmarkCard({
           // bottom border. The end rows carry the container's radius themselves:
           // the container used to clip them with `overflow-hidden`, which also
           // clipped a row mid-drag at the container edge.
-          'last:border-b-0 first:rounded-t-lg last:rounded-b-lg transition-colors hover:bg-accent',
-          isSelected && 'bg-accent'
+          'last:border-b-0 first:rounded-t-lg last:rounded-b-lg transition-colors hover:bg-secondary',
+          isSelected && 'bg-primary/10'
         )}
         onClick={(e) => onCardClick(e, card)}
         onContextMenu={(e) => onContextMenu(e, card)}
@@ -153,23 +187,25 @@ export const BookmarkCard = React.memo(function BookmarkCard({
           {card.url}
         </div>
 
-        {/* Tags, right-aligned. This is where onTagClick is used again. */}
+        {/* Tags, right-aligned. This is where onTagClick is used again. Badge is
+            presentational (a <div>), so `role="button"` + `tabIndex` give it the
+            same accessible identity a real button would have. */}
         {tags.length > 0 && (
           <div className="flex flex-shrink-0 items-center gap-1">
             {tags.map((tag) => (
-              <Button
+              <Badge
                 key={tag}
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-auto rounded-sm border-border bg-transparent px-[5px] py-px text-[10px] font-normal leading-normal text-muted-foreground shadow-none"
+                variant="secondary"
+                role="button"
+                tabIndex={0}
+                className="cursor-pointer text-[10px]"
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onTagClick) onTagClick(tag);
                 }}
               >
                 {tag}
-              </Button>
+              </Badge>
             ))}
           </div>
         )}
@@ -188,8 +224,8 @@ export const BookmarkCard = React.memo(function BookmarkCard({
         // The design's grid tile: 11px padding, 10px gap, top-aligned, and a hover
         // that changes surface and border rather than lifting the card.
         'group relative flex w-full cursor-pointer items-start gap-2.5 p-[11px] text-left shadow-none',
-        'transition-colors hover:bg-accent hover:border-input',
-        isSelected && 'border-primary bg-accent'
+        'transition-colors hover:bg-secondary hover:border-input',
+        isSelected && 'border-primary bg-primary/10'
       )}
       onClick={(e) => onCardClick(e, card)}
       onContextMenu={(e) => onContextMenu(e, card)}
@@ -201,7 +237,7 @@ export const BookmarkCard = React.memo(function BookmarkCard({
       {/* Favicon. The design draws a flat tinted letter tile here; we keep the real
           favicon inside the same 22px container — BookmarkIcon already falls back
           on its own when every candidate fails. */}
-      <div className="mt-px flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center overflow-hidden rounded-sm bg-secondary">
+      <div className="mt-px flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center overflow-hidden rounded-md bg-secondary">
         <BookmarkIcon url={card.url} title={card.title} />
       </div>
 
@@ -224,7 +260,7 @@ export const CollectionCard = React.memo(function CollectionCard({
   collapsed,
   view = 'grid',
   moduleDraggable,
-  cardDragEnabled: _cardDragEnabled,
+  cardDragEnabled,
   manageMode,
   selectedCardIds,
   onToggleCollapse,
@@ -247,7 +283,7 @@ export const CollectionCard = React.memo(function CollectionCard({
           menu. `z-[2]` is the design's own stacking value; the header has to clear
           the cards that scroll under it and nothing else. */}
       <div
-        className="group sticky top-0 z-[2] mb-3 flex w-full items-center gap-[9px] border-b border-border bg-background px-0.5 pt-3 pb-[9px]"
+        className="group sticky top-0 z-[2] flex w-full items-center gap-2 border-b border-border bg-background pt-3 pb-[9px]"
         onContextMenu={(e) => onCollectionContextMenu?.(e, collection)}
       >
         <span
@@ -275,16 +311,19 @@ export const CollectionCard = React.memo(function CollectionCard({
             // cva's own `py-2` survives `pt-3 pb-[9px]` (different conflict groups),
             // which would leave two rules fighting on stylesheet order. `py-0`
             // displaces it, and Tailwind emits `pt-*`/`pb-*` after `py-*`.
-            className="-mt-3 -mb-[9px] h-auto w-full justify-start gap-[9px] px-0 py-0 pt-3 pb-[9px] text-left font-normal hover:bg-transparent"
+            // `[&_svg]:size-[13px]` restates the design's glyph size: inside a
+            // <Button> the cva's own `[&_svg]:size-4` is a class and beats any
+            // size prop on the icon itself (Style contract, "Icons").
+            className="-mt-3 -mb-[9px] h-auto w-full justify-start gap-[9px] px-0 py-0 pt-3 pb-[9px] text-left font-normal hover:bg-transparent [&_svg]:size-[13px]"
             onClick={() => onToggleCollapse(collection.id)}
           >
-            {/* The design's glyph is 13px; the icon contract has only 16 and 20, so
-                this is the nearest — the cva's [&_svg]:size-4 would win anyway. */}
             <FolderOpen className="text-faint" />
             <span className="truncate text-[12.5px] font-semibold tracking-[0.01em]">
               {collection.title}
             </span>
-            <span className="font-mono text-[10.5px] text-faint">{collection.cards.length}</span>
+            <Badge variant="secondary" className="font-mono text-[10px] tabular-nums text-faint">
+              {collection.cards.length}
+            </Badge>
             <span className="flex-1" />
           </Button>
         </h2>
@@ -295,7 +334,7 @@ export const CollectionCard = React.memo(function CollectionCard({
             size="icon"
             // hover:text-primary restated: ghost's hover:text-accent-foreground is a separate
             // merge group and would repaint this glyph near-black under the pointer.
-            className="h-6 w-6 flex-shrink-0 rounded-sm text-primary hover:text-primary opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100"
+            className="h-[26px] w-[26px] flex-shrink-0 rounded-md text-primary hover:text-primary opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100"
             aria-label={t('openAllTabs')}
             title={t('openAllTabs')}
             onClick={(e) => {
@@ -306,12 +345,12 @@ export const CollectionCard = React.memo(function CollectionCard({
             <ExternalLink />
           </Button>
         )}
-        {/* 24x24 collapse chevron. The design's 5px radius lands on rounded-sm (6px). */}
+        {/* 26px collapse chevron, restyled ghost control (V2-C). */}
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-6 w-6 flex-shrink-0 rounded-sm text-faint hover:bg-card hover:text-foreground"
+          className="h-[26px] w-[26px] flex-shrink-0 rounded-md text-faint hover:bg-secondary hover:text-foreground"
           aria-label={collapsed ? t('expandCollection') : t('collapseCollection')}
           title={collapsed ? t('expandCollection') : t('collapseCollection')}
           aria-expanded={!collapsed}
@@ -327,7 +366,7 @@ export const CollectionCard = React.memo(function CollectionCard({
           <div
             data-cards-collection-id={collection.id}
             data-parent-id={collection.id}
-            className="mb-[26px] flex items-center justify-center rounded-lg border-2 border-dashed border-border py-6 text-[12.5px] text-faint"
+            className="mt-3 mb-[26px] flex items-center justify-center rounded-lg border-2 border-dashed border-border py-6 text-[12.5px] text-faint"
           >
             {t('dragHere')}
           </div>
@@ -335,13 +374,14 @@ export const CollectionCard = React.memo(function CollectionCard({
           <div
             data-cards-collection-id={collection.id}
             data-parent-id={collection.id}
-            className="mb-[26px] flex flex-col rounded-lg border border-border bg-card"
+            className="mt-3 mb-[26px] flex flex-col rounded-lg border border-border bg-card"
           >
             {collection.cards.map((card) => (
               <BookmarkCard
                 key={card.id}
                 card={card}
                 view="list"
+                cardDragEnabled={cardDragEnabled}
                 manageMode={manageMode}
                 isSelected={selectedCardIds.has(card.id)}
                 onCardClick={onCardClick}
@@ -357,13 +397,14 @@ export const CollectionCard = React.memo(function CollectionCard({
           <div
             data-cards-collection-id={collection.id}
             data-parent-id={collection.id}
-            className="mb-[26px] grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-2"
+            className="mt-3 mb-[26px] grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-[9px]"
           >
             {collection.cards.map((card) => (
               <BookmarkCard
                 key={card.id}
                 card={card}
                 view="grid"
+                cardDragEnabled={cardDragEnabled}
                 manageMode={manageMode}
                 isSelected={selectedCardIds.has(card.id)}
                 onCardClick={onCardClick}
