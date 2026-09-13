@@ -572,3 +572,98 @@ rather than trust the implementer's transcript, must check the unchecked boxes o
 phase's acceptance list one by one, and must explicitly confirm the ground rules
 (no `ui/*` edits, no prop-API change, no `main.jsx` change outside the owning phase).
 A phase merges only when its reviewer reports every box checked.
+
+## V2 — the design-system round (2026-09-13)
+
+Source: `design/TabHub-v2.dc.html` (Claude Design project `c3755d9a`, generated on the published
+TabHub Design System `3d6170b7`). Same split as before: **the file decides visuals, the existing
+app decides behaviour.** The user approved all five of its optimisations, and ONE new function:
+the sort Select. Everything else in the file that has no existing counterpart (导出为 HTML,
+添加标签 in the batch bar) is NOT built.
+
+Ground rules, unchanged: never edit `src/components/ui/*`; token classes only; radius scale
+sm 6 / md 8 / lg 9 / xl 9 (the file's `rounded-md` on a 22px tile stays `rounded-md`); `cn()` for
+every override and mind the five tailwind-merge mechanisms; `./scripts/verify-ui.sh` exits 0
+before commit and gate-12 ceilings stay at 0/0/0/0; all user-facing strings via `t()` in both
+languages; SortableJS DOM contract intact (`data-collection-id`/`data-draggable` on `<article>`,
+cards container `data-cards-collection-id`+`data-parent-id` with children exactly the cards, the
+`.card-drag-handle` / `.collection-drag-handle` / `.nav-drag-handle` classes, `[data-nav-sortable]`
+holding only folder rows). Icons stay lucide (the file's inline SVGs are the design tool's
+stand-ins — pick the matching lucide glyph).
+
+### V2-A — Toolbar + sort (files: `Toolbar.jsx`, `main.jsx`, `bookmarkService.js`, `i18n.js`, tests)
+
+Visual (row 1): search `Input` `h-[34px] pl-8 text-[12.5px]` with a 14px `Search` glyph at
+`left-[11px] text-faint`, `max-w-[520px] flex-1`; spacer; **sort `Select`** trigger
+`h-[30px] text-[12.5px]` width 132px, content `align="end"`; view toggle = `rounded-md border p-[1px]`
+box holding two `size="icon"` Buttons `h-[26px] w-[26px]`, active `variant="secondary"`, idle
+`ghost`; 管理 Button `size="sm" h-[30px] text-[12.5px]`, `outline` idle / `secondary` when manage
+mode is on. Row 2 (`pt-3 pb-[13px] gap-1`): 保存当前标签页 = default Button sm; vertical
+`Separator mx-[5px] h-[18px]`; then ghost sm `text-muted-foreground` buttons 自动整理 / AI 分类 /
+失效检测 [+ count chip `rounded-sm bg-primary/10 px-[5px] font-mono text-[10px] tabular-nums
+text-primary` when `deadLinkCount > 0`] / 新建分类 — **and the existing 回收站 action stays** (put
+it after 新建分类, same ghost style). Existing keyboard shortcuts, titles and the "current source"
+label keep working.
+
+Function — sort (new): options in this order and these keys: `manual` (label 默认顺序 — Chrome's
+own order, the only mode where card drag-and-drop is allowed), `recent` (最近添加), `title`
+(按标题, `localeCompare` with `zh`), `domain` (按域名, by hostname then title). Persist under
+`tabhub_sort_mode` exactly like `VIEW_STORAGE_KEY`. Sorting is a pure derived view: it never
+writes to Chrome; `recent` needs `dateAdded` — add it to the card objects in
+`bookmarkService.getCollectionsPayload` (both the collection and the root-cards mapping). When sort
+≠ `manual`, the card Sortable instances are `disabled` (and the drag handle hidden via
+`cursor-default`), so the persisted index cannot silently disagree with what the user sees.
+Tests: sort comparator unit tests (all four modes, stable for ties), persistence round-trip,
+Sortable disabled when sorted.
+
+### V2-B — Sidebar + theme control (files: `Sidebar.jsx`, `i18n.js`, tests)
+
+Header row `px-3 pt-3 pb-[9px] gap-2`: 22px `rounded-md bg-primary text-primary-foreground` tile
+with the 12px `Bookmark` glyph, "TabHub" `text-[13.5px] font-semibold tracking-[-0.01em]`, then
+`ml-auto font-mono text-[10.5px] tabular-nums text-faint` total bookmark count. Source `Select`
+trigger `h-[30px] text-[12.5px]` in `px-2.5 pb-2`. Nav host stays `ScrollArea` > `[data-nav-sortable]`;
+rows `flex h-[30px] items-center gap-2 rounded-md px-2` — active `bg-primary/10 text-primary`, idle
+`text-muted-foreground hover:bg-secondary hover:text-foreground`, nested `pl-[22px]`, counts
+`font-mono text-[10.5px] tabular-nums text-faint`; 全部收藏 row `font-medium` with the total; section
+label `px-2 pt-3 pb-[5px] text-[10px] font-semibold uppercase tracking-[0.09em] text-faint`.
+Bottom bar `border-t p-2 gap-1`: **one** 26px ghost icon Button with a Tooltip that cycles
+system → light → dark (the three existing modes are kept; the tooltip names the mode you will
+switch TO, the glyph shows the current one: Monitor / Sun / Moon), spacer, 设置 as ghost sm
+`h-[26px] text-[11.5px] text-muted-foreground` with the `Settings` glyph. Collapsed rail: unchanged
+behaviour (tiles), the theme button collapses to the same icon-only control. Width 232px.
+Tests: theme cycle order, tooltip label, `SidebarDragHost` shape unchanged.
+
+### V2-C — Collection cards, list view, empty state (files: `CollectionCard.jsx`, `main.jsx`
+### only for the empty-state props, `i18n.js`, tests) — runs after V2-A merges
+
+Sticky header `pt-3 pb-[9px] border-b bg-background gap-2`: 13px `Folder` glyph `text-faint`, title
+`text-[12.5px] font-semibold tracking-[0.01em]`, count as `Badge variant="secondary"` `font-mono
+text-[10px] tabular-nums text-faint`, spacer, existing header actions (open-all, collapse, edit,
+delete, drag handle) restyled as 26px ghost controls; NO 全选 and NO 导出 (no existing function).
+Grid `grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-[9px] mt-3 mb-[26px]`; tile `<Card>`
+`p-[11px]`, `flex items-start gap-2.5`, 22px identity tile `rounded-md` (favicon or letter),
+title `text-[12.5px] font-medium leading-[1.35] truncate`, domain `font-mono text-[10.5px]
+text-faint mt-[3px]`; hover `hover:bg-secondary hover:border-input`; selected (manage mode)
+`border-primary bg-primary/10`; manage checkbox = 18px `rounded-sm border border-input`, checked
+`border-primary bg-primary text-primary-foreground` with a 10px `Check`. List view: container
+`rounded-xl border bg-card overflow-hidden`, rows `h-9 gap-2.5 border-b px-3` (last row no border),
+18px tile `rounded-sm`, title `max-w-[42%]`, domain flex-1, tags as `Badge variant="secondary"
+text-[10px]` on the same row. Empty state (search with no hits, or an empty collection filter):
+centred `min-height 340px`, 36px `rounded-xl border bg-card text-faint` icon box with a 17px
+`Search` glyph, title `text-[12.5px] font-medium`, hint `text-[11.5px] text-muted-foreground`,
+outline sm 清除筛选 that clears the query and the active-collection filter. Copy:
+没有匹配的书签 / 试试更短的关键词，或换一个分类 and 这个分类还是空的 / 把当前标签页保存进来，或用「自动整理」填充.
+
+### V2-D — Batch bar (files: `Toolbar.jsx` BatchToolbar, `main.jsx`, `i18n.js`, tests) — after V2-C
+
+Bottom-docked `border-t bg-card px-[22px] py-2`, `flex gap-2`: "已选 N 项" with N in `font-mono
+tabular-nums text-primary`; vertical Separator; outline sm 移动到…; outline sm 在新窗口打开
+(`chrome.windows.create({ url: [...] })` — mirrors the per-collection open-all); destructive sm
+删除 (soft delete + undo, as today); spacer; ghost sm 取消选择. NO 添加标签. Shown only while
+manage mode has ≥1 selection.
+
+### V2 cross-run
+
+Wave 1: V2-A ∥ V2-B (disjoint files) → cross-review → merge. Wave 2: V2-C → review → merge.
+Wave 3: V2-D → review → merge. Implementers on Sonnet in their own worktrees; reviewers are
+different agents and re-run the gate themselves.
