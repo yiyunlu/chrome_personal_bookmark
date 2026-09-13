@@ -274,8 +274,6 @@ describe('Toolbar — the design header, as resolved class strings', () => {
       onViewChange: vi.fn(),
       sortMode: 'title',
       onSortChange: vi.fn(),
-      hasTrash: true,
-      onViewTrash: vi.fn(),
       activeSource: { id: 's1', title: 'Bar', isTabHub: false }
     });
 
@@ -319,37 +317,19 @@ describe('Toolbar — sort select (V2-A, new)', () => {
   });
 });
 
-describe('Toolbar — 回收站 (moved here from the sidebar in V2-A)', () => {
-  it('does not render without hasTrash', () => {
-    renderToolbar({ onViewTrash: vi.fn() });
+describe('Toolbar — 回收站 removed in V2-D', () => {
+  it('renders no trash action, even when trash-shaped props are passed', () => {
+    renderToolbar({ hasTrash: true, onViewTrash: vi.fn() });
 
     expect(screen.queryByRole('button', { name: new RegExp(t('trash')) })).toBeNull();
   });
-
-  it('renders and routes to onViewTrash when hasTrash is true', () => {
-    const onViewTrash = vi.fn();
-    renderToolbar({ hasTrash: true, onViewTrash });
-
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('trash')) }));
-    expect(onViewTrash).toHaveBeenCalledTimes(1);
-  });
-
-  it('sits after 新建分类 in row 2, in the same ghost style', () => {
-    renderToolbar({ hasTrash: true, onViewTrash: vi.fn() });
-
-    const newCollection = screen.getByRole('button', { name: new RegExp(t('newCollection')) });
-    const trash = screen.getByRole('button', { name: new RegExp(t('trash')) });
-    const rowButtons = Array.from(newCollection.parentElement.querySelectorAll('button'));
-
-    expect(rowButtons.indexOf(newCollection)).toBeLessThan(rowButtons.indexOf(trash));
-    expect(trash.className).toBe(newCollection.className);
-  });
 });
 
-describe('BatchToolbar', () => {
+describe('BatchToolbar (V2-D — bottom-docked bar)', () => {
   const batch = (props = {}) => {
     const handlers = {
       onBatchMove: vi.fn(),
+      onBatchOpenWindow: vi.fn(),
       onBatchTrash: vi.fn(),
       onClearSelections: vi.fn()
     };
@@ -357,34 +337,79 @@ describe('BatchToolbar', () => {
     return { ...utils, handlers };
   };
 
-  it('still routes its three actions', () => {
+  it('docks at the bottom with the design classes', () => {
+    const { container } = batch();
+    const bar = container.firstChild;
+
+    expect(bar.className).toContain('shrink-0');
+    expect(bar.className).toContain('border-t');
+    expect(bar.className).toContain('bg-card');
+    expect(bar.className).toContain('px-[22px]');
+    expect(bar.className).toContain('py-2');
+    expect(bar.querySelector(':scope > div').className).toContain('flex');
+    expect(bar.querySelector(':scope > div').className).toContain('items-center');
+    expect(bar.querySelector(':scope > div').className).toContain('gap-2');
+  });
+
+  it('renders the selected count with N in a mono, tabular, primary-coloured span', () => {
+    batch({ selectedCount: 5 });
+    const n = screen.getByText('5');
+
+    expect(n.tagName).toBe('SPAN');
+    expect(n.className).toContain('font-mono');
+    expect(n.className).toContain('tabular-nums');
+    expect(n.className).toContain('text-primary');
+  });
+
+  it('renders all five controls: move, open-window, delete, clear (plus the separator)', () => {
+    const { container } = batch();
+
+    expect(screen.getByRole('button', { name: t('batchMove') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('batchOpenWindow') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('delete') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t('clearSelection') })).toBeInTheDocument();
+    expect(screen.queryByText('添加标签')).toBeNull();
+    expect(container.querySelector('[data-orientation="vertical"]')).toBeInTheDocument();
+  });
+
+  it('still routes its four actions', () => {
     const { handlers } = batch();
 
     fireEvent.click(screen.getByRole('button', { name: t('batchMove') }));
+    fireEvent.click(screen.getByRole('button', { name: t('batchOpenWindow') }));
     fireEvent.click(screen.getByRole('button', { name: t('delete') }));
     fireEvent.click(screen.getByRole('button', { name: t('clearSelection') }));
 
     expect(handlers.onBatchMove).toHaveBeenCalledTimes(1);
+    expect(handlers.onBatchOpenWindow).toHaveBeenCalledTimes(1);
     expect(handlers.onBatchTrash).toHaveBeenCalledTimes(1);
     expect(handlers.onClearSelections).toHaveBeenCalledTimes(1);
   });
 
-  it('still disables move and delete with nothing selected, but not clear', () => {
+  it('still disables move, open-window and delete with nothing selected, but not clear', () => {
     batch({ selectedCount: 0 });
 
     expect(screen.getByRole('button', { name: t('batchMove') })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t('batchOpenWindow') })).toBeDisabled();
     expect(screen.getByRole('button', { name: t('delete') })).toBeDisabled();
     expect(screen.getByRole('button', { name: t('clearSelection') })).not.toBeDisabled();
   });
 
-  it('keeps the soft destructive fill on delete rather than shadcn’s solid one', () => {
+  it('uses the solid shadcn destructive variant and outline for move/open-window', () => {
     batch();
     const del = screen.getByRole('button', { name: t('delete') });
+    const move = screen.getByRole('button', { name: t('batchMove') });
 
-    expect(del.className).toContain('bg-destructive/10');
-    expect(del.className).toContain('text-destructive');
-    // The ghost variant's own hover must not repaint it.
-    expect(del.className).not.toContain('hover:bg-accent');
+    expect(del.className).toContain('bg-destructive');
+    expect(del.className).toContain('text-destructive-foreground');
+    expect(move.className).toContain('border');
+  });
+
+  it('gives the clear-selection button the ghost variant and muted text', () => {
+    batch();
+    const clear = screen.getByRole('button', { name: t('clearSelection') });
+
+    expect(clear.className).toContain('text-muted-foreground');
   });
 
   it('carries no inline style', () => {

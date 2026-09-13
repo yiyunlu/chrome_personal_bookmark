@@ -9,8 +9,7 @@ import {
   Plus,
   Search,
   Sparkles,
-  Square,
-  Trash2
+  Square
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -116,12 +115,7 @@ export function Toolbar({
   /* V2-A — sort. Defaults to 'manual' (Chrome's own order) and, like the
      view toggle, renders inert rather than omitted without a handler. */
   sortMode = DEFAULT_SORT_MODE,
-  onSortChange,
-  /* The existing trash action, moved here from the sidebar per V2-A. Optional
-     so the control simply does not render without a handler, matching the
-     sidebar's own `hasTrash &&` guard. */
-  onViewTrash,
-  hasTrash
+  onSortChange
 }) {
   const badgeCount = Number(deadLinkCount) > 0 ? deadLinkCount : 0;
 
@@ -255,13 +249,6 @@ export function Toolbar({
           <span>{t('newCollection')}</span>
         </Button>
 
-        {hasTrash && (
-          <Button type="button" variant="ghost" size="sm" className={GHOST_ACTION_CLASS} onClick={onViewTrash}>
-            <Trash2 />
-            <span>{t('trash')}</span>
-          </Button>
-        )}
-
         {activeSource && (
           <span className="ml-1 text-xs text-muted-foreground">
             {t('current')}: {activeSource.isTabHub ? 'TabHub' : activeSource.title}
@@ -272,43 +259,67 @@ export function Toolbar({
   );
 }
 
-export function BatchToolbar({ selectedCount, onBatchMove, onBatchTrash, onClearSelections }) {
+/* V2-D — the design's bottom-docked bar (`design/TabHub-v2.dc.html`'s
+   `hasSelection` block). It renders at the bottom of the main column, after
+   the scroll container, not inside it — see main.jsx. */
+const BATCH_BUTTON_CLASS = 'h-[30px] text-[12.5px]';
+
+export function BatchToolbar({ selectedCount, onBatchMove, onBatchOpenWindow, onBatchTrash, onClearSelections }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-primary bg-primary/10 px-3 py-2 animate-fade-in">
-      <span className="text-sm font-medium text-primary">{t('selectedCount', selectedCount)}</span>
-      <div className="flex-1" />
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-auto px-2.5 py-1 text-xs"
-        disabled={selectedCount === 0}
-        onClick={onBatchMove}
-      >
-        {t('batchMove')}
-      </Button>
-      {/* The contract's inline destructive row action: ghost + text-destructive,
-          on a soft destructive fill rather than shadcn's solid `destructive`.
-          The ghost variant's hover pair is restated so it cannot repaint this. */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-auto bg-destructive/10 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/20 hover:text-destructive"
-        disabled={selectedCount === 0}
-        onClick={onBatchTrash}
-      >
-        {t('delete')}
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-auto px-2.5 py-1 text-xs font-normal text-muted-foreground"
-        onClick={onClearSelections}
-      >
-        {t('clearSelection')}
-      </Button>
+    <div className="shrink-0 border-t bg-card px-[22px] py-2">
+      <div className="flex items-center gap-2">
+        <span className="text-[12.5px] font-medium">
+          {t('selectedPrefix')} <span className="font-mono tabular-nums text-primary">{selectedCount}</span>{' '}
+          {t('selectedSuffix')}
+        </span>
+
+        <Separator orientation="vertical" className="mx-[5px] h-[18px]" />
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={BATCH_BUTTON_CLASS}
+          disabled={selectedCount === 0}
+          onClick={onBatchMove}
+        >
+          {t('batchMove')}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={BATCH_BUTTON_CLASS}
+          disabled={selectedCount === 0}
+          onClick={onBatchOpenWindow}
+        >
+          {t('batchOpenWindow')}
+        </Button>
+
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          className={BATCH_BUTTON_CLASS}
+          disabled={selectedCount === 0}
+          onClick={onBatchTrash}
+        >
+          {t('delete')}
+        </Button>
+
+        <div className="flex-1" />
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn(BATCH_BUTTON_CLASS, 'text-muted-foreground')}
+          onClick={onClearSelections}
+        >
+          {t('clearSelection')}
+        </Button>
+      </div>
     </div>
   );
 }
