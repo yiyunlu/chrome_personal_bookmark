@@ -27,6 +27,8 @@
 ├── vite.config.js                    # Vite config (base: './', output: dist/)
 ├── tailwind.config.js                # Custom colors, shadow
 ├── postcss.config.js                 # Tailwind + Autoprefixer
+├── design/TabHub-v2.dc.html           # Claude Design source of truth for V2 visuals (project c3755d9a)
+├── .design-sync/                      # Claude Design sync inputs — previews, config, conventions
 ├── public/
 │   ├── manifest.json                 # Chrome MV3 manifest (newtab override)
 │   ├── background.js                 # Service worker
@@ -47,6 +49,7 @@
     │   ├── ContextMenu.jsx           # Right-click menu (DropdownMenu on a virtual anchor)
     │   ├── DeadLinkModal.jsx         # Dead link detection results
     │   ├── EditBookmarkModal.jsx     # Edit bookmark dialog
+    │   ├── EmptyState.jsx            # Filtered-empty-state card (no search hits / empty collection)
     │   ├── PromptModal.jsx           # Prompt input dialog
     │   ├── SettingsModal.jsx         # Settings dialog (API key, preferences)
     │   ├── Sidebar.jsx               # Rail: source Select, all-collections, 分类 nav, bottom bar (theme/settings)
@@ -68,6 +71,7 @@
     │   ├── identity.js               # Deterministic letter + tint tile for bookmarks and folders
     │   ├── i18n.js                   # Internationalization (zh-CN, en) + language detection
     │   ├── searchService.js          # Smart search with fuzzy + category matching
+    │   ├── sortCards.js              # Sort comparators (manual/recent/title/domain) + drag-enabled rule
     │   ├── storage.js                # chrome.storage.local get/set wrappers
     │   ├── taxonomy.js               # Category taxonomy for AI categorization
     │   ├── types.js                  # Shared type definitions / constants
@@ -162,14 +166,17 @@ TRASH_FOLDER_NAME = '.TabHub Trash'
 ## Key Features
 
 - Bookmark CRUD with drag-and-drop reordering (within/between collections), in **grid or list view** (toggle in the toolbar, persisted); tags render in list view only
+- Sort modes (toolbar `Select`, persisted): **默认顺序** (Chrome's own order — the only mode where card drag-and-drop is enabled), **最近添加**, **按标题**, **按域名**; the other three are pure derived views and never write back to Chrome
+- Filtered empty state: a search with no hits, or an empty collection filter, shows a centred card with a **清除筛选** action instead of a blank grid
 - Sticky collection headers; bookmarks without a favicon get a deterministic letter + tint identity tile (same scheme marks folders in the collapsed sidebar)
 - AI smart categorize: analyzes bookmarks and suggests collection moves (mock + Claude API)
 - Smart search: fuzzy matching + category expansion + optional Claude semantic search
 - Dead link detection: batch URL checking with progress indicator
 - AI chat assistant: natural language commands (search, move, delete, find duplicates, stats)
 - Auto-organize: URL deduplication + alphabetical sort
-- Manage mode: batch select, move, delete
+- Manage mode: batch select, move, **在新窗口打开** (opens every selected card's URL via `chrome.windows.create`), delete — via a bottom-docked batch bar shown while any card is selected
 - Soft delete to trash folder with undo (8-second toast)
+- Single cycling theme button in the sidebar's bottom bar (system → light → dark), tooltip names the mode you switch **to**
 - Keyboard shortcuts: `/` (search), `S` (save tabs), `O` (organize), `M` (manage)
 - Real-time bookmark sync across tabs via Chrome API subscription
 - Search filtering across titles and URLs

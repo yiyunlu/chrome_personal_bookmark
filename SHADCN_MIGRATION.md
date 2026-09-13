@@ -222,14 +222,20 @@ becomes a square with a glyph jammed in. In a 30px row, 16px vs 13px is 51% more
 | size | for |
 | --- | --- |
 | `20` | empty-state and illustration icons |
+| `17` | the glyph inside the 36px empty-state box (V2-C) |
 | `16` | default — a glyph in a control ≥32px tall, or paired with text ≥13px |
 | `12`–`13` | dense chrome: rows ≤30px, bottom-bar controls, counts, section affordances |
 | `11` | inside a filled tile ≤20px |
+| `10` | the check glyph inside an 18px manage-mode checkbox (V2-C) |
 
 **Inside `<Button>` a `size` prop is inert** — the cva's `[&_svg]:size-4` is a class and
 beats the svg's width/height attributes. To get a dense glyph, put `[&_svg]:size-3` (12px)
 or `[&_svg]:size-3.5` (14px) on the Button's own className. Outside a Button, pass
 `size={n}`. Gate 12's counter accepts `{11, 12, 13, 16, 20}` and flags the rest.
+
+**Class-sized glyphs (`size-[Npx]` / `[&_svg]:size-[Npx]`) are outside gate 12's regex** —
+they cost the ratchet nothing but are also unenforced by it, so any new size introduced this
+way must be added to this table by hand or it silently drifts from the code.
 
 ### Buttons — no raw `<button>` outside `src/components/ui/`
 
@@ -667,3 +673,22 @@ manage mode has ≥1 selection.
 Wave 1: V2-A ∥ V2-B (disjoint files) → cross-review → merge. Wave 2: V2-C → review → merge.
 Wave 3: V2-D → review → merge. Implementers on Sonnet in their own worktrees; reviewers are
 different agents and re-run the gate themselves.
+
+### V2 status — merged 2026-09-13
+
+V2-A, V2-B, V2-C and V2-D are all merged as of 2026-09-13. Deferred, not built:
+
+- **Sub-menus were not previewed** — the design file has no nested-menu surface to check
+  the migration against, so `ContextMenu` sub-menu styling (if any is ever added) is
+  unverified against `TabHub-v2.dc.html`.
+- **CJK fonts are not bundled.** `Noto Sans SC` still resolves to system fallbacks, same
+  as the unbundled `IBM Plex Sans`/`IBM Plex Mono` noted earlier in this document — no
+  code change is needed to add the files later.
+- **V2-B evaluator note — theme glyph at 16px.** The bottom bar's cycling theme button
+  renders its Monitor/Sun/Moon glyph at the default 16px rather than a bottom-bar-scaled
+  12–13px; left as shipped since the icon table treats 16px as the safe default and 26px
+  is comfortably ≥ the "paired with text ≥13px" threshold that licenses it.
+- **V2-B evaluator note — bottom-bar ghost hover uses `Button` default.** The sidebar's
+  bottom-bar ghost controls (theme cycle, 设置) hover with the stock `ghost` variant's
+  `hover:bg-accent hover:text-accent-foreground` rather than a bespoke bottom-bar hover
+  token; not mechanism E (no colour override sits under it), so left alone.
