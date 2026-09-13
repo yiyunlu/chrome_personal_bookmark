@@ -1,0 +1,15 @@
+{
+  "pkg": "tabhub",
+  "globalName": "TabHub",
+  "shape": "package",
+  "srcDir": "src/components/ui",
+  "tsconfig": "jsconfig.json",
+  "buildCmd": "npx tailwindcss -c tailwind.sync.config.js -i src/index.css -o dist/assets/tabhub.css --minify && mkdir -p dist/assets/fonts && cp src/fonts/*.woff2 dist/assets/fonts/",
+  "cssEntry": "dist/assets/tabhub.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "provider": {
+    "component": "TooltipProvider"
+  },
+  "projectId": "3d6170b7-3a62-496b-8ebb-a1b71b92c9aa",
+  "entry": "./dist/index.es.js"
+}
