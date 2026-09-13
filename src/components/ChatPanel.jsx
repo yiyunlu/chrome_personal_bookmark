@@ -13,6 +13,14 @@ import { cn } from '../lib/cn';
    `text-foreground`, --muted `text-muted-foreground`, --accent / --btn-primary
    `bg-primary` + `text-primary-foreground`, --input-bg `bg-background`.
 
+   One deliberate deviation from that mapping, called out because P6 is otherwise a
+   pure token substitution: the assistant bubble takes `bg-muted`, not the
+   `bg-background` its old --input-bg maps to. Inside a `bg-card` panel,
+   `bg-background` is DARKER than the panel in dark mode (6.9% vs 11.4% L), so the
+   bubble reads as a hole punched in the surface. `bg-muted` (14.5%) sits above it,
+   which is what a bubble should do. The result chip below keeps `bg-background`
+   because it is an inset well, not a raised bubble.
+
    The panel itself is a <Card>: it is a genuine surface, and Card already ships
    the contract's card radius (rounded-xl), border and surface colour, so the
    hand-rolled off-scale radius is gone rather than re-specified. `shadow-panel` is

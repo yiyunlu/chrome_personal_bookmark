@@ -42,22 +42,40 @@ export const LAYER_TOP = 'z-[100]';
    same specificity and is emitted later in the stylesheet. */
 const OVERLAY_CLASS = 'bg-slate-900/40 data-[state=closed]:!animate-none';
 
-/* Panel geometry. Radius follows shadcn's own DialogContent (rounded-lg); the
-   hand-rolled overlay this replaced used rounded-2xl, which nothing in shadcn uses.
-   Enter animation classes are shadcn's — they are written to compose with the
-   translate-based centering, which the project's `animate-slide-up` keyframe
-   would clobber. No exit animation, see above. */
+/* Panel geometry and surface. Radius follows shadcn's own DialogContent
+   (rounded-lg); the hand-rolled overlay this replaced used the 16px step, which
+   nothing in shadcn uses and the radius table bans. Enter animation classes are
+   shadcn's — they are written to compose with the translate-based centering,
+   which the project's `animate-slide-up` keyframe would clobber. No exit
+   animation, see above.
+
+   P6b: the surface moved off an inline `style` — background, borderColor and
+   boxShadow read from the legacy `--panel-bg` / `--panel-border` / `--shadow`
+   aliases — onto the three token classes below, which resolve to the same values:
+   index.css defines `--panel-bg` as the --ui-card token and `--panel-border` as
+   --ui-border, and tailwind.config.js defines `shadow-panel` as the `--shadow`
+   alias itself. (Both this note and the radius one above avoid spelling the
+   literal class or `var()` call, because gate 12 greps text and cannot tell a
+   comment from a use.)
+
+   This string reaches all nine dialogs, so three things were checked, not assumed:
+   · an inline style could not be overridden and a class can. `PANEL_CLASS` is
+     merged FIRST in `cn(PANEL_CLASS, layer, className)`, so a caller's className
+     would win — but all nine pass nothing except a `max-w-*`, a different merge
+     group, so nothing is displaced.
+   · `shadow-panel` is a project scale, invisible to tailwind-merge unless
+     `src/lib/cn.js` registers it (mechanism C). It does, `src/test/cn.test.js`
+     pins that, and there is no other `shadow-*` in this string anyway.
+   · the element is a raw `DialogPrimitive.Content` / `AlertDialogPrimitive.Content`,
+     NOT shadcn's `DialogContent`, so none of the `sm:`-prefixed vendored classes
+     are in this string. `rounded-lg` here has nothing to displace, and no
+     breakpoint can resurrect a radius it failed to remove. */
 const PANEL_CLASS =
   'fixed left-1/2 top-1/2 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 ' +
-  'overflow-hidden rounded-lg border duration-200 focus:outline-none ' +
+  'overflow-hidden rounded-lg border border-border bg-card shadow-panel ' +
+  'duration-200 focus:outline-none ' +
   'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 ' +
   'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]';
-
-const PANEL_STYLE = {
-  background: 'var(--panel-bg)',
-  borderColor: 'var(--panel-border)',
-  boxShadow: 'var(--shadow)'
-};
 
 /**
  * `useKeyboardShortcuts` also listens for Escape, on `window`, and its
@@ -132,7 +150,6 @@ export function DialogShell({ open, onClose, title, className, children, layer =
         <DialogOverlay className={cn(OVERLAY_CLASS, layer)} data-dialog-overlay="" />
         <DialogPrimitive.Content
           className={cn(PANEL_CLASS, layer, className || 'max-w-lg')}
-          style={PANEL_STYLE}
           onEscapeKeyDown={stopEscapePropagation}
           onPointerDownOutside={ignoreToastInteractions}
           onInteractOutside={ignoreToastInteractions}
@@ -170,7 +187,6 @@ export function AlertDialogShell({ open, onClose, title, className, children, la
         <AlertDialogOverlay className={cn(OVERLAY_CLASS, layer)} data-dialog-overlay="" />
         <AlertDialogPrimitive.Content
           className={cn(PANEL_CLASS, layer, className || 'max-w-sm')}
-          style={PANEL_STYLE}
           onEscapeKeyDown={stopEscapePropagation}
           onOpenAutoFocus={returnFocus.onOpenAutoFocus}
           onCloseAutoFocus={returnFocus.onCloseAutoFocus}
