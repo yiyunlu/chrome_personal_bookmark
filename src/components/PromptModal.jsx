@@ -1,14 +1,29 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
+import { cn } from '../lib/cn';
 import { t } from '../lib/i18n';
+import { Button } from './ui/button';
 import { DialogShell, LAYER_TOP } from './DialogShell';
 import { DialogDescription, DialogTitle } from './ui/dialog';
 
-// shadcn's Input is h-9/rounded-md/shadow-sm/text-base; this keeps the dialog
-// field look (rounded-lg, 14px, accent focus ring).
-const FIELD_CLASS =
-  'h-auto w-full rounded-lg px-3 py-2 text-sm shadow-none ' +
-  'focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
+/* P6b — on token classes. The field keeps the dialog look it had (its own height,
+   the page-background fill, an accent focus ring at 2px) but its colours are
+   tokens and its radius is now the Input's own `rounded-md`, the contract's
+   control radius, instead of a `rounded-lg` override.
+
+   `md:text-sm` is restated on purpose: shadcn's Input ships `text-base md:text-sm`
+   and a responsive prefix is its own merge group, so an unprefixed `text-sm` only
+   removes `text-base` and leaves `md:text-sm` alive above 768px. The two agree
+   here, so nothing was visibly wrong — restating it means the size is stated once.
+
+   The ring is `ring-2` + `ring-primary`, two different merge groups, not the
+   arbitrary-colour-plus-opacity pair that silently resolved to the opacity alone
+   and cost nine controls their accent ring in P3. */
+const FIELD_CLASS = cn(
+  'h-auto w-full bg-background px-3 py-2 shadow-none',
+  'text-sm md:text-sm text-foreground',
+  'focus-visible:ring-2 focus-visible:ring-primary'
+);
 
 export function PromptModal({
   open,
@@ -50,24 +65,17 @@ export function PromptModal({
     <DialogShell open={open} onClose={onCancel} className="max-w-sm" layer={LAYER_TOP}>
       {/* Header */}
       <div className="px-5 pt-5 pb-1">
-        <DialogTitle className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-          {title}
-        </DialogTitle>
+        <DialogTitle className="text-base font-semibold text-foreground">{title}</DialogTitle>
       </div>
 
       {/* Body */}
-      <div className="px-5 py-3 space-y-3">
-        {message && (
-          <DialogDescription className="text-sm" style={{ color: 'var(--muted)' }}>
-            {message}
-          </DialogDescription>
-        )}
+      <div className="space-y-3 px-5 py-3">
+        {message && <DialogDescription className="text-sm text-muted-foreground">{message}</DialogDescription>}
         <Input
           // The dialog's own title is the field's name: this modal has exactly
           // one control, and a visible <Label> would duplicate the heading.
           aria-label={typeof title === 'string' ? title : undefined}
           className={FIELD_CLASS}
-          style={{ background: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
           value={value}
           placeholder={placeholder}
           onChange={(e) => setValue(e.target.value)}
@@ -76,24 +84,13 @@ export function PromptModal({
       </div>
 
       {/* Footer */}
-      <div className="flex justify-end gap-2 px-5 py-3.5 border-t" style={{ borderColor: 'var(--panel-border)' }}>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-3.5 py-1.5 rounded-lg border text-sm"
-          style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
-        >
+      <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           {t('cancel')}
-        </button>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!value.trim()}
-          className="px-3.5 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
-          style={{ background: 'var(--btn-primary)', color: 'var(--btn-primary-text)' }}
-        >
+        </Button>
+        <Button type="button" size="sm" onClick={submit} disabled={!value.trim()}>
           {confirmLabel || t('confirm')}
-        </button>
+        </Button>
       </div>
     </DialogShell>
   );

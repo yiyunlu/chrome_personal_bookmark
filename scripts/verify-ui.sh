@@ -138,10 +138,16 @@ echo "== 12. style ratchet (see the Style contract in SHADCN_MIGRATION.md) =="
 # Lowered by P5a (CollectionCard, -23/-3/-1/-5) and P5b (Sidebar, -36/-10/0/-8)
 # from the 350/55/9/40 baseline, then by S2 (Toolbar, -21) and S3 (main.jsx,
 # -31/-3/-4). Measured on the merged tree, not computed from the two branches.
-CEIL_INLINE_VAR=237
-CEIL_RAW_BUTTON=39
+# Then by P6b (-69/-10/0/-4): DeadLinkModal 26/3/3, BatchMoveModal 19/4/1,
+# PromptModal 12/2/0, ConfirmModal 9/1/0, DialogShell 3/0/0. The off-scale-radius
+# ceiling is deliberately NOT lowered here: P6b's only hit was the word
+# `rounded-2xl` inside a DialogShell comment (gate 12 greps text, so prose about a
+# banned class counted as a use of it). The two real ones left are ChatPanel's and
+# WelcomeCard's, which another P6 part owns — it lowers this line.
+CEIL_INLINE_VAR=168
+CEIL_RAW_BUTTON=29
 CEIL_OFF_RADIUS=3
-CEIL_OFF_ICON=24
+CEIL_OFF_ICON=20
 style_scope=(--exclude-dir=ui --exclude-dir=test)
 iv=$(grep -roh "${style_scope[@]}" 'var(--' src/components src/main.jsx | wc -l | tr -d ' ')
 rb=$(grep -roh "${style_scope[@]}" '<button' src/components src/main.jsx | wc -l | tr -d ' ')
