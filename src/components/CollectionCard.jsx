@@ -188,8 +188,11 @@ export const BookmarkCard = React.memo(function BookmarkCard({
         </div>
 
         {/* Tags, right-aligned. This is where onTagClick is used again. Badge is
-            presentational (a <div>), so `role="button"` + `tabIndex` give it the
-            same accessible identity a real button would have. */}
+            presentational (a plain div), so `role="button"` + `tabIndex` give it
+            the same accessible identity a real control would have — and, since
+            a plain div has no built-in activation keys, Enter and Space are
+            wired up by hand (Space also gets preventDefault so it doesn't
+            scroll the page, matching native activation behaviour). */}
         {tags.length > 0 && (
           <div className="flex flex-shrink-0 items-center gap-1">
             {tags.map((tag) => (
@@ -200,6 +203,12 @@ export const BookmarkCard = React.memo(function BookmarkCard({
                 tabIndex={0}
                 className="cursor-pointer text-[10px]"
                 onClick={(e) => {
+                  e.stopPropagation();
+                  if (onTagClick) onTagClick(tag);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
                   e.stopPropagation();
                   if (onTagClick) onTagClick(tag);
                 }}
