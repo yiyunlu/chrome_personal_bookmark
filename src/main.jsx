@@ -1410,6 +1410,14 @@ function App() {
     }
   };
 
+  const handleBatchOpenWindow = useCallback(() => {
+    if (!selectedCards.length) return;
+    const urls = selectedCards.map((card) => card.url).filter(Boolean);
+    if (urls.length > 0 && typeof chrome !== 'undefined' && chrome.windows) {
+      chrome.windows.create({ url: urls });
+    }
+  }, [selectedCards]);
+
   const handleBatchTrash = () => {
     if (!selectedCards.length) return;
     setConfirmDialog({
@@ -1479,18 +1487,7 @@ function App() {
               deadLinkCount={deadLinkCount}
               sortMode={sortMode}
               onSortChange={handleSortChange}
-              onViewTrash={handleViewTrash}
-              hasTrash={!!trashFolderId}
             />
-
-            {manageMode && (
-              <BatchToolbar
-                selectedCount={selectedCards.length}
-                onBatchMove={openBatchMove}
-                onBatchTrash={handleBatchTrash}
-                onClearSelections={clearSelections}
-              />
-            )}
           </div>
 
           {/* The design's scroll container: `flex:1; overflow-y:auto; padding:0 22px 40px`. */}
@@ -1597,6 +1594,16 @@ function App() {
               </section>
             )}
           </div>
+
+          {manageMode && selectedCards.length > 0 && (
+            <BatchToolbar
+              selectedCount={selectedCards.length}
+              onBatchMove={openBatchMove}
+              onBatchOpenWindow={handleBatchOpenWindow}
+              onBatchTrash={handleBatchTrash}
+              onClearSelections={clearSelections}
+            />
+          )}
         </main>
       </div>
 
