@@ -18,7 +18,7 @@ import { Card } from './ui/card';
 //      children are exactly the cards, in order — `main.jsx` indexes
 //      `evt.from.children[oldIndex]`, so a stray child there corrupts the revert.
 //      In list view that element is ALSO the bordered list container: the border,
-//      the radius and `overflow-hidden` hang on the drag host itself rather than on
+//      the radius hangs on the drag host itself rather than on
 //      a wrapper, because a wrapper would either become the stray child or push the
 //      rows a level down and break the same arithmetic.
 //   3. `data-card-id` sits on the card/row root, a direct child of that container.
@@ -128,8 +128,10 @@ export const BookmarkCard = React.memo(function BookmarkCard({
           // 36px row, 12px side padding, 10px gap — the design's list row.
           'group flex h-9 w-full cursor-pointer items-center gap-2.5 border-b border-border px-3 text-left',
           // The last row's hairline would double up against the container's own
-          // bottom border inside `overflow-hidden`.
-          'last:border-b-0 transition-colors hover:bg-accent',
+          // bottom border. The end rows carry the container's radius themselves:
+          // the container used to clip them with `overflow-hidden`, which also
+          // clipped a row mid-drag at the container edge.
+          'last:border-b-0 first:rounded-t-lg last:rounded-b-lg transition-colors hover:bg-accent',
           isSelected && 'bg-accent'
         )}
         onClick={(e) => onCardClick(e, card)}
@@ -331,7 +333,7 @@ export const CollectionCard = React.memo(function CollectionCard({
           <div
             data-cards-collection-id={collection.id}
             data-parent-id={collection.id}
-            className="mb-[26px] flex flex-col overflow-hidden rounded-lg border border-border bg-card"
+            className="mb-[26px] flex flex-col rounded-lg border border-border bg-card"
           >
             {collection.cards.map((card) => (
               <BookmarkCard

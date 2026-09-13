@@ -193,16 +193,25 @@ function inlineStyleProps(container) {
 }
 
 describe('Sidebar is free of hand-written style', () => {
-  it('declares nothing inline but the one property a vendored primitive sets itself', () => {
-    // The only inline style left in the rail is Radix's own
-    // `pointer-events: none` on SelectValue
-    // (@radix-ui/react-select/dist/index.mjs:251) — a behaviour, not a colour,
-    // and in a file P5b is forbidden to edit. Everything else is a token class.
-    for (const collapsed of [false, true]) {
-      const { container, unmount } = renderNav(Sidebar, { collapsed });
-      expect(inlineStyleProps(container)).toEqual(collapsed ? [] : ['pointer-events']);
-      unmount();
-    }
+  it('declares nothing inline but the two things that cannot be a class', () => {
+    // Two exceptions, both structural rather than sloppy:
+    //   `pointer-events` — Radix's own on SelectValue
+    //   (@radix-ui/react-select/dist/index.mjs:251), a behaviour, not a colour,
+    //   in a file this phase may not edit.
+    //   `background-color` — the collapsed rail's identity tile. Its tint is hashed
+    //   from the collection name at runtime, so there is no class that could
+    //   carry it. The tile exists because collapsed, every row drew the same
+    //   folder glyph and the rail could not be read at a glance.
+    // Everything else is a token class, which is what this test is really for.
+    const { container, unmount } = renderNav(Sidebar, { collapsed: false });
+    expect(inlineStyleProps(container)).toEqual(['pointer-events']);
+    unmount();
+
+    const rail = renderNav(Sidebar, { collapsed: true });
+    // backgroundColor, not the `background` shorthand: jsdom expands a shorthand
+    // into all eight longhands, which would make this assertion unreadable.
+    expect(inlineStyleProps(rail.container)).toEqual(['background-color']);
+    rail.unmount();
   });
 
   it('the baseline it replaces declared colours inline — so the check above can fail', () => {
@@ -421,24 +430,50 @@ describe('S1: the design’s sidebar elements', () => {
     expect(container.querySelector('[data-nav-section-label]')).toBeNull();
   });
 
-  it('encodes folder depth as the width of a leading spacer', () => {
+  it("encodes folder depth as the row's own left padding", () => {
     const { container } = renderNav(Sidebar);
-    const indentOf = (id) => container.querySelector(`[data-collection-id="${id}"] [data-nav-indent]`);
+    const rowOf = (id) => container.querySelector(`[data-collection-id="${id}"][data-nav-indent]`);
 
-    // c3's parent is not the active source, so it is nested; the rest are not.
-    expect(indentOf('c3').getAttribute('data-nav-indent')).toBe('nested');
-    expect(classesOf(indentOf('c3'))).toContain('w-3.5'); // 14px: the design's 22px - 8px
+    // This used to be a leading spacer element. A zero-width spacer still earns
+    // the row's `gap-1.5`, so every root folder's glyph sat 6px right of the
+    // "all collections" glyph above it — a ragged left edge in a 232px rail.
+    // Putting the indent on the row keeps the design's 22-vs-8 delta (14px) and
+    // puts the two glyphs on one vertical line.
+    expect(rowOf('c3').getAttribute('data-nav-indent')).toBe('nested');
+    expect(classesOf(rowOf('c3'))).toContain('pl-[22px]');
     for (const id of ['c1', 'c2', 'c4']) {
-      expect(indentOf(id).getAttribute('data-nav-indent')).toBe('root');
-      expect(classesOf(indentOf(id))).toContain('w-0');
+      expect(rowOf(id).getAttribute('data-nav-indent')).toBe('root');
+      expect(classesOf(rowOf(id))).toContain('pl-2');
     }
-    // The spacer is decoration, and must not reach the row's accessible name.
-    expect(indentOf('c3').getAttribute('aria-hidden')).toBe('true');
+    // No spacer element survives — its gap was the whole problem.
+    expect(container.querySelector('[data-collection-id] > span[aria-hidden]')).toBeNull();
+  });
+
+  it('puts a root folder glyph on the same line as the all-collections glyph', () => {
+    // Both rows are px-2 with gap-1.5 and a 16px leading element (the handle, and
+    // the all-row's matching gutter), so the glyph lands at 8+16+6 = 30px in each.
+    // Asserted as structure because jsdom has no layout: same padding, same gap,
+    // same number of elements before the glyph.
+    const { container } = renderNav(Sidebar);
+    const allRow = container.querySelector('[data-nav-all]');
+    const folderRow = container.querySelector('[data-collection-id="c1"][data-nav-indent]');
+    // Same left padding, same gap, and the same number of elements before the
+    // glyph — so the glyphs land on the same x with no layout engine needed.
+    for (const row of [allRow, folderRow]) {
+      expect(classesOf(row)).toContain('pl-2');
+      expect(classesOf(row)).toContain('gap-1.5');
+    }
+    // The glyph is the row's own svg child. The drag handle also contains an svg,
+    // so a descendant search would find index 0 and prove nothing.
+    const glyphIndex = (row) =>
+      Array.from(row.children).findIndex((child) => child.tagName.toLowerCase() === 'svg');
+    expect(glyphIndex(folderRow)).toBe(glyphIndex(allRow));
+    expect(glyphIndex(folderRow)).toBe(1); // the handle / its matching gutter
   });
 
   it('follows the active source: the same folder is nested or not by prop', () => {
     const { container, rerender } = renderNav(Sidebar);
-    const indent = () => container.querySelector('[data-collection-id="c3"] [data-nav-indent]');
+    const indent = () => container.querySelector('[data-collection-id="c3"][data-nav-indent]');
     expect(indent().getAttribute('data-nav-indent')).toBe('nested');
 
     rerender(<Sidebar {...baseProps} activeSourceId="other" />);

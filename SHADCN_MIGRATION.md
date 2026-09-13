@@ -451,6 +451,15 @@ with the DevTools console open. Record the result in the status table's last col
 - confirm dialogs no longer dismiss on a backdrop click (AlertDialog semantics, intended)
   and now autofocus Cancel
 
+**From the identity-tile change (merged):**
+- open a folder with many icon-less bookmarks: every one should now carry its own
+  tinted letter tile instead of Chrome's grey globe. The detection compares the bytes
+  `/_favicon/` returns against the bytes it returns for an unresolvable host — verify it
+  actually fires, since jsdom cannot exercise the endpoint.
+- a site with a real favicon must still show it, not a tile
+- collapse the sidebar: folder rows should be distinguishable at a glance
+- the same site's bookmarks share a tile colour (identity is derived from the host)
+
 **From P5b (merged):**
 - nav rows moved from `display:flex` to the Button cva's `inline-flex`. `w-full` keeps one
   row per line, but each row now sits on a line box and may pick up a few px of baseline
