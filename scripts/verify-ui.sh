@@ -138,15 +138,15 @@ echo "== 12. style ratchet (see the Style contract in SHADCN_MIGRATION.md) =="
 # Lowered by P5a (CollectionCard, -23/-3/-1/-5) and P5b (Sidebar, -36/-10/0/-8)
 # from the 350/55/9/40 baseline, then by S2 (Toolbar, -21) and S3 (main.jsx,
 # -31/-3/-4). Measured on the merged tree, not computed from the two branches.
-CEIL_INLINE_VAR=239
+CEIL_INLINE_VAR=237
 CEIL_RAW_BUTTON=39
 CEIL_OFF_RADIUS=3
-CEIL_OFF_ICON=27
+CEIL_OFF_ICON=24
 style_scope=(--exclude-dir=ui --exclude-dir=test)
 iv=$(grep -roh "${style_scope[@]}" 'var(--' src/components src/main.jsx | wc -l | tr -d ' ')
 rb=$(grep -roh "${style_scope[@]}" '<button' src/components src/main.jsx | wc -l | tr -d ' ')
 orad=$(grep -rohE "${style_scope[@]}" 'rounded-(2xl|3xl)\b' src/components src/main.jsx | wc -l | tr -d ' ')
-oico=$(grep -rohE "${style_scope[@]}" 'size=\{(10|11|12|13|14|15|17|18|19|21|22|24)\}' src/components src/main.jsx | wc -l | tr -d ' ')
+oico=$(grep -rohE "${style_scope[@]}" 'size=\{(10|14|15|17|18|19|21|22|24)\}' src/components src/main.jsx | wc -l | tr -d ' ')
 ratchet() { # name current ceiling
   if [ "$2" -le "$3" ]; then
     if [ "$2" -lt "$3" ]; then pass "$1: $2 (was $3, ratchet down — lower the ceiling in this script)"

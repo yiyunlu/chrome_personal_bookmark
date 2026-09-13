@@ -222,11 +222,26 @@ Banned: `rounded-2xl` and `rounded-3xl`. Nothing in shadcn uses them.
 `rounded-md` 8px and `rounded-xl` 12px — the reference app's proportions. It was 0.5rem
 until the palette review, chosen to keep the pre-migration pixel values.
 
-### Icons — two sizes
+### Icons — sized by the control they sit in
 
-`size={16}` everywhere; `size={20}` only for empty-state and illustration icons. Nothing
-else. **Inside `<Button>` pass no `size` prop at all** — the cva's `[&_svg]:size-4` handles
-it, and the `[&_svg]:size-3.5` override P0 added to `Toolbar` is removed as part of this.
+The first version of this rule said "16 and 20, nothing else". That was my invention, like
+the first radius table, and it ended up overriding the design: S1 and S2 both hit the
+conflict independently and both had to ship 16px where the design asks for 11–13px. The
+measured cost is not subtle — a 16px glyph in the design's 20px logo tile fills **80%** of
+it against the design's 55%, so the accent chip stops reading as a mark on a tile and
+becomes a square with a glyph jammed in. In a 30px row, 16px vs 13px is 51% more ink.
+
+| size | for |
+| --- | --- |
+| `20` | empty-state and illustration icons |
+| `16` | default — a glyph in a control ≥32px tall, or paired with text ≥13px |
+| `12`–`13` | dense chrome: rows ≤30px, bottom-bar controls, counts, section affordances |
+| `11` | inside a filled tile ≤20px |
+
+**Inside `<Button>` a `size` prop is inert** — the cva's `[&_svg]:size-4` is a class and
+beats the svg's width/height attributes. To get a dense glyph, put `[&_svg]:size-3` (12px)
+or `[&_svg]:size-3.5` (14px) on the Button's own className. Outside a Button, pass
+`size={n}`. Gate 12's counter accepts `{11, 12, 13, 16, 20}` and flags the rest.
 
 ### Buttons — no raw `<button>` outside `src/components/ui/`
 
