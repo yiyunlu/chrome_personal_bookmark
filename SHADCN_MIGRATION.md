@@ -664,7 +664,9 @@ outline sm 清除筛选 that clears the query and the active-collection filter. 
 
 Bottom-docked `border-t bg-card px-[22px] py-2`, `flex gap-2`: "已选 N 项" with N in `font-mono
 tabular-nums text-primary`; vertical Separator; outline sm 移动到…; outline sm 在新窗口打开
-(`chrome.windows.create({ url: [...] })` — mirrors the per-collection open-all); destructive sm
+(`chrome.windows.create({ url: [...] })` — the per-collection open-all opens background tabs
+in the current window via `chrome.tabs.create`; this action opens ONE new browser window
+holding every selected card's url via `chrome.windows.create` instead); destructive sm
 删除 (soft delete + undo, as today); spacer; ghost sm 取消选择. NO 添加标签. Shown only while
 manage mode has ≥1 selection.
 

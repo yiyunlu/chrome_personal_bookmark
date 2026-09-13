@@ -17,6 +17,7 @@ import {
   openAllInNewTabs,
   openBookmarkInCurrentTab,
   openBookmarkInNewTab,
+  openCardsInNewWindow,
   removeCollectionFolder,
   renameCollectionFolder,
   saveCurrentWindowTabsToCollection,
@@ -1411,11 +1412,7 @@ function App() {
   };
 
   const handleBatchOpenWindow = useCallback(() => {
-    if (!selectedCards.length) return;
-    const urls = selectedCards.map((card) => card.url).filter(Boolean);
-    if (urls.length > 0 && typeof chrome !== 'undefined' && chrome.windows) {
-      chrome.windows.create({ url: urls });
-    }
+    openCardsInNewWindow(selectedCards);
   }, [selectedCards]);
 
   const handleBatchTrash = () => {

@@ -370,6 +370,19 @@ export async function openAllInNewTabs(urls) {
   return Promise.all(urls.map((url) => createTabApi({ url, active: false })));
 }
 
+/* V2-D batch bar — 在新窗口打开. Deliberately not run through `chromeApi()`
+   above: unlike every other call in this file, `chrome.windows.create` opens
+   ONE new browser window holding every selected card's URL, not a background
+   tab per URL in the current window (that is what `openAllInNewTabs` does).
+   A pure, synchronous, injectable helper so main.jsx's handler and this
+   file's test can both call it without rendering `App`. */
+export function openCardsInNewWindow(cards, chromeApi = globalThis.chrome) {
+  const urls = (cards || []).map((card) => card.url).filter(Boolean);
+  if (urls.length === 0) return;
+  if (!chromeApi || !chromeApi.windows || typeof chromeApi.windows.create !== 'function') return;
+  chromeApi.windows.create({ url: urls });
+}
+
 export function exportCollections(collections) {
   const data = {
     version: 1,
