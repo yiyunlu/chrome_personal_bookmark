@@ -12,6 +12,14 @@ import { t } from '../lib/i18n';
 const DANGER_ITEM =
   'text-destructive focus:bg-destructive/10 focus:text-destructive [&_svg]:text-destructive';
 
+/* P6c: the item glyphs carry no `size` prop. DropdownMenuItem ships
+   `[&>svg]:size-4`, a class, which already beat the 14px these used to ask for
+   — so dropping the prop changes nothing on screen and takes the last
+   off-scale icon sizes out of the file. Their colour is `text-muted-foreground`
+   (the legacy --muted) as a class; the destructive rows take theirs from
+   DANGER_ITEM. */
+const MUTED_GLYPH = 'text-muted-foreground';
+
 /**
  * Right-click menu for bookmark cards and collection headers.
  *
@@ -82,15 +90,15 @@ export function ContextMenu({
         {contextMenu?.kind === 'card' && (
           <>
             <DropdownMenuItem onSelect={() => onOpenNewTab?.()}>
-              <ExternalLink size={14} style={{ color: 'var(--muted)' }} />
+              <ExternalLink className={MUTED_GLYPH} />
               {t('openInNewTab')}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onEditCard?.()}>
-              <Pencil size={14} style={{ color: 'var(--muted)' }} />
+              <Pencil className={MUTED_GLYPH} />
               {t('editBookmark')}
             </DropdownMenuItem>
             <DropdownMenuItem className={DANGER_ITEM} onSelect={() => onDeleteCard?.()}>
-              <Trash2 size={14} />
+              <Trash2 />
               {t('deleteToTrash')}
             </DropdownMenuItem>
           </>
@@ -99,11 +107,11 @@ export function ContextMenu({
         {contextMenu?.kind === 'collection' && (
           <>
             <DropdownMenuItem onSelect={() => onRenameCollection?.()}>
-              <FolderPen size={14} style={{ color: 'var(--muted)' }} />
+              <FolderPen className={MUTED_GLYPH} />
               {t('renameFolder')}
             </DropdownMenuItem>
             <DropdownMenuItem className={DANGER_ITEM} onSelect={() => onDeleteCollection?.()}>
-              <Trash2 size={14} />
+              <Trash2 />
               {t('deleteFolder')}
             </DropdownMenuItem>
           </>

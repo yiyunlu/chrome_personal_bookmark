@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Undo2 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import { t } from '../lib/i18n';
+import { Button } from './ui/button';
 import { Toaster } from './ui/sonner';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -51,28 +52,36 @@ const TOASTER_STYLE = { pointerEvents: 'auto' };
    swipe. */
 const TOAST_OPTIONS = { duration: Infinity, dismissible: false };
 
-/** The panel itself — same geometry, colours and copy as the pre-P4 toast. */
+/* The panel itself — same geometry and copy as the pre-P4 toast, now in token
+   classes (P6c). The colours are the contract's mapping of what was inline:
+   --panel-bg is `bg-card`, --panel-border `border-border`, --shadow
+   `shadow-panel` (which only displaces a stock shadow because src/lib/cn.js
+   registers the custom scale), --text `text-card-foreground`.
+
+   `pointer-events-auto` is load-bearing, not cosmetic: a modal Radix dialog
+   holds `pointer-events: none` on <body> and the property inherits, so without
+   it the Undo button silently ignores clicks. See the header comment.
+
+   The chip takes the accent-soft look the rest of the app now wears —
+   `bg-primary/10` + `text-primary`, as Toolbar's manage chip and the sidebar's
+   active rows do. The ghost variant's `hover:text-accent-foreground` is
+   overridden back to `text-primary`, and its hover surface restated, because
+   the pre-migration chip did not change on hover. 12px glyph via
+   `[&_svg]:size-3`: a `size` prop inside a Button is inert. */
 function UndoToastBody({ message, pending, onUndo }) {
   return (
-    <div
-      className="pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-2.5"
-      style={{
-        background: 'var(--panel-bg)',
-        borderColor: 'var(--panel-border)',
-        boxShadow: 'var(--shadow)',
-        color: 'var(--text)'
-      }}
-    >
+    <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 text-card-foreground shadow-panel">
       <span className="text-sm">{message}</span>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={onUndo}
-        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium"
-        style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+        className="h-auto gap-1 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary [&_svg]:size-3"
       >
-        <Undo2 size={12} />
+        <Undo2 />
         {pending ? t('undoing') : t('undo')}
-      </button>
+      </Button>
     </div>
   );
 }
