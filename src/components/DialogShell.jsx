@@ -32,9 +32,9 @@ export const LAYER_TOP = 'z-[100]';
 
 /* `bg-scrim/40`. This was a stock-Tailwind slate, carried over from the old
    overlay's rgba(15, 23, 42, 0.4) — the only stock-palette colour left outside
-   src/components/ui/, and ~222deg against a 15-30deg warm ramp. Gate 12 greps
-   for `var(--` and `<button`, so it is structurally blind to a stock-palette
-   class and would never have caught it. Replacing
+   src/components/ui/, and ~222deg against a 15-30deg warm ramp. Gate 12 counts
+   inline custom properties and raw button elements, so it is structurally blind
+   to a stock-palette class and would never have caught it. Replacing
    shadcn's much darker bg-black/80.
 
    `data-[state=closed]:!animate-none` removes shadcn's exit animation. The
