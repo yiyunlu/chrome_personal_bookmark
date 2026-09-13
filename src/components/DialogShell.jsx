@@ -30,7 +30,11 @@ export const LAYER_BASE = 'z-[90]';
 /** For dialogs that can be opened from inside another dialog (confirm, prompt). */
 export const LAYER_TOP = 'z-[100]';
 
-/* `bg-slate-900/40` is the old overlay's rgba(15, 23, 42, 0.4), replacing
+/* `bg-scrim/40`. This was a stock-Tailwind slate, carried over from the old
+   overlay's rgba(15, 23, 42, 0.4) — the only stock-palette colour left outside
+   src/components/ui/, and ~222deg against a 15-30deg warm ramp. Gate 12 greps
+   for `var(--` and `<button`, so it is structurally blind to a stock-palette
+   class and would never have caught it. Replacing
    shadcn's much darker bg-black/80.
 
    `data-[state=closed]:!animate-none` removes shadcn's exit animation. The
@@ -40,7 +44,7 @@ export const LAYER_TOP = 'z-[100]';
    backdrop mounted, pointer-events and all, for as long as its animation runs.
    The `!` is load-bearing: shadcn's `data-[state=closed]:animate-out` has the
    same specificity and is emitted later in the stylesheet. */
-const OVERLAY_CLASS = 'bg-slate-900/40 data-[state=closed]:!animate-none';
+const OVERLAY_CLASS = 'bg-scrim/40 data-[state=closed]:!animate-none';
 
 /* Panel geometry and surface. Radius follows shadcn's own DialogContent
    (rounded-lg); the hand-rolled overlay this replaced used the 16px step, which

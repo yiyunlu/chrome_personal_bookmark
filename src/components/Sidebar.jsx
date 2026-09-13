@@ -87,6 +87,14 @@ const COUNT_CLASS = 'flex-shrink-0 font-mono text-[10.5px] leading-none tracking
    `text-[13px]`. Button's ghost variant already supplies the design's hover
    pair (--cardh surface, --ink text) as `hover:bg-accent
    hover:text-accent-foreground`. */
+/* The selection idiom, in one place. `ghost` ships
+   `hover:bg-accent hover:text-accent-foreground`, and a `hover:` variant is its own
+   tailwind-merge group — so a bare `bg-primary/10 text-primary` leaves both alive and
+   the pointer ERASES the selection colour. Restating the pair is what keeps a selected
+   row selected under the mouse. See "mechanism E" in SHADCN_MIGRATION.md. */
+const ACTIVE_ROW_CLASS =
+  'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary';
+
 const NAV_ROW_CLASS =
   'w-full justify-start gap-1.5 h-[30px] px-2 py-0 rounded-sm text-[13px] leading-none font-normal text-left';
 
@@ -262,7 +270,7 @@ export function Sidebar({
                   size="icon"
                   className={cn(
                     'h-8 w-8 rounded-sm',
-                    allActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                    allActive ? ACTIVE_ROW_CLASS : 'text-muted-foreground'
                   )}
                   aria-label={t('allCollections')}
                   onClick={() => onCollectionSelect('all')}
@@ -286,7 +294,7 @@ export function Sidebar({
                       variant="ghost"
                       className={cn(
                         RAIL_ROW_CLASS,
-                        isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                        isActive ? ACTIVE_ROW_CLASS : 'text-muted-foreground'
                       )}
                       aria-label={collection.title}
                       onClick={() => onCollectionSelect(collection.id)}
@@ -414,7 +422,7 @@ export function Sidebar({
             >
               <Button
                 variant="ghost"
-                className={cn(NAV_ROW_CLASS, NAV_ROW_INDENT.root, allActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground')}
+                className={cn(NAV_ROW_CLASS, NAV_ROW_INDENT.root, allActive ? ACTIVE_ROW_CLASS : 'text-muted-foreground')}
                 data-nav-all
                 onClick={() => onCollectionSelect('all')}
               >
@@ -444,7 +452,7 @@ export function Sidebar({
                       'group',
                       NAV_ROW_CLASS,
                       NAV_ROW_INDENT[isNested ? 'nested' : 'root'],
-                      isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                      isActive ? ACTIVE_ROW_CLASS : 'text-muted-foreground'
                     )}
                     data-nav-indent={isNested ? 'nested' : 'root'}
                     onClick={() => onCollectionSelect(collection.id)}
@@ -492,7 +500,7 @@ export function Sidebar({
                     onClick={() => onThemeModeChange(value)}
                     className={cn(
                       'h-[22px] w-[26px] rounded-sm',
-                      themeMode === value ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                      themeMode === value ? ACTIVE_ROW_CLASS : 'text-muted-foreground'
                     )}
                     /* The label is no longer rendered — the design's segmented
                        control is icon-only — so `aria-label` is the only name

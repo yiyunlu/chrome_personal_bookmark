@@ -140,10 +140,10 @@ echo "== 12. style ratchet (see the Style contract in SHADCN_MIGRATION.md) =="
 # -31/-3/-4). Measured on the merged tree, not computed from the two branches.
 # Lowered progressively by every phase that clears hand-styling. Always set to
 # the value MEASURED on the merged tree, never computed from two branches.
-CEIL_INLINE_VAR=115
-CEIL_RAW_BUTTON=19
+CEIL_INLINE_VAR=0
+CEIL_RAW_BUTTON=0
 CEIL_OFF_RADIUS=0
-CEIL_OFF_ICON=9
+CEIL_OFF_ICON=0
 style_scope=(--exclude-dir=ui --exclude-dir=test)
 iv=$(grep -roh "${style_scope[@]}" 'var(--' src/components src/main.jsx | wc -l | tr -d ' ')
 rb=$(grep -roh "${style_scope[@]}" '<button' src/components src/main.jsx | wc -l | tr -d ' ')

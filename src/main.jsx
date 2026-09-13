@@ -1672,7 +1672,7 @@ function App() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-7 flex-shrink-0 px-2 text-primary"
+                        className="h-7 flex-shrink-0 px-2 text-primary hover:text-primary"
                         onClick={() => handleRestoreFromTrash(item)}
                       >
                         {t('restore')}
