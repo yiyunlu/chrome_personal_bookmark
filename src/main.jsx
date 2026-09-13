@@ -25,6 +25,7 @@ import {
 import { logError, normalizeUrlKey, sortSnapshots } from './lib/utils';
 import { smartSearch } from './lib/searchService';
 import { storageGet, storageSet } from './lib/storage';
+import { sortCards, isSortMode, isCardDragEnabled, DEFAULT_SORT_MODE, SORT_STORAGE_KEY } from './lib/sortCards';
 
 import { initLanguage, getLanguageSetting, setLanguage as setI18nLanguage, t } from './lib/i18n';
 import { useCollections } from './hooks/useCollections';
@@ -58,6 +59,12 @@ import { Button } from './components/ui/button';
    the state) and is persisted like every other preference — the same
    storageGet/storageSet pair `useTheme` uses, under its own key. */
 const VIEW_STORAGE_KEY = 'tabhub_view_mode';
+
+/* The sort mode lives in App exactly like the view mode above (V2-A, new):
+   Toolbar renders the Select, App owns and persists the state under
+   `SORT_STORAGE_KEY` (src/lib/sortCards.js). Sorting is a pure derived view
+   over `collections`/`cardById` — it is applied in `visibleCollections`
+   below and never writes anything back to Chrome. */
 
 function App() {
   const {
@@ -116,6 +123,7 @@ function App() {
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [view, setView] = useState('grid');
+  const [sortMode, setSortMode] = useState(DEFAULT_SORT_MODE);
   const [langReady, setLangReady] = useState(false);
   const [languageSetting, setLanguageSetting] = useState('auto');
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
@@ -134,7 +142,11 @@ function App() {
   const { undoToast, showUndo, handleUndo } = useUndoStack();
 
   const dragEnabled = search.trim() === '';
-  const cardDragEnabled = dragEnabled && !manageMode;
+  // `manual` is the only sort mode that reflects Chrome's own child order, so
+  // it is the only one where a card drag's persisted index cannot silently
+  // disagree with what the user just saw dragged (V2-A). Pulled into
+  // `isCardDragEnabled` (src/lib/sortCards.js) so the rule is unit-testable.
+  const cardDragEnabled = isCardDragEnabled({ searchIsEmpty: dragEnabled, manageMode, sortMode });
   const canSortCollections = dragEnabled && activeCollectionId === 'all';
 
   const topLevelSortableCollections = useMemo(
@@ -174,11 +186,12 @@ function App() {
     })();
 
     (async () => {
-      const [savedCollection, savedCollapsed, savedOnboarding, savedView] = await Promise.all([
+      const [savedCollection, savedCollapsed, savedOnboarding, savedView, savedSort] = await Promise.all([
         storageGet('tabhub_active_collection').catch(() => undefined),
         storageGet('tabhub_sidebar_collapsed').catch(() => undefined),
         storageGet('tabhub_onboarding_dismissed').catch(() => undefined),
-        storageGet(VIEW_STORAGE_KEY).catch(() => undefined)
+        storageGet(VIEW_STORAGE_KEY).catch(() => undefined),
+        storageGet(SORT_STORAGE_KEY).catch(() => undefined)
       ]);
 
       if (typeof savedCollapsed === 'boolean') {
@@ -186,6 +199,9 @@ function App() {
       }
       if (savedView === 'grid' || savedView === 'list') {
         setView(savedView);
+      }
+      if (isSortMode(savedSort)) {
+        setSortMode(savedSort);
       }
       if (savedCollection) {
         setActiveCollectionId(savedCollection);
@@ -290,20 +306,25 @@ function App() {
     }
 
     const filtered = collections
-      .map((collection) => ({
-        ...collection,
-        cards: collection.cards.filter((card) => {
+      .map((collection) => {
+        const cards = collection.cards.filter((card) => {
           if (!matchedCardIds) return true;
           return matchedCardIds.has(card.id);
-        })
-      }))
+        });
+        // Sorting is a pure derived view (V2-A): `manual` cards are already in
+        // Chrome's own order, and every other mode only ever reorders this
+        // rendered copy — it never writes back to Chrome, so the drag-and-drop
+        // index math elsewhere (which reads `collections`/`cardById`, not this
+        // memo) is untouched.
+        return { ...collection, cards: sortMode === 'manual' ? cards : sortCards(cards, sortMode) };
+      })
       .filter((collection) => collection.cards.length > 0 || !keyword);
 
     if (activeCollectionId === 'all') {
       return filtered;
     }
     return filtered.filter((collection) => collection.id === activeCollectionId);
-  }, [collections, deferredSearch, activeCollectionId, allCards]);
+  }, [collections, deferredSearch, activeCollectionId, allCards, sortMode]);
 
   // --- Cross-source search ---
   const visibleCardCount = useMemo(
@@ -1099,6 +1120,14 @@ function App() {
     await storageSet(VIEW_STORAGE_KEY, next).catch(logError);
   }, []);
 
+  // Toolbar's sort Select (V2-A, new). Purely a view preference — it never
+  // touches Chrome bookmarks, so there is nothing to await beyond persistence.
+  const handleSortChange = useCallback(async (next) => {
+    if (!isSortMode(next)) return;
+    setSortMode(next);
+    await storageSet(SORT_STORAGE_KEY, next).catch(logError);
+  }, []);
+
   // Every overlay that traps focus must disable the single-key shortcuts. Before
   // the shadcn migration only 5 of the 9 surfaces were listed, which was merely
   // odd while those overlays had no focus trap; now Radix's FocusScope yanks focus
@@ -1430,6 +1459,10 @@ function App() {
               view={view}
               onViewChange={handleViewChange}
               deadLinkCount={deadLinkCount}
+              sortMode={sortMode}
+              onSortChange={handleSortChange}
+              onViewTrash={handleViewTrash}
+              hasTrash={!!trashFolderId}
             />
 
             {manageMode && (

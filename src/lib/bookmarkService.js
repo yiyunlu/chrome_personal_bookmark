@@ -53,7 +53,8 @@ function normalizeCollection(folder, titlePrefix = '') {
         title: bookmark.title || bookmark.url,
         url: bookmark.url,
         parentId: bookmark.parentId,
-        index: bookmark.index
+        index: bookmark.index,
+        dateAdded: bookmark.dateAdded
       }))
   };
 }
@@ -97,7 +98,8 @@ function collectNestedCollections(rootFolder, includeEmpty = true, hiddenFolderI
         title: bookmark.title || bookmark.url,
         url: bookmark.url,
         parentId: bookmark.parentId,
-        index: bookmark.index
+        index: bookmark.index,
+        dateAdded: bookmark.dateAdded
       }))
     });
   }
