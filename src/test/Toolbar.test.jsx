@@ -70,13 +70,19 @@ describe('Toolbar — grid/list view control (the S2/S3 interface)', () => {
     expect(viewButton('gridView')).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('gives the selected option the accent-soft treatment and the other the muted one', () => {
+  it('gives the selected option the secondary variant and the other ghost (V2-A)', () => {
     renderToolbar({ view: 'list', onViewChange: vi.fn() });
 
-    expect(viewButton('listView').className).toContain('bg-accent');
-    expect(viewButton('listView').className).toContain('text-primary');
-    expect(viewButton('gridView').className).toContain('text-muted-foreground');
-    expect(viewButton('gridView').className).not.toContain('bg-accent');
+    expect(viewButton('listView').className).toContain('bg-secondary');
+    expect(viewButton('listView').className).toContain('text-secondary-foreground');
+    expect(viewButton('gridView').className).not.toContain('bg-secondary');
+  });
+
+  it('sizes each view cell at the design’s 26x26 geometry', () => {
+    renderToolbar({ onViewChange: vi.fn() });
+
+    expect(viewButton('gridView').className).toContain('h-[26px]');
+    expect(viewButton('gridView').className).toContain('w-[26px]');
   });
 
   it('reports the other view to onViewChange', () => {
@@ -172,17 +178,22 @@ describe('Toolbar — the behaviour the redesign must not change', () => {
     expect(screen.getByRole('button', { name: new RegExp(t('saveTabs')) })).toBeDisabled();
   });
 
-  it('still gives manage mode the accent-soft active treatment and the exit label', () => {
+  it('gives manage mode the secondary variant and the exit label (V2-A)', () => {
     renderToolbar({ manageMode: true });
     const button = screen.getByRole('button', { name: new RegExp(t('exitManageMode')) });
 
     expect(button).toHaveAttribute('aria-pressed', 'true');
-    expect(button.className).toContain('bg-primary/10');
-    expect(button.className).toContain('border-primary');
-    expect(button.className).toContain('text-primary');
-    // The base surface must actually be gone, not merely listed earlier.
-    expect(button.className).not.toContain('bg-card');
-    expect(button.className).not.toContain('border-border');
+    expect(button.className).toContain('bg-secondary');
+    expect(button.className).toContain('text-secondary-foreground');
+  });
+
+  it('gives idle manage mode the outline variant and the enter label', () => {
+    renderToolbar({ manageMode: false });
+    const button = screen.getByRole('button', { name: new RegExp(t('enterManageMode')) });
+
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(button.className).toContain('border-input');
+    expect(button.className).not.toContain('bg-secondary');
   });
 
   it('still names the active source when one is given', () => {
@@ -250,16 +261,88 @@ describe('Toolbar — the design header, as resolved class strings', () => {
     expect(organize.className).not.toContain('bg-primary');
   });
 
-  it('carries no inline style anywhere in the header', () => {
+  it('carries no inline colour anywhere in the header', () => {
+    // Not a blanket zero-`[style]` assertion (V2-A introduces the sort
+    // `Select`, whose vendored `SelectValue` always renders a
+    // `style="pointer-events: none"` span — a Radix internal, not a colour).
+    // The thing this test guards is the style contract's ban on inline
+    // `var()`/hex colours; see dialogTokensP6a.test.jsx for the same pattern.
     const { container } = renderToolbar({
       manageMode: true,
       deadLinkCount: 2,
       view: 'list',
       onViewChange: vi.fn(),
+      sortMode: 'title',
+      onSortChange: vi.fn(),
+      hasTrash: true,
+      onViewTrash: vi.fn(),
       activeSource: { id: 's1', title: 'Bar', isTabHub: false }
     });
 
-    expect(container.querySelectorAll('[style]')).toHaveLength(0);
+    const styled = Array.from(container.querySelectorAll('[style]')).map((el) => el.getAttribute('style'));
+    expect(styled.every((s) => !/var\(--|#[0-9a-f]{3,8}\b|rgb/i.test(s))).toBe(true);
+  });
+});
+
+describe('Toolbar — sort select (V2-A, new)', () => {
+  it('exposes a labelled combobox with the four modes in spec order', () => {
+    renderToolbar({ sortMode: 'manual', onSortChange: vi.fn() });
+
+    const trigger = screen.getByRole('combobox', { name: t('sortMode') });
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+
+    const options = screen.getAllByRole('option').map((el) => el.textContent);
+    expect(options).toEqual([t('sortManual'), t('sortRecent'), t('sortTitle'), t('sortDomain')]);
+  });
+
+  it('defaults to manual when no sortMode prop is given', () => {
+    renderToolbar({ onSortChange: vi.fn() });
+
+    expect(screen.getByRole('combobox', { name: t('sortMode') })).toHaveTextContent(t('sortManual'));
+  });
+
+  it('reports the chosen mode through onSortChange', () => {
+    const onSortChange = vi.fn();
+    renderToolbar({ sortMode: 'manual', onSortChange });
+
+    const trigger = screen.getByRole('combobox', { name: t('sortMode') });
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: t('sortRecent') }));
+
+    expect(onSortChange).toHaveBeenCalledWith('recent');
+  });
+
+  it('sizes the trigger at the design’s 30px / 132px geometry', () => {
+    renderToolbar();
+    expect(screen.getByRole('combobox', { name: t('sortMode') }).className).toContain('h-[30px]');
+    expect(screen.getByRole('combobox', { name: t('sortMode') }).className).toContain('w-[132px]');
+  });
+});
+
+describe('Toolbar — 回收站 (moved here from the sidebar in V2-A)', () => {
+  it('does not render without hasTrash', () => {
+    renderToolbar({ onViewTrash: vi.fn() });
+
+    expect(screen.queryByRole('button', { name: new RegExp(t('trash')) })).toBeNull();
+  });
+
+  it('renders and routes to onViewTrash when hasTrash is true', () => {
+    const onViewTrash = vi.fn();
+    renderToolbar({ hasTrash: true, onViewTrash });
+
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('trash')) }));
+    expect(onViewTrash).toHaveBeenCalledTimes(1);
+  });
+
+  it('sits after 新建分类 in row 2, in the same ghost style', () => {
+    renderToolbar({ hasTrash: true, onViewTrash: vi.fn() });
+
+    const newCollection = screen.getByRole('button', { name: new RegExp(t('newCollection')) });
+    const trash = screen.getByRole('button', { name: new RegExp(t('trash')) });
+    const rowButtons = Array.from(newCollection.parentElement.querySelectorAll('button'));
+
+    expect(rowButtons.indexOf(newCollection)).toBeLessThan(rowButtons.indexOf(trash));
+    expect(trash.className).toBe(newCollection.className);
   });
 });
 
