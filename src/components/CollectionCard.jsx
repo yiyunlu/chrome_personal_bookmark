@@ -293,7 +293,9 @@ export const CollectionCard = React.memo(function CollectionCard({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-6 w-6 flex-shrink-0 rounded-sm text-primary opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100"
+            // hover:text-primary restated: ghost's hover:text-accent-foreground is a separate
+            // merge group and would repaint this glyph near-black under the pointer.
+            className="h-6 w-6 flex-shrink-0 rounded-sm text-primary hover:text-primary opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100"
             aria-label={t('openAllTabs')}
             title={t('openAllTabs')}
             onClick={(e) => {

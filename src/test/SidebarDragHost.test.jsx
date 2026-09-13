@@ -3,7 +3,6 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import Sortable from 'sortablejs';
 import { Sidebar } from '../components/Sidebar';
-import { SidebarP5Baseline } from './fixtures/SidebarP5Baseline';
 
 /* P5b: `Sidebar` moves onto the style contract — every hand-written colour
    becomes a token class and every raw <button> becomes shadcn's <Button>.
@@ -106,24 +105,107 @@ function renderNav(Component, props = {}) {
   return { host, container, rerender, unmount };
 }
 
+/**
+ * The drag-host shape as it stood at the P5 baseline (c74233a), captured as a
+ * literal rather than by rendering a frozen copy of the component.
+ *
+ * This used to be `src/test/fixtures/SidebarP5Baseline.jsx` — 384 lines of
+ * duplicated component. That copy proved something only at the instant of the
+ * migration: the moment anyone "modernised" it, the comparison would have kept
+ * passing while proving nothing, and it blocked a legitimate restructure in S1
+ * because the test deep-equalled its child list. A literal cannot rot, a reader
+ * can check it in one screen, and it fails on exactly the same regressions.
+ */
+const BASELINE_SHAPE = {
+  containerTag: 'NAV',
+  childTags: [
+    'BUTTON',
+    'BUTTON',
+    'BUTTON',
+    'BUTTON',
+    'BUTTON'
+  ],
+  childDraggableAttrs: [
+    null,
+    'true',
+    'true',
+    'false',
+    'false'
+  ],
+  rows: [
+    {
+      tag: 'BUTTON',
+      path: [
+        1
+      ],
+      collectionId: 'c1',
+      draggable: 'true',
+      matchesDraggableSelector: true,
+      handlePath: [
+        0
+      ],
+      title: '右键可编辑目录'
+    },
+    {
+      tag: 'BUTTON',
+      path: [
+        2
+      ],
+      collectionId: 'c2',
+      draggable: 'true',
+      matchesDraggableSelector: true,
+      handlePath: [
+        0
+      ],
+      title: '右键可编辑目录'
+    },
+    {
+      tag: 'BUTTON',
+      path: [
+        3
+      ],
+      collectionId: 'c3',
+      draggable: 'false',
+      matchesDraggableSelector: false,
+      handlePath: [
+        0
+      ],
+      title: '右键可编辑目录'
+    },
+    {
+      tag: 'BUTTON',
+      path: [
+        4
+      ],
+      collectionId: 'c4',
+      draggable: 'false',
+      matchesDraggableSelector: false,
+      handlePath: [
+        0
+      ],
+      title: ''
+    }
+  ],
+  orderedIds: [
+    'c1',
+    'c2'
+  ]
+};
+
 afterEach(cleanup);
 
 describe('the nav SortableJS host survives the style-contract migration', () => {
   it('renders a byte-for-byte identical drag-host shape to the P5 baseline', () => {
-    const before = renderNav(SidebarP5Baseline);
-    const beforeShape = dragHostShape(before.host);
-    before.unmount();
-
     const after = renderNav(Sidebar);
     const afterShape = dragHostShape(after.host);
 
     // A sanity floor, so a shape of "nothing" can never pass by matching.
-    expect(beforeShape.rows).toHaveLength(4);
-    expect(beforeShape.orderedIds).toEqual(['c1', 'c2']);
-    expect(beforeShape.rows[0].path).toEqual([1]);
-    expect(beforeShape.rows[0].handlePath).toEqual([0]);
+    expect(afterShape.rows).toHaveLength(4);
+    expect(afterShape.orderedIds).toEqual(['c1', 'c2']);
+    expect(afterShape.rows[0].path).toEqual([1]);
+    expect(afterShape.rows[0].handlePath).toEqual([0]);
 
-    expect(afterShape).toEqual(beforeShape);
+    expect(afterShape).toEqual(BASELINE_SHAPE);
   });
 
   it('keeps the host a direct-child list: every row is depth 1 under the container', () => {
@@ -146,19 +228,11 @@ describe('the nav SortableJS host survives the style-contract migration', () => 
   it('a real Sortable instantiated on it reads back the same order as on the baseline', () => {
     const options = { draggable: '[data-draggable="true"]', handle: '.nav-drag-handle' };
 
-    const before = renderNav(SidebarP5Baseline);
-    const beforeSortable = new Sortable(before.host, options);
-    const beforeOrder = beforeSortable.toArray
-      ? Array.from(before.host.querySelectorAll(options.draggable)).map((el) =>
-          el.getAttribute('data-collection-id')
-        )
-      : null;
-    // Sortable rewrites nothing structural on construction, but prove that too.
-    const beforeChildCount = before.host.children.length;
-    beforeSortable.destroy();
-    before.unmount();
-
     const after = renderNav(Sidebar);
+    // Sortable rewrites nothing structural on construction, so the child list it
+    // sees must still be the baseline's.
+    const beforeOrder = BASELINE_SHAPE.orderedIds;
+    const beforeChildCount = BASELINE_SHAPE.childTags.length;
     const afterSortable = new Sortable(after.host, options);
     const afterOrder = Array.from(after.host.querySelectorAll(options.draggable)).map((el) =>
       el.getAttribute('data-collection-id')
@@ -214,16 +288,33 @@ describe('Sidebar is free of hand-written style', () => {
     rail.unmount();
   });
 
-  it('the baseline it replaces declared colours inline — so the check above can fail', () => {
-    const { container, unmount } = renderNav(SidebarP5Baseline);
-    const expanded = inlineStyleProps(container);
-    expect(expanded).toEqual(expect.arrayContaining(['background', 'color', 'border-color']));
-    unmount();
-
-    const collapsedRail = renderNav(SidebarP5Baseline, { collapsed: true });
-    expect(inlineStyleProps(collapsedRail.container)).toEqual(
-      expect.arrayContaining(['background', 'color', 'border-color', 'opacity'])
+  it('the check above can fail — a hand-styled rail trips it', () => {
+    // The pre-migration Sidebar declared its colours inline, and this used to
+    // render that whole frozen component to prove the assertion above is not
+    // vacuous. A stub with the same shape proves it just as well and cannot rot.
+    function HandStyledRail() {
+      // Wrapped in <aside> because inlineStyleProps scopes its sweep there, the
+      // same way the real rail is shaped.
+      return (
+        <aside>
+          <nav data-nav-sortable="true">
+          <button
+            type="button"
+            data-collection-id="c1"
+            data-draggable="true"
+            style={{ background: 'var(--sidebar-bg)', color: 'var(--text)', borderColor: 'var(--panel-border)' }}
+          >
+              <span className="nav-drag-handle" />
+            </button>
+          </nav>
+        </aside>
+      );
+    }
+    const { container, unmount } = render(<HandStyledRail />);
+    expect(inlineStyleProps(container)).toEqual(
+      expect.arrayContaining(['background', 'color', 'border-color'])
     );
+    unmount();
   });
 });
 

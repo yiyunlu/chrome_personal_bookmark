@@ -46,6 +46,7 @@ export default {
           foreground: 'hsl(var(--ui-destructive-foreground))'
         },
         sidebar: 'hsl(var(--ui-sidebar))',
+        scrim: 'hsl(var(--ui-scrim))',
         // Third text level from the design (counts, URLs, section labels).
         faint: 'hsl(var(--ui-faint))',
         warning: {
