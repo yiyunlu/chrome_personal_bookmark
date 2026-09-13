@@ -10,7 +10,7 @@ bad()  { printf '  \033[31mFAIL\033[0m  %s\n' "$1"; fail=1; }
 info() { printf '  ----  %s\n' "$1"; }
 
 # Baselines captured at P0 (commit 27b0f0e).
-BASE_TESTS=171
+BASE_TESTS=408
 BASE_WARNINGS=11
 BASE_CARD_ATTR=7
 BASE_COLLECTION_ATTR=4
