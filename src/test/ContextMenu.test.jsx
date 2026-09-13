@@ -254,6 +254,62 @@ describe('ContextMenu (Radix DropdownMenu)', () => {
     expect(card.getAttribute('data-card-id')).toBe('card-1');
   });
 
+  /* P6c restyled this file, and these four properties are the ones a restyle
+     could quietly destroy. Each assertion below was mutation-checked by making
+     the opposite change in ContextMenu.jsx and confirming this test — and only
+     this test — fails. The fourth, the anchor's inline left/top, is covered by
+     'anchors the menu at the pointer coordinates' above: that position is
+     computed from the pointer and stays an inline style deliberately. */
+  it('modal={false}: the page underneath stays hit-testable and visible to AT', async () => {
+    render(<Harness handlers={makeHandlers()} />);
+    const card = cardEl();
+
+    fireEvent.contextMenu(card, { clientX: 10, clientY: 10 });
+    await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
+
+    // A modal Radix menu puts `pointer-events: none` on <body> — the property
+    // inherits, so every SortableJS list underneath would stop responding to
+    // the pointer — and aria-hides everything outside its portal.
+    expect(document.body.style.pointerEvents).toBe('');
+    expect(getComputedStyle(card).pointerEvents).not.toBe('none');
+    expect(card.closest('[aria-hidden="true"]')).toBeNull();
+  });
+
+  it('does not hand focus back to the invisible anchor when it closes', async () => {
+    render(<Harness handlers={makeHandlers()} />);
+    fireEvent.contextMenu(cardEl(), { clientX: 10, clientY: 10 });
+    await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
+
+    const anchor = document.querySelector('[data-context-menu-anchor]');
+    // Radix's own onCloseAutoFocus calls trigger.focus(). The anchor is a 0x0
+    // aria-hidden span, so jsdom's focus() would be a no-op and the *result*
+    // proves nothing — the call is the observable, and in a browser it is the
+    // whole bug. composeEventHandlers skips the internal handler only because
+    // ours calls preventDefault first.
+    const focusSpy = vi.spyOn(anchor, 'focus');
+
+    fireEvent.keyDown(document.querySelector('[role="menu"]'), { key: 'Escape' });
+    await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    expect(document.activeElement).not.toBe(anchor);
+  });
+
+  it('takes its accessible name from aria-label, with no aria-labelledby to the empty anchor', async () => {
+    render(<Harness handlers={makeHandlers()} />);
+    fireEvent.contextMenu(cardEl(), { clientX: 10, clientY: 10 });
+    const menu = await waitFor(() => {
+      const el = document.querySelector('[role="menu"]');
+      expect(el).not.toBeNull();
+      return el;
+    });
+
+    // Radix points aria-labelledby at the trigger, which here is an empty,
+    // aria-hidden span; the name survived only by that lookup resolving to ''.
+    expect(menu.hasAttribute('aria-labelledby')).toBe(false);
+    expect(screen.getByRole('menu', { name: t('bookmarkActions') })).toBe(menu);
+  });
+
   it('keeps the SortableJS DOM invariants: data-* attributes stay on their hosts', async () => {
     render(<Harness handlers={makeHandlers()} />);
 
