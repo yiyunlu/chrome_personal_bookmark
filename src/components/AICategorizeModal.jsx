@@ -1,8 +1,38 @@
 import React from 'react';
 import { Check, FolderOpen, Sparkles, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '../lib/cn';
 import { t } from '../lib/i18n';
 import { DialogShell } from './DialogShell';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+
+/* ── Token classes (P6a) ──────────────────────────────────────────────────────
+   No inline `var()` left: `--panel-border` → `border-border`, `--panel-bg` →
+   `bg-card`, `--text` → `text-foreground`, `--muted` → `text-muted-foreground`,
+   `--danger` → `text-destructive`, `--accent` / `--accent-soft` → `primary` and
+   `bg-primary/10`. Geometry is the contract's Spacing row and Typography table.
+
+   Nothing this file composes carries a responsive-prefixed class: `Button`,
+   `Tooltip` and the raw Radix `Content` inside `DialogShell` have none, and the
+   `sm:*` set lives on shadcn's `DialogContent` / `DialogHeader` / `DialogFooter`,
+   which `DialogShell` deliberately does not use. So mechanism D has nothing to
+   bite here — checked, not assumed. */
+const HEADER_CLASS = 'flex items-center justify-between border-b border-border px-5 py-4';
+const TITLE_CLASS = 'text-base font-semibold text-foreground';
+const CLOSE_BUTTON_CLASS = 'h-7 w-7 text-muted-foreground';
+const BODY_CLASS = 'max-h-[60vh] overflow-y-auto p-5';
+const FOOTER_CLASS = 'flex items-center justify-between gap-2 border-t border-border px-5 py-4';
+/* A suggestion row is a bordered row inside a dialog, not a card surface, so it
+   takes the control radius rather than `Card`'s `rounded-xl`. */
+const ROW_CLASS = 'flex items-start gap-3 rounded-md border border-border px-3 py-2.5';
+/* Accept / reject: icon-only ghost buttons. The glyph size comes from the cva's
+   `[&_svg]:size-4` (16px) — inside a Button a `size` prop is inert, since the
+   class beats the svg's width/height attributes. */
+const ROW_ACTION_CLASS = 'h-7 w-7';
+/* The soft-accent chip, shared by the "new collection" tags and the accepted
+   badge. `rounded-sm` is the scale's dense-affordance value; plain `rounded` is
+   4px and off-scale. */
+const CHIP_CLASS = 'rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs text-primary';
 
 /* The accept / reject buttons are icon-only, so the label has to be the
    button's `aria-label` (a Radix tooltip only ever *describes* its trigger) as
@@ -33,56 +63,44 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
       {aiState && (
         <>
           {/* Header */}
-          <div
-            className="flex items-center justify-between px-5 py-3.5 border-b"
-            style={{ borderColor: 'var(--panel-border)' }}
-          >
+          <div className={HEADER_CLASS}>
             <div className="flex items-center gap-2">
-              <Sparkles size={16} style={{ color: 'var(--accent)' }} />
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                {t('aiCategorizeTitle')}
-              </h2>
+              <Sparkles size={16} className="text-primary" />
+              <h2 className={TITLE_CLASS}>{t('aiCategorizeTitle')}</h2>
             </div>
-            <button onClick={onClose} className="p-1 rounded-md hover:opacity-70" style={{ color: 'var(--muted)' }}>
-              <X size={16} />
-            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={CLOSE_BUTTON_CLASS}
+              aria-label={t('close')}
+              onClick={onClose}
+            >
+              <X />
+            </Button>
           </div>
 
           {/* Body */}
-          <div className="px-5 py-4" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          <div className={BODY_CLASS}>
             {loading ? (
-              <div className="flex flex-col items-center py-8 gap-3">
-                <div
-                  className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
-                  style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
-                />
-                <span className="text-sm" style={{ color: 'var(--muted)' }}>
-                  {t('aiAnalyzing')}
-                </span>
+              <div className="flex flex-col items-center gap-3 py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <span className="text-sm text-muted-foreground">{t('aiAnalyzing')}</span>
               </div>
             ) : error ? (
               <div className="py-6 text-center">
-                <div className="text-sm" style={{ color: 'var(--danger)' }}>
-                  {error}
-                </div>
+                <div className="text-sm text-destructive">{error}</div>
               </div>
             ) : suggestions.length === 0 ? (
               <div className="py-6 text-center">
-                <div className="text-sm" style={{ color: 'var(--muted)' }}>
-                  {t('aiNoSuggestions')}
-                </div>
+                <div className="text-sm text-muted-foreground">{t('aiNoSuggestions')}</div>
               </div>
             ) : (
               <div className="space-y-3">
                 {newCollections.length > 0 && (
-                  <div className="text-xs mb-2" style={{ color: 'var(--muted)' }}>
+                  <div className="mb-2 text-xs text-muted-foreground">
                     {t('aiSuggestNewCollections')}
                     {newCollections.map((name) => (
-                      <span
-                        key={name}
-                        className="inline-block ml-1 px-1.5 py-0.5 rounded text-xs"
-                        style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-                      >
+                      <span key={name} className={cn(CHIP_CLASS, 'ml-1 inline-block')}>
                         {name}
                       </span>
                     ))}
@@ -92,56 +110,50 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
                 {suggestions.map((suggestion, idx) => (
                   <div
                     key={idx}
-                    className="flex items-start gap-3 rounded-xl border px-3 py-2.5"
-                    style={{
-                      borderColor: suggestion.status === 'rejected' ? 'var(--panel-border)' : 'var(--panel-border)',
-                      background: suggestion.status === 'rejected' ? 'transparent' : 'var(--panel-bg)',
-                      opacity: suggestion.status === 'rejected' ? 0.4 : 1
-                    }}
+                    className={cn(
+                      ROW_CLASS,
+                      suggestion.status === 'rejected' ? 'bg-transparent opacity-40' : 'bg-card'
+                    )}
                   >
-                    <FolderOpen size={14} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--accent)', opacity: 0.7 }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate" style={{ color: 'var(--text)' }}>
-                        {suggestion.bookmarkTitle}
-                      </div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                    <FolderOpen size={16} className="mt-0.5 flex-shrink-0 text-primary/70" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-foreground">{suggestion.bookmarkTitle}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
                         → {suggestion.targetCollectionTitle}
                         <span className="ml-2">{suggestion.reason}</span>
                       </div>
                     </div>
                     {suggestion.status === 'pending' && (
-                      <div className="flex items-center gap-1 flex-shrink-0">
+                      <div className="flex flex-shrink-0 items-center gap-1">
                         <ActionTooltip label={t('aiAccept')}>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(ROW_ACTION_CLASS, 'text-primary')}
                             onClick={() => onAcceptSuggestion(idx)}
-                            className="p-1 rounded-md hover:opacity-80"
-                            style={{ color: 'var(--accent)' }}
                             aria-label={t('aiAccept')}
                           >
-                            <Check size={14} />
-                          </button>
+                            <Check />
+                          </Button>
                         </ActionTooltip>
                         <ActionTooltip label={t('aiReject')}>
-                          <button
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(ROW_ACTION_CLASS, 'text-muted-foreground')}
                             onClick={() => onRejectSuggestion(idx)}
-                            className="p-1 rounded-md hover:opacity-80"
-                            style={{ color: 'var(--muted)' }}
                             aria-label={t('aiReject')}
                           >
-                            <X size={14} />
-                          </button>
+                            <X />
+                          </Button>
                         </ActionTooltip>
                       </div>
                     )}
                     {suggestion.status === 'accepted' && (
-                      <span className="text-xs flex-shrink-0 px-1.5 py-0.5 rounded" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
-                        {t('aiAccepted')}
-                      </span>
+                      <span className={cn(CHIP_CLASS, 'flex-shrink-0')}>{t('aiAccepted')}</span>
                     )}
                     {suggestion.status === 'rejected' && (
-                      <span className="text-xs flex-shrink-0" style={{ color: 'var(--muted)' }}>
-                        {t('aiRejected')}
-                      </span>
+                      <span className="flex-shrink-0 text-xs text-muted-foreground">{t('aiRejected')}</span>
                     )}
                   </div>
                 ))}
@@ -151,28 +163,15 @@ export function AICategorizeModal({ aiState, onAcceptSuggestion, onRejectSuggest
 
           {/* Footer */}
           {!loading && suggestions.length > 0 && (
-            <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: 'var(--panel-border)' }}>
-              <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                {t('aiSummary', accepted.length, pending.length)}
-              </span>
+            <div className={FOOTER_CLASS}>
+              <span className="text-xs text-muted-foreground">{t('aiSummary', accepted.length, pending.length)}</span>
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-3.5 py-1.5 rounded-lg border text-sm"
-                  style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
-                >
+                <Button type="button" variant="outline" onClick={onClose}>
                   {t('cancel')}
-                </button>
-                <button
-                  type="button"
-                  onClick={onApplyAll}
-                  disabled={accepted.length === 0}
-                  className="px-3.5 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
-                  style={{ background: 'var(--btn-primary)', color: 'var(--btn-primary-text)' }}
-                >
+                </Button>
+                <Button type="button" onClick={onApplyAll} disabled={accepted.length === 0}>
                   {t('aiApply', accepted.length)}
-                </button>
+                </Button>
               </div>
             </div>
           )}
