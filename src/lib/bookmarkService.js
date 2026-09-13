@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { logError } from './utils';
 
 const TABHUB_ROOT_NAME = 'TabHub';
@@ -84,8 +85,11 @@ function collectNestedCollections(rootFolder, includeEmpty = true, hiddenFolderI
       id: rootFolder.id,
       parentId: rootFolder.id,
       index: -1,
-      folderTitle: rootFolder.title || 'Unfiled',
-      title: rootFolder.title ? `${rootFolder.title} / Unfiled` : 'Unfiled',
+      // Was `${rootFolder.title} / Unfiled` — a hardcoded English word glued onto
+      // a translated source name, and a repeat of what the sidebar's source
+      // control already shows above it.
+      folderTitle: t('unfiled'),
+      title: t('unfiled'),
       editable: false,
       deletable: false,
       cards: rootCards.map((bookmark) => ({

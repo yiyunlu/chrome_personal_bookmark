@@ -16,6 +16,7 @@ import {
 import Sortable from 'sortablejs';
 import { t } from '../lib/i18n';
 import { cn } from '../lib/cn';
+import { identity } from '../lib/identity';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
@@ -89,6 +90,13 @@ const COUNT_CLASS = 'flex-shrink-0 font-mono text-[10.5px] leading-none tracking
 const NAV_ROW_CLASS =
   'w-full justify-start gap-1.5 h-[30px] px-2 py-0 rounded-sm text-[13px] leading-none font-normal text-left';
 
+/* Depth rides the row's own left padding, not a spacer element. A zero-width
+   spacer still earns the row's `gap-1.5`, which pushed every folder glyph 6px
+   right of the "all collections" glyph above it — a visibly ragged left edge in
+   a 232px rail. `pl-[22px]` vs `pl-2` keeps the design's 22-vs-8 delta exact
+   (14px) while putting a root folder's glyph on the same vertical line. */
+const NAV_ROW_INDENT = { root: 'pl-2', nested: 'pl-[22px]' };
+
 /* The width of the drag handle plus the row's gap. The design has no drag
    handles (they are hover-only, so its static render never showed them), so its
    rows put the folder glyph at the row's leading edge. Ours cannot: SortableJS's
@@ -143,6 +151,26 @@ function IconTooltip({ label, side = 'right', children }) {
       <TooltipTrigger asChild>{children}</TooltipTrigger>
       <TooltipContent side={side}>{label}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/**
+ * A collapsed-rail marker for a collection. Reuses the identity scheme from
+ * src/lib/identity.js so a folder reads the same way a bookmark does.
+ */
+function CollectionTile({ title, active }) {
+  const { char, tint } = identity(title);
+  return (
+    <span
+      className={cn(
+        'flex h-[18px] w-[18px] items-center justify-center rounded-sm font-mono text-[9.5px] font-medium text-white',
+        !active && 'opacity-85'
+      )}
+      style={{ backgroundColor: tint }}
+      aria-hidden="true"
+    >
+      {char}
+    </span>
   );
 }
 
@@ -263,7 +291,10 @@ export function Sidebar({
                       aria-label={collection.title}
                       onClick={() => onCollectionSelect(collection.id)}
                     >
-                      <FolderOpen />
+                      {/* Not a folder glyph: collapsed, every row drew the same
+                          one and the rail could not be read at a glance. This is
+                          the same identity tile the bookmark cards use. */}
+                      <CollectionTile title={collection.title} active={isActive} />
                     </Button>
                   </IconTooltip>
                 );
@@ -341,13 +372,22 @@ export function Sidebar({
 
             {/* The design's nav section label (`navCategories`).
 
-                It sits *above* the nav rather than between the "all collections"
-                row and the folder rows, where the design puts it. The nav below
-                is the `[data-nav-sortable]` host, and SortableJS indexes
-                `evt.from.children[oldIndex]`: every one of its element children
-                is a row. src/test/SidebarDragHost.test.jsx freezes that child
-                list against a baseline fixture, so no non-row element may be
-                added inside it. */}
+                It sits *above* the nav, not between the "all collections" row and
+                the folder rows where the design puts it — and the reason is NOT a
+                SortableJS constraint. An earlier version of this comment claimed
+                the nav host is indexed positionally; it is not. `main.jsx:359`
+                reads `container.querySelectorAll('[data-draggable="true"]')`, an
+                attribute-scoped query, and SortableJS's own `index()` counts only
+                siblings matching its `draggable` selector, so a non-row child is
+                skipped. The nav already holds one: the "all collections" row
+                carries neither attribute. The positional `children[oldIndex]`
+                arithmetic is the CARD scope (`main.jsx:499`), not this one.
+
+                What actually blocks the design's placement is
+                `src/test/fixtures/SidebarP5Baseline.jsx` — a frozen copy of this
+                component that `SidebarDragHost.test.jsx` deep-equals the child
+                list against. P6 replaces that fixture with an inline literal
+                snapshot and moves this label into place at the same time. */}
             <div className={SECTION_LABEL_CLASS} data-nav-section-label>
               {t('navCategories')}
             </div>
@@ -374,7 +414,8 @@ export function Sidebar({
             >
               <Button
                 variant="ghost"
-                className={cn(NAV_ROW_CLASS, allActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground')}
+                className={cn(NAV_ROW_CLASS, NAV_ROW_INDENT.root, allActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground')}
+                data-nav-all
                 onClick={() => onCollectionSelect('all')}
               >
                 <span aria-hidden="true" className={HANDLE_GUTTER_CLASS} />
@@ -402,8 +443,10 @@ export function Sidebar({
                     className={cn(
                       'group',
                       NAV_ROW_CLASS,
+                      NAV_ROW_INDENT[isNested ? 'nested' : 'root'],
                       isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
                     )}
+                    data-nav-indent={isNested ? 'nested' : 'root'}
                     onClick={() => onCollectionSelect(collection.id)}
                     onContextMenu={(e) => onCollectionContextMenu(e, collection)}
                     title={collection.editable || collection.deletable ? t('rightClickHint') : ''}
@@ -416,11 +459,6 @@ export function Sidebar({
                     >
                       <GripVertical />
                     </span>
-                    <span
-                      aria-hidden="true"
-                      data-nav-indent={isNested ? 'nested' : 'root'}
-                      className={cn('flex-shrink-0', isNested ? 'w-3.5' : 'w-0')}
-                    />
                     <FolderOpen />
                     <span className="truncate flex-1">{collection.title}</span>
                     <span

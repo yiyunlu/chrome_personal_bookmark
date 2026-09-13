@@ -264,7 +264,12 @@ describe('CollectionCard — list view drag hosts', () => {
     expect(container.getAttribute('data-parent-id')).toBe('col-1');
     expect(container.className).toMatch(/\bborder\b/);
     expect(container.className).toMatch(/\brounded-lg\b/);
-    expect(container.className).toMatch(/\boverflow-hidden\b/);
+    // No `overflow-hidden`: it would clip a row mid-drag at the container edge.
+    // The end rows carry the corners instead, which renders identically.
+    expect(container.className).not.toMatch(/\boverflow-hidden\b/);
+    const rows = container.querySelectorAll('[data-card-id]');
+    expect(rows[0].className).toMatch(/\bfirst:rounded-t-lg\b/);
+    expect(rows[rows.length - 1].className).toMatch(/\blast:rounded-b-lg\b/);
     // ...and it is still a direct child of the <article>, with nothing wrapping it.
     expect(container.parentElement).toBe(host.querySelector('[data-collection-id]'));
     expect(host.querySelectorAll('[data-cards-collection-id]')).toHaveLength(1);
