@@ -238,6 +238,28 @@ describe('CollectionCard — SortableJS drag hosts', () => {
     expect(card.querySelector('.card-select').getAttribute('type')).toBe('checkbox');
   });
 
+  it('shows a grab cursor on the card handle when card drag is enabled, default otherwise', () => {
+    const { host: enabledHost } = mount({ cardDragEnabled: true });
+    expect(enabledHost.querySelector('.card-drag-handle').className).toMatch(/\bcursor-grab\b/);
+
+    // V2-A: search active / manage mode / sort !== manual all disable card drag.
+    // The handle must not invite a drag that would silently do nothing.
+    const { host: disabledHost } = mount({ cardDragEnabled: false });
+    expect(disabledHost.querySelector('.card-drag-handle').className).toMatch(/\bcursor-default\b/);
+    expect(disabledHost.querySelector('.card-drag-handle').className).not.toMatch(/\bcursor-grab\b/);
+  });
+
+  it('carries cardDragEnabled through to every card in both views', () => {
+    const { host: gridHost } = mount({ cardDragEnabled: false });
+    for (const handle of gridHost.querySelectorAll('.card-drag-handle')) {
+      expect(handle.className).toMatch(/\bcursor-default\b/);
+    }
+    const { host: listHost } = mount({ cardDragEnabled: false, view: 'list' });
+    for (const handle of listHost.querySelectorAll('.card-drag-handle')) {
+      expect(handle.className).toMatch(/\bcursor-default\b/);
+    }
+  });
+
   it('keeps the collection drag handle inside the module drag host', () => {
     const { host } = mount();
     const article = host.querySelector('[data-collection-id]');
@@ -488,6 +510,34 @@ describe('CollectionCard — sticky group header', () => {
     expect(expand.getAttribute('aria-expanded')).toBe('false');
   });
 
+  it('renders the count as a Badge and sizes the Folder glyph via an ancestor selector (V2-C)', () => {
+    const { host } = mount();
+    const header = headerOf(host);
+    const count = within(header).getByText(String(collection.cards.length));
+    // Badge (ui/badge.jsx) ships `rounded-md border`, which the header's own
+    // classes never set, so its presence pins the component rather than a
+    // plain <span> that merely copied the same utility classes.
+    expect(count.className).toMatch(/\brounded-md\b/);
+    expect(count.className).toMatch(/\bborder\b/);
+    expect(count.className).toContain('text-[10px]');
+
+    // Inside a <Button>, a size prop on the svg is inert (the cva's own
+    // [&_svg]:size-4 is a class and wins) — the fix has to live on the
+    // Button's own className, targeting the descendant.
+    const titleButton = within(header).getByRole('button', { name: new RegExp(collection.title) });
+    expect(titleButton.className).toContain('[&_svg]:size-[13px]');
+  });
+
+  it('restyles open-all and the collapse chevron as 26px ghost controls', () => {
+    const { host } = mount();
+    const openAll = within(host).getByRole('button', { name: t('openAllTabs') });
+    const chevron = within(host).getByRole('button', { name: t('collapseCollection') });
+    for (const btn of [openAll, chevron]) {
+      expect(btn.className).toContain('h-[26px]');
+      expect(btn.className).toContain('w-[26px]');
+    }
+  });
+
   it('keeps the title inside a real heading', () => {
     const { host } = mount();
     const heading = host.querySelector('h2');
@@ -589,6 +639,27 @@ describe('CollectionCard — behaviour preserved by the restyle', () => {
     expect(onToggleCardSelect).toHaveBeenCalledWith('card-0');
   });
 
+  it('styles the manage checkbox per the design: 18px, rounded-sm, checked shows a Check glyph', () => {
+    const { host } = mount({
+      manageMode: true,
+      selectedCardIds: new Set(['card-1'])
+    });
+    const boxes = host.querySelectorAll('.card-select');
+    const unselectedVisual = boxes[0].nextElementSibling;
+    const selectedVisual = boxes[1].nextElementSibling;
+
+    expect(unselectedVisual.className).toContain('h-[18px]');
+    expect(unselectedVisual.className).toContain('w-[18px]');
+    expect(unselectedVisual.className).toMatch(/\brounded-sm\b/);
+    expect(unselectedVisual.className).toMatch(/\bborder-input\b/);
+    expect(unselectedVisual.querySelector('svg')).toBeNull();
+
+    expect(selectedVisual.className).toMatch(/\bborder-primary\b/);
+    expect(selectedVisual.className).toMatch(/\bbg-primary\b/);
+    expect(selectedVisual.className).toMatch(/\btext-primary-foreground\b/);
+    expect(selectedVisual.querySelector('svg')).not.toBeNull();
+  });
+
   // The design's grid tile is two lines: title, then the URL. Tags used to render
   // here and no longer do — they belong to the list view, which uses the same
   // onTagClick prop. This replaces the old "filters by a tag" test: the behaviour
@@ -625,7 +696,7 @@ describe('CollectionCard — style contract', () => {
     const grid = host.querySelector('[data-cards-collection-id]');
     expect(grid.className).toMatch(/\bgrid\b/);
     expect(grid.className).toContain('grid-cols-[repeat(auto-fill,minmax(232px,1fr))]');
-    expect(grid.className).toMatch(/\bgap-2\b/); // 8px
+    expect(grid.className).toContain('gap-[9px]'); // V2-C: 9px, up from the S3-era 8px
   });
 
   it('renders no inline var() colour anywhere', () => {
