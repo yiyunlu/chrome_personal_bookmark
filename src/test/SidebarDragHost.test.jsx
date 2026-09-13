@@ -106,8 +106,12 @@ function renderNav(Component, props = {}) {
 }
 
 /**
- * The drag-host shape as it stood at the P5 baseline (c74233a), captured as a
- * literal rather than by rendering a frozen copy of the component.
+ * The drag-host shape, captured as a literal rather than by rendering a frozen
+ * copy of the component. Re-dumped in P6 when the host moved from the <nav> to
+ * an inner <div> holding only the folder rows — so the design's section label
+ * could sit between the all-collections row and the folders. The all-row is no
+ * longer a child of the host at all; the four folder rows are its whole child
+ * list, at paths [0]..[3].
  *
  * This used to be `src/test/fixtures/SidebarP5Baseline.jsx` — 384 lines of
  * duplicated component. That copy proved something only at the instant of the
@@ -117,79 +121,48 @@ function renderNav(Component, props = {}) {
  * can check it in one screen, and it fails on exactly the same regressions.
  */
 const BASELINE_SHAPE = {
-  containerTag: 'NAV',
-  childTags: [
-    'BUTTON',
-    'BUTTON',
-    'BUTTON',
-    'BUTTON',
-    'BUTTON'
-  ],
-  childDraggableAttrs: [
-    null,
-    'true',
-    'true',
-    'false',
-    'false'
-  ],
+  containerTag: 'DIV',
+  childTags: ['BUTTON', 'BUTTON', 'BUTTON', 'BUTTON'],
+  childDraggableAttrs: ['true', 'true', 'false', 'false'],
   rows: [
     {
       tag: 'BUTTON',
-      path: [
-        1
-      ],
+      path: [0],
       collectionId: 'c1',
       draggable: 'true',
       matchesDraggableSelector: true,
-      handlePath: [
-        0
-      ],
+      handlePath: [0],
       title: '右键可编辑目录'
     },
     {
       tag: 'BUTTON',
-      path: [
-        2
-      ],
+      path: [1],
       collectionId: 'c2',
       draggable: 'true',
       matchesDraggableSelector: true,
-      handlePath: [
-        0
-      ],
+      handlePath: [0],
       title: '右键可编辑目录'
     },
     {
       tag: 'BUTTON',
-      path: [
-        3
-      ],
+      path: [2],
       collectionId: 'c3',
       draggable: 'false',
       matchesDraggableSelector: false,
-      handlePath: [
-        0
-      ],
+      handlePath: [0],
       title: '右键可编辑目录'
     },
     {
       tag: 'BUTTON',
-      path: [
-        4
-      ],
+      path: [3],
       collectionId: 'c4',
       draggable: 'false',
       matchesDraggableSelector: false,
-      handlePath: [
-        0
-      ],
+      handlePath: [0],
       title: ''
     }
   ],
-  orderedIds: [
-    'c1',
-    'c2'
-  ]
+  orderedIds: ['c1', 'c2']
 };
 
 afterEach(cleanup);
@@ -202,7 +175,7 @@ describe('the nav SortableJS host survives the style-contract migration', () => 
     // A sanity floor, so a shape of "nothing" can never pass by matching.
     expect(afterShape.rows).toHaveLength(4);
     expect(afterShape.orderedIds).toEqual(['c1', 'c2']);
-    expect(afterShape.rows[0].path).toEqual([1]);
+    expect(afterShape.rows[0].path).toEqual([0]);
     expect(afterShape.rows[0].handlePath).toEqual([0]);
 
     expect(afterShape).toEqual(BASELINE_SHAPE);
@@ -214,10 +187,10 @@ describe('the nav SortableJS host survives the style-contract migration', () => 
       expect(row.parentElement).toBe(host);
       expect(indexPath(row, host)).toHaveLength(1);
     }
-    // The "all collections" row is the container's first child in both versions;
-    // the collection rows follow it in `collections` order.
+    // The host holds ONLY the folder rows, in `collections` order. The
+    // all-collections row and the section label live in the <nav> above it,
+    // which is what lets the label sit where the design puts it.
     expect(Array.from(host.children).map((el) => el.getAttribute('data-collection-id'))).toEqual([
-      null,
       'c1',
       'c2',
       'c3',
@@ -572,9 +545,10 @@ describe('S1: the design’s sidebar elements', () => {
   });
 
   it('sets every nav count in mono, faint on folders and accent on the all row', () => {
-    const { host } = renderNav(Sidebar);
-    const counts = host.querySelectorAll('[data-nav-count]');
-    // one per row: the "all collections" row plus the four folders
+    const { container } = renderNav(Sidebar);
+    const counts = container.querySelectorAll('aside [data-nav-count]');
+    // one per row: the "all collections" row plus the four folders. Swept from
+    // the rail, not the Sortable host — the all-row sits outside the host now.
     expect(counts).toHaveLength(5);
     for (const el of counts) expect(classesOf(el)).toContain('font-mono');
 
@@ -584,9 +558,9 @@ describe('S1: the design’s sidebar elements', () => {
 
     // folder counts are the design's --faint, and read their own card list
     expect(Array.from(counts).slice(1).map((el) => el.textContent)).toEqual(['2', '0', '1', '0']);
-    expect(classesOf(host.querySelector('[data-collection-id="c1"] [data-nav-count]'))).toContain('text-faint');
+    expect(classesOf(container.querySelector('aside [data-collection-id="c1"] [data-nav-count]'))).toContain('text-faint');
     // ...except the selected one, which takes the accent with the rest of the row
-    expect(classesOf(host.querySelector('[data-collection-id="c2"] [data-nav-count]'))).toContain('text-primary');
+    expect(classesOf(container.querySelector('aside [data-collection-id="c2"] [data-nav-count]'))).toContain('text-primary');
   });
 
   it('keeps all three theme options in the bottom bar segmented control', () => {

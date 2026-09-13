@@ -378,35 +378,11 @@ export function Sidebar({
               </Select>
             </div>
 
-            {/* The design's nav section label (`navCategories`).
-
-                It sits *above* the nav, not between the "all collections" row and
-                the folder rows where the design puts it — and the reason is NOT a
-                SortableJS constraint. An earlier version of this comment claimed
-                the nav host is indexed positionally; it is not. `main.jsx:359`
-                reads `container.querySelectorAll('[data-draggable="true"]')`, an
-                attribute-scoped query, and SortableJS's own `index()` counts only
-                siblings matching its `draggable` selector, so a non-row child is
-                skipped. The nav already holds one: the "all collections" row
-                carries neither attribute. The positional `children[oldIndex]`
-                arithmetic is the CARD scope (`main.jsx:499`), not this one.
-
-                What actually blocks the design's placement is
-                `src/test/fixtures/SidebarP5Baseline.jsx` — a frozen copy of this
-                component that `SidebarDragHost.test.jsx` deep-equals the child
-                list against. P6 replaces that fixture with an inline literal
-                snapshot and moves this label into place at the same time. */}
-            <div className={SECTION_LABEL_CLASS} data-nav-section-label>
-              {t('navCategories')}
-            </div>
-
             {/* Collections nav.
-                Deliberately NOT a shadcn ScrollArea. This <nav> is the
-                `[data-nav-sortable]` host `main.jsx:344` finds by query, and
-                `main.jsx:359` reads its order back by querying the container
-                for the draggable rows below. (Spelled out rather than quoted
-                so gate 9's attribute count stays a count of real attributes.)
-                Radix's
+                Deliberately NOT a shadcn ScrollArea. This <nav> is the scroll
+                parent of the SortableJS host (the inner div below), which
+                main.jsx finds by attribute and reads back with an attribute-
+                scoped query. Radix's
                 Viewport renders its children inside a
                 `style={{minWidth:'100%',display:'table'}}` div
                 (@radix-ui/react-scroll-area/dist/index.mjs:125) and moves the
@@ -416,10 +392,7 @@ export function Sidebar({
                 keeps the host, its child list and its scroll parent identical
                 to the P5 baseline. The collapsed rail matches it so that
                 toggling the sidebar does not change how the list scrolls. */}
-            <nav
-              className="flex-1 min-h-0 overflow-y-auto px-1.5 pt-1 pb-2.5 space-y-px"
-              data-nav-sortable="true"
-            >
+            <nav className="flex-1 min-h-0 overflow-y-auto px-1.5 pt-1 pb-2.5 space-y-px">
               <Button
                 variant="ghost"
                 className={cn(NAV_ROW_CLASS, NAV_ROW_INDENT.root, allActive ? ACTIVE_ROW_CLASS : 'text-muted-foreground')}
@@ -434,6 +407,18 @@ export function Sidebar({
                 </span>
               </Button>
 
+              {/* The design's section label sits between the all-row and the
+                  folder rows. It can, because the SortableJS host is the div
+                  below, not this <nav>: main.jsx finds the host by attribute and
+                  reads its order back with an attribute-scoped query, and
+                  Sortable's own index() counts only siblings that match its
+                  `draggable` selector. The <nav> stays the scroll parent, which
+                  Sortable's auto-scroll finds by walking up. */}
+              <div className={SECTION_LABEL_CLASS} data-nav-section-label>
+                {t('navCategories')}
+              </div>
+
+              <div data-nav-sortable="true" className="space-y-px">
               {collections.map((collection) => {
                 const isActive = activeCollectionId === collection.id;
                 const isDraggable = canSortCollections && collection.editable && collection.parentId === activeSourceId;
@@ -478,6 +463,7 @@ export function Sidebar({
                   </Button>
                 );
               })}
+              </div>
             </nav>
 
             {/* Bottom bar: 1px rule, 8px padding, 6px gaps. A segmented control
