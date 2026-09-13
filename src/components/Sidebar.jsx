@@ -58,7 +58,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
    only `ui/input.jsx` does, and this file does not use it — and nothing here
    writes one either, so that mechanism has nothing to bite. */
 const SELECT_TRIGGER_CLASS =
-  'h-[30px] w-full gap-2 rounded-sm border-border bg-transparent px-2 py-0 text-xs shadow-none [&>span]:flex-1 [&>span]:text-left';
+  'h-[30px] w-full gap-2 rounded-sm border-border bg-transparent px-2 py-0 text-[12.5px] shadow-none [&>span]:flex-1 [&>span]:text-left';
 /* `z-[110]` matches P3's value (it needs to clear DialogShell's z-90/z-100 in
    the dialogs; these two are not in a dialog, but the two files should not
    disagree). The viewport override undoes shadcn's
@@ -71,7 +71,7 @@ const SELECT_CONTENT_CLASS = 'z-[110] [&_[data-radix-select-viewport]]:h-auto';
    own 6px gutter (hence `px-3.5` — this element sits outside the nav, see the
    note on the nav host), 10px/600, .09em tracking, uppercase, `--faint`. */
 const SECTION_LABEL_CLASS =
-  'px-3.5 pt-3.5 pb-[5px] text-[10px] font-semibold uppercase leading-none tracking-[0.09em] text-faint';
+  'px-2 pt-3 pb-[5px] text-[10px] font-semibold uppercase leading-none tracking-[0.09em] text-faint';
 
 /* Counts — the design sets every one of them in the mono face at 10.5px with
    .02em tracking, which is its strongest identifying feature rather than
@@ -95,8 +95,16 @@ const COUNT_CLASS = 'flex-shrink-0 font-mono text-[10.5px] leading-none tracking
 const ACTIVE_ROW_CLASS =
   'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary';
 
+/* V2-B (design/TabHub-v2.dc.html trailing comment):
+   ROW = "flex h-[30px] items-center gap-2 rounded-md px-2 …", idle rows add
+   "text-muted-foreground hover:bg-secondary hover:text-foreground" — a
+   different hover pair than Button's ghost default (`hover:bg-accent
+   hover:text-accent-foreground`), so it is restated explicitly per mechanism E
+   rather than left to the variant. */
 const NAV_ROW_CLASS =
-  'w-full justify-start gap-1.5 h-[30px] px-2 py-0 rounded-sm text-[13px] leading-none font-normal text-left';
+  'w-full justify-start gap-2 h-[30px] px-2 py-0 rounded-md text-[13px] leading-none font-normal text-left';
+
+const IDLE_ROW_CLASS = 'text-muted-foreground hover:bg-secondary hover:text-foreground';
 
 /* Depth rides the row's own left padding, not a spacer element. A zero-width
    spacer still earns the row's `gap-1.5`, which pushed every folder glyph 6px
@@ -116,6 +124,14 @@ const HANDLE_GUTTER_CLASS = 'w-4 flex-shrink-0';
 /* The collapsed rail's icon rows. Not `size="icon"` (h-9 w-9): the rail is
    3.5rem wide and these stretch across it, the way the expanded rows do. */
 const RAIL_ROW_CLASS = 'w-full h-[30px] px-0 py-0 rounded-sm';
+
+/* The bottom bar's theme control (V2-B): a single 26px ghost icon button that
+   cycles system -> light -> dark -> system, replacing the three-way segmented
+   control. All three modes stay reachable, just one click apart instead of
+   one click each. */
+const THEME_CYCLE = { system: 'light', light: 'dark', dark: 'system' };
+const THEME_ICONS = { system: Monitor, light: Sun, dark: Moon };
+const THEME_LABEL_KEYS = { system: 'themeSystem', light: 'themeLight', dark: 'themeDark' };
 
 /**
  * Is a SortableJS gesture in flight anywhere on the page?
@@ -201,11 +217,17 @@ export function Sidebar({
   onOpenSettings,
   hasTrash
 }) {
-  const themeOptions = [
-    { value: 'system', icon: Monitor, label: t('themeSystem') },
-    { value: 'light', icon: Sun, label: t('themeLight') },
-    { value: 'dark', icon: Moon, label: t('themeDark') }
-  ];
+  // The bottom bar's theme control is a single icon button that cycles
+  // system -> light -> dark -> system, rather than the three-way segmented
+  // control the pre-V2 sidebar drew (that control cannot fit the collapsed
+  // rail; a single icon-only button can, so V2-B adds it there too). The
+  // glyph shows the mode currently in effect; the tooltip names the mode the
+  // click will switch TO.
+  const nextThemeMode = THEME_CYCLE[themeMode] || 'light';
+  const ThemeIcon = THEME_ICONS[themeMode] || Monitor;
+  const themeLabelFor = (mode) => THEME_LABEL_KEYS[mode] ? t(THEME_LABEL_KEYS[mode]) : mode;
+  const themeSwitchLabel = t('themeSwitchTo', themeLabelFor(nextThemeMode));
+  const cycleTheme = () => onThemeModeChange(nextThemeMode);
   const collapseLabel = collapsed ? t('expandSidebar') : t('collapseSidebar');
   // The design's logo block and its "all collections" row both show the rail's
   // total bookmark count.
@@ -226,20 +248,22 @@ export function Sidebar({
           collapsed ? 'w-14' : 'w-[232px]'
         )}
       >
-        {/* Logo block: 14px/14px/12px padding, a 20px accent tile, the wordmark,
-            and the total count right-aligned in mono. The collapse toggle is
-            ours, not the design's — it keeps the surface and geometry it had. */}
+        {/* Logo block (V2-B): 12px/12px/9px padding, a 22px accent tile, the
+            wordmark, and the total count right-aligned in mono. The collapse
+            toggle is ours, not the design's — it keeps the surface and
+            geometry it had. */}
         <div
           className={cn(
-            'flex items-center gap-2 px-3.5 pt-3.5 pb-3',
+            'flex items-center gap-2 px-3 pt-3 pb-[9px]',
             collapsed && 'justify-center px-0'
           )}
         >
           {!collapsed && (
             <>
-              <div className="flex items-center justify-center w-5 h-5 rounded-sm bg-primary">
-                {/* Not inside a Button, so it carries the contract's size={16}. */}
-                <Bookmark size={16} className="text-primary-foreground" />
+              <div className="flex items-center justify-center w-[22px] h-[22px] rounded-md bg-primary">
+                {/* Not inside a Button, so it carries the contract's
+                    "inside a filled tile <=20px" size of 11-13, here 12. */}
+                <Bookmark size={12} className="text-primary-foreground" />
               </div>
               <div className="text-[13.5px] font-semibold tracking-[-0.01em]">TabHub</div>
               <span data-total-count className={cn('ml-auto', COUNT_CLASS, 'text-faint')}>
@@ -309,8 +333,21 @@ export function Sidebar({
               })}
             </nav>
 
-            {/* Collapsed rail: bottom icons */}
+            {/* Collapsed rail: bottom icons. The theme cycle button is the
+                same icon-only control the expanded rail shows — unlike the
+                old three-way segmented control, a single button fits here. */}
             <div className="px-1.5 pb-3 mt-auto space-y-px border-t border-border pt-2">
+              <IconTooltip label={themeSwitchLabel}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(RAIL_ROW_CLASS, 'text-muted-foreground')}
+                  aria-label={themeSwitchLabel}
+                  onClick={cycleTheme}
+                >
+                  <ThemeIcon />
+                </Button>
+              </IconTooltip>
               {hasTrash && (
                 <IconTooltip label={t('trash')}>
                   <Button
@@ -395,7 +432,7 @@ export function Sidebar({
             <nav className="flex-1 min-h-0 overflow-y-auto px-1.5 pt-1 pb-2.5 space-y-px">
               <Button
                 variant="ghost"
-                className={cn(NAV_ROW_CLASS, NAV_ROW_INDENT.root, allActive ? ACTIVE_ROW_CLASS : 'text-muted-foreground')}
+                className={cn(NAV_ROW_CLASS, NAV_ROW_INDENT.root, allActive ? ACTIVE_ROW_CLASS : IDLE_ROW_CLASS)}
                 data-nav-all
                 onClick={() => onCollectionSelect('all')}
               >
@@ -437,7 +474,7 @@ export function Sidebar({
                       'group',
                       NAV_ROW_CLASS,
                       NAV_ROW_INDENT[isNested ? 'nested' : 'root'],
-                      isActive ? ACTIVE_ROW_CLASS : 'text-muted-foreground'
+                      isActive ? ACTIVE_ROW_CLASS : IDLE_ROW_CLASS
                     )}
                     data-nav-indent={isNested ? 'nested' : 'root'}
                     onClick={() => onCollectionSelect(collection.id)}
@@ -466,37 +503,23 @@ export function Sidebar({
               </div>
             </nav>
 
-            {/* Bottom bar: 1px rule, 8px padding, 6px gaps. A segmented control
-                for the theme — three options, where the design drew two — then a
-                spacer, then the trash (ours, not the design's) and settings. */}
-            <div className="mt-auto flex items-center gap-1.5 border-t border-border p-2">
-              {/* The heading names three buttons, not a control, so the group is
-                  named by `aria-label` rather than by a visible <label> with no
-                  `for`. The design gives this control no visible label. */}
-              <div
-                role="group"
-                aria-label={t('theme')}
-                className="flex items-center gap-0.5 rounded-sm border border-border bg-card p-0.5"
-              >
-                {themeOptions.map(({ value, icon: Icon, label }) => (
-                  <Button
-                    key={value}
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onThemeModeChange(value)}
-                    className={cn(
-                      'h-[22px] w-[26px] rounded-sm',
-                      themeMode === value ? ACTIVE_ROW_CLASS : 'text-muted-foreground'
-                    )}
-                    /* The label is no longer rendered — the design's segmented
-                       control is icon-only — so `aria-label` is the only name
-                       these buttons have. */
-                    aria-label={label}
-                  >
-                    <Icon />
-                  </Button>
-                ))}
-              </div>
+            {/* Bottom bar (V2-B): 1px rule, 8px padding, 4px gaps. One 26px
+                ghost icon button cycles all three theme modes — the design
+                drew a two-state toggle, behaviour keeps all three, one click
+                apart instead of one click each — then a spacer, then the
+                trash (ours, not the design's) and settings. */}
+            <div className="mt-auto flex items-center gap-1 border-t border-border p-2">
+              <IconTooltip label={themeSwitchLabel} side="top">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={cycleTheme}
+                  className="h-[26px] w-[26px] rounded-md text-muted-foreground"
+                  aria-label={themeSwitchLabel}
+                >
+                  <ThemeIcon />
+                </Button>
+              </IconTooltip>
 
               <div className="flex-1" />
 
@@ -515,6 +538,7 @@ export function Sidebar({
               )}
               <Button
                 variant="ghost"
+                size="sm"
                 className="h-[26px] min-w-0 gap-1.5 rounded-sm px-2 py-0 text-[11.5px] leading-none font-normal text-muted-foreground"
                 onClick={onOpenSettings}
               >

@@ -317,8 +317,11 @@ describe('tailwind-merge resolves the overrides the way the file intends', () =>
     expect(trigger).not.toContain('border-input');
     expect(trigger).toContain('px-2');
     expect(trigger).not.toContain('px-3');
-    expect(trigger).toContain('text-xs');
+    // V2-B: the design's 12.5px trigger text, not shadcn's text-sm nor S1's
+    // original text-xs.
+    expect(trigger).toContain('text-[12.5px]');
     expect(trigger).not.toContain('text-sm');
+    expect(trigger).not.toContain('text-xs');
     expect(trigger).toContain('shadow-none');
     expect(trigger).not.toContain('shadow-sm');
     // …and the ring survives it, colour included. `ring-1` and `ring-<colour>`
@@ -357,8 +360,9 @@ describe('tailwind-merge resolves the overrides the way the file intends', () =>
       expect(row).not.toContain('justify-center'); // Button's cva default
       expect(row).toContain('h-[30px]'); // the design's row height
       expect(row).not.toContain('h-9'); // Button's default size
-      expect(row).toContain('rounded-sm'); // the design's 6px row corner
-      expect(row).not.toContain('rounded-md'); // Button's cva default
+      // V2-B: the design's ROW class is rounded-md (8px), not S1's rounded-sm.
+      expect(row).toContain('rounded-md');
+      expect(row).not.toContain('rounded-sm');
       expect(row).toContain('px-2');
       expect(row).not.toContain('px-4');
       expect(row).toContain('font-normal');
@@ -514,10 +518,10 @@ describe('S1: the design’s sidebar elements', () => {
   });
 
   it('puts a root folder glyph on the same line as the all-collections glyph', () => {
-    // Both rows are px-2 with gap-1.5 and a 16px leading element (the handle, and
-    // the all-row's matching gutter), so the glyph lands at 8+16+6 = 30px in each.
-    // Asserted as structure because jsdom has no layout: same padding, same gap,
-    // same number of elements before the glyph.
+    // Both rows are px-2 with the design's gap-2 and a 16px leading element
+    // (the handle, and the all-row's matching gutter), so the glyph lands at
+    // the same x in each. Asserted as structure because jsdom has no layout:
+    // same padding, same gap, same number of elements before the glyph.
     const { container } = renderNav(Sidebar);
     const allRow = container.querySelector('[data-nav-all]');
     const folderRow = container.querySelector('[data-collection-id="c1"][data-nav-indent]');
@@ -525,7 +529,7 @@ describe('S1: the design’s sidebar elements', () => {
     // glyph — so the glyphs land on the same x with no layout engine needed.
     for (const row of [allRow, folderRow]) {
       expect(classesOf(row)).toContain('pl-2');
-      expect(classesOf(row)).toContain('gap-1.5');
+      expect(classesOf(row)).toContain('gap-2'); // V2-B's ROW gap
     }
     // The glyph is the row's own svg child. The drag handle also contains an svg,
     // so a descendant search would find index 0 and prove nothing.
@@ -563,19 +567,63 @@ describe('S1: the design’s sidebar elements', () => {
     expect(classesOf(container.querySelector('aside [data-collection-id="c2"] [data-nav-count]'))).toContain('text-primary');
   });
 
-  it('keeps all three theme options in the bottom bar segmented control', () => {
-    const { container } = renderNav(Sidebar);
-    const group = container.querySelector('aside [role="group"]');
+  /* V2-B replaces the three-way segmented control with a single 26px ghost
+     icon button that cycles system -> light -> dark -> system. All three
+     modes are still reachable, one click apart instead of one click each. */
+  it('cycles the single theme button system -> light -> dark -> system', () => {
+    const expectations = [
+      { mode: 'system', next: 'light', nextLabel: '浅色' },
+      { mode: 'light', next: 'dark', nextLabel: '深色' },
+      { mode: 'dark', next: 'system', nextLabel: '跟随系统' }
+    ];
+    for (const { mode, next, nextLabel } of expectations) {
+      const onThemeModeChange = vi.fn();
+      const { container, unmount } = renderNav(Sidebar, { themeMode: mode, onThemeModeChange });
+      const buttons = container.querySelectorAll('aside [role="group"]');
+      // The segmented control is gone entirely.
+      expect(buttons).toHaveLength(0);
 
-    expect(group).not.toBeNull();
-    expect(group.getAttribute('aria-label')).toBe('主题');
-    const buttons = group.querySelectorAll('button');
-    // The design drew two; behaviour keeps three.
-    expect(buttons).toHaveLength(3);
-    expect(Array.from(buttons).map((b) => b.getAttribute('aria-label'))).toEqual(['跟随系统', '浅色', '深色']);
-    // 26x22 inside a 2px-padded, bordered, 6px-cornered track
-    expect(classesOf(buttons[0])).toEqual(expect.arrayContaining(['h-[22px]', 'w-[26px]', 'rounded-sm']));
-    expect(classesOf(group)).toEqual(expect.arrayContaining(['rounded-sm', 'border', 'border-border', 'p-0.5']));
+      const button = container.querySelector(`aside [aria-label="切换到${nextLabel}"]`);
+      expect(button).not.toBeNull();
+      expect(button.tagName).toBe('BUTTON');
+      expect(classesOf(button)).toEqual(expect.arrayContaining(['h-[26px]', 'w-[26px]', 'rounded-md']));
+
+      button.click();
+      expect(onThemeModeChange).toHaveBeenCalledWith(next);
+      unmount();
+    }
+  });
+
+  it('shows the glyph for the current mode and names the mode a click switches to', () => {
+    // Rendered once per mode; the tooltip content mirrors the button's
+    // aria-label, both driven by the *next* mode in the cycle.
+    const byMode = {
+      system: { tooltip: '切换到浅色' },
+      light: { tooltip: '切换到深色' },
+      dark: { tooltip: '切换到跟随系统' }
+    };
+    for (const [mode, { tooltip }] of Object.entries(byMode)) {
+      const { container, unmount } = renderNav(Sidebar, { themeMode: mode });
+      const tooltipContent = Array.from(container.querySelectorAll('button')).find(
+        (b) => b.getAttribute('aria-label') === tooltip
+      );
+      expect(tooltipContent).not.toBeNull();
+      unmount();
+    }
+  });
+
+  it('gives the collapsed rail the same theme cycle button', () => {
+    const onThemeModeChange = vi.fn();
+    const { container, unmount } = renderNav(Sidebar, {
+      collapsed: true,
+      themeMode: 'system',
+      onThemeModeChange
+    });
+    const button = container.querySelector('aside [aria-label="切换到浅色"]');
+    expect(button).not.toBeNull();
+    button.click();
+    expect(onThemeModeChange).toHaveBeenCalledWith('light');
+    unmount();
   });
 
   it('takes the design’s 232px rail width, and the collapsed rail keeps its own', () => {
