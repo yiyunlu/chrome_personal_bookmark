@@ -147,6 +147,12 @@ const dictionaries = {
     // New collection
     newCollection: '新建分类',
     newCollectionPrompt: '分类名称',
+    // Sort (V2-A)
+    sortMode: '排序方式',
+    sortManual: '默认顺序',
+    sortRecent: '最近添加',
+    sortTitle: '按标题',
+    sortDomain: '按域名',
     // Trash
     trash: '回收站',
     trashEmpty: '回收站为空',
@@ -356,6 +362,12 @@ const dictionaries = {
     // New collection
     newCollection: 'New Collection',
     newCollectionPrompt: 'Collection name',
+    // Sort (V2-A)
+    sortMode: 'Sort by',
+    sortManual: 'Manual order',
+    sortRecent: 'Recently added',
+    sortTitle: 'Title',
+    sortDomain: 'Domain',
     // Trash
     trash: 'Trash',
     trashEmpty: 'Trash is empty',
