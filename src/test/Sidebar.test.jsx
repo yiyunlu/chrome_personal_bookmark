@@ -69,13 +69,13 @@ describe('Sidebar icon-only buttons', () => {
     expect(onViewTrash).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the theme buttons named while they are icon-only at narrow widths', () => {
-    renderSidebar();
-    // The visible span is `hidden sm:inline`, so the label has to survive as an
-    // aria-label too.
-    expect(screen.getByRole('button', { name: '跟随系统' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '浅色' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '深色' })).toBeInTheDocument();
+  /* V2-B replaced the three-way segmented theme control with a single
+     icon-only button that cycles system -> light -> dark -> system; it is
+     still named — by the mode a click will switch TO, not a fixed label — so
+     it survives being icon-only exactly as the old three buttons did. */
+  it('names the single icon-only theme button by the mode a click switches to', () => {
+    renderSidebar({ themeMode: 'system' });
+    expect(screen.getByRole('button', { name: '切换到浅色' })).toBeInTheDocument();
   });
 });
 
