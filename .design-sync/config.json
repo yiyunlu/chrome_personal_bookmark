@@ -95,5 +95,266 @@
     "ContextMenuSubTrigger": "inset?: boolean; disabled?: boolean; className?: string; children?: React.ReactNode;",
     "ContextMenuSubContent": "side?: 'top' | 'right' | 'bottom' | 'left'; align?: 'start' | 'center' | 'end'; sideOffset?: number; alignOffset?: number; collisionPadding?: number; className?: string; children?: React.ReactNode;"
   },
-  "docsDir": ".design-sync/docs"
+  "docsDir": ".design-sync/docs",
+  "overrides": {
+    "Dialog": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogContent": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogHeader": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogFooter": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogTitle": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogDescription": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogClose": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogTrigger": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogPortal": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogOverlay": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "AlertDialog": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogContent": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogHeader": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogFooter": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogTitle": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogDescription": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogAction": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogCancel": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogTrigger": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogPortal": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogOverlay": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuTrigger": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuContent": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuCheckboxItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuRadioItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuLabel": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuSeparator": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuShortcut": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuGroup": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuPortal": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuSub": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuSubContent": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuSubTrigger": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuRadioGroup": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenu": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuTrigger": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuContent": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuCheckboxItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuRadioItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuLabel": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuSeparator": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuShortcut": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuGroup": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuPortal": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuSub": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuSubContent": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuSubTrigger": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuRadioGroup": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "Select": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectTrigger": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectValue": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectContent": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectGroup": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectLabel": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectItem": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectSeparator": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "Tooltip": {
+      "cardMode": "single",
+      "viewport": "480x200"
+    },
+    "TooltipTrigger": {
+      "cardMode": "single",
+      "viewport": "480x200"
+    },
+    "TooltipContent": {
+      "cardMode": "single",
+      "viewport": "480x200"
+    },
+    "TooltipProvider": {
+      "cardMode": "single",
+      "viewport": "480x200"
+    },
+    "Toaster": {
+      "cardMode": "single",
+      "viewport": "560x220"
+    }
+  },
+  "extraEntries": [
+    "./.design-sync/entries/toast.js"
+  ]
 }
