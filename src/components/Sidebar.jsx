@@ -14,6 +14,7 @@ import {
   Trash2
 } from 'lucide-react';
 import Sortable from 'sortablejs';
+import { nextThemeMode } from '../hooks/useTheme';
 import { t } from '../lib/i18n';
 import { cn } from '../lib/cn';
 import { identity } from '../lib/identity';
@@ -128,8 +129,10 @@ const RAIL_ROW_CLASS = 'w-full h-[30px] px-0 py-0 rounded-sm';
 /* The bottom bar's theme control (V2-B): a single 26px ghost icon button that
    cycles system -> light -> dark -> system, replacing the three-way segmented
    control. All three modes stay reachable, just one click apart instead of
-   one click each. */
-const THEME_CYCLE = { system: 'light', light: 'dark', dark: 'system' };
+   one click each. The actual next-mode rule lives in `nextThemeMode`
+   (src/hooks/useTheme.js): it skips `system` whenever `system` would render
+   the same appearance already on screen, so a click never looks like a
+   no-op. */
 const THEME_ICONS = { system: Monitor, light: Sun, dark: Moon };
 const THEME_LABEL_KEYS = { system: 'themeSystem', light: 'themeLight', dark: 'themeDark' };
 
@@ -203,6 +206,7 @@ export function Sidebar({
   activeSourceId,
   onSourceChange,
   themeMode,
+  systemTheme = 'light',
   onThemeModeChange,
   languageSetting,
   onLanguageChange,
@@ -223,11 +227,11 @@ export function Sidebar({
   // rail; a single icon-only button can, so V2-B adds it there too). The
   // glyph shows the mode currently in effect; the tooltip names the mode the
   // click will switch TO.
-  const nextThemeMode = THEME_CYCLE[themeMode] || 'light';
+  const upcomingThemeMode = nextThemeMode(themeMode, systemTheme);
   const ThemeIcon = THEME_ICONS[themeMode] || Monitor;
   const themeLabelFor = (mode) => THEME_LABEL_KEYS[mode] ? t(THEME_LABEL_KEYS[mode]) : mode;
-  const themeSwitchLabel = t('themeSwitchTo', themeLabelFor(nextThemeMode));
-  const cycleTheme = () => onThemeModeChange(nextThemeMode);
+  const themeSwitchLabel = t('themeSwitchTo', themeLabelFor(upcomingThemeMode));
+  const cycleTheme = () => onThemeModeChange(upcomingThemeMode);
   const collapseLabel = collapsed ? t('expandSidebar') : t('collapseSidebar');
   // The design's logo block and its "all collections" row both show the rail's
   // total bookmark count.

@@ -569,16 +569,29 @@ describe('S1: the design’s sidebar elements', () => {
 
   /* V2-B replaces the three-way segmented control with a single 26px ghost
      icon button that cycles system -> light -> dark -> system. All three
-     modes are still reachable, one click apart instead of one click each. */
-  it('cycles the single theme button system -> light -> dark -> system', () => {
+     modes are still reachable, one click apart instead of one click each.
+
+     The fix (this change) skips `system` whenever it would resolve to the
+     same appearance already on screen, so the next mode depends on both the
+     current mode and `systemTheme` (what `system` would render). */
+  it('cycles the single theme button, skipping system when it would look identical', () => {
     const expectations = [
-      { mode: 'system', next: 'light', nextLabel: '浅色' },
-      { mode: 'light', next: 'dark', nextLabel: '深色' },
-      { mode: 'dark', next: 'system', nextLabel: '跟随系统' }
+      // Light OS: `system` renders light.
+      { mode: 'system', systemTheme: 'light', next: 'dark', nextLabel: '深色' },
+      { mode: 'light', systemTheme: 'light', next: 'dark', nextLabel: '深色' },
+      { mode: 'dark', systemTheme: 'light', next: 'system', nextLabel: '跟随系统' },
+      // Dark OS: `system` renders dark.
+      { mode: 'system', systemTheme: 'dark', next: 'light', nextLabel: '浅色' },
+      { mode: 'light', systemTheme: 'dark', next: 'system', nextLabel: '跟随系统' },
+      { mode: 'dark', systemTheme: 'dark', next: 'light', nextLabel: '浅色' }
     ];
-    for (const { mode, next, nextLabel } of expectations) {
+    for (const { mode, systemTheme, next, nextLabel } of expectations) {
       const onThemeModeChange = vi.fn();
-      const { container, unmount } = renderNav(Sidebar, { themeMode: mode, onThemeModeChange });
+      const { container, unmount } = renderNav(Sidebar, {
+        themeMode: mode,
+        systemTheme,
+        onThemeModeChange
+      });
       const buttons = container.querySelectorAll('aside [role="group"]');
       // The segmented control is gone entirely.
       expect(buttons).toHaveLength(0);
@@ -594,16 +607,34 @@ describe('S1: the design’s sidebar elements', () => {
     }
   });
 
+  it('with a dark system, clicking from dark switches straight to light in one click', () => {
+    // The bug this closes: on a dark-OS machine, `dark` -> `system` used to
+    // render dark again, so it took two clicks to reach light. Now the first
+    // click from `dark` goes straight to `light`.
+    const onThemeModeChange = vi.fn();
+    const { container, unmount } = renderNav(Sidebar, {
+      themeMode: 'dark',
+      systemTheme: 'dark',
+      onThemeModeChange
+    });
+    const button = container.querySelector('aside [aria-label="切换到浅色"]');
+    expect(button).not.toBeNull();
+    button.click();
+    expect(onThemeModeChange).toHaveBeenCalledTimes(1);
+    expect(onThemeModeChange).toHaveBeenCalledWith('light');
+    unmount();
+  });
+
   it('shows the glyph for the current mode and names the mode a click switches to', () => {
-    // Rendered once per mode; the tooltip content mirrors the button's
-    // aria-label, both driven by the *next* mode in the cycle.
+    // Rendered once per mode (light OS); the tooltip content mirrors the
+    // button's aria-label, both driven by the *next* mode in the cycle.
     const byMode = {
-      system: { tooltip: '切换到浅色' },
+      system: { tooltip: '切换到深色' },
       light: { tooltip: '切换到深色' },
       dark: { tooltip: '切换到跟随系统' }
     };
     for (const [mode, { tooltip }] of Object.entries(byMode)) {
-      const { container, unmount } = renderNav(Sidebar, { themeMode: mode });
+      const { container, unmount } = renderNav(Sidebar, { themeMode: mode, systemTheme: 'light' });
       const tooltipContent = Array.from(container.querySelectorAll('button')).find(
         (b) => b.getAttribute('aria-label') === tooltip
       );
@@ -617,12 +648,13 @@ describe('S1: the design’s sidebar elements', () => {
     const { container, unmount } = renderNav(Sidebar, {
       collapsed: true,
       themeMode: 'system',
+      systemTheme: 'light',
       onThemeModeChange
     });
-    const button = container.querySelector('aside [aria-label="切换到浅色"]');
+    const button = container.querySelector('aside [aria-label="切换到深色"]');
     expect(button).not.toBeNull();
     button.click();
-    expect(onThemeModeChange).toHaveBeenCalledWith('light');
+    expect(onThemeModeChange).toHaveBeenCalledWith('dark');
     unmount();
   });
 
