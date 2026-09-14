@@ -72,10 +72,28 @@ describe('Sidebar icon-only buttons', () => {
   /* V2-B replaced the three-way segmented theme control with a single
      icon-only button that cycles system -> light -> dark -> system; it is
      still named — by the mode a click will switch TO, not a fixed label — so
-     it survives being icon-only exactly as the old three buttons did. */
+     it survives being icon-only exactly as the old three buttons did.
+
+     The bug fix skips `system` whenever it would resolve to the same
+     appearance already on screen, so the next mode depends on both the
+     current mode and what `system` would render (`systemTheme`). */
   it('names the single icon-only theme button by the mode a click switches to', () => {
-    renderSidebar({ themeMode: 'system' });
+    renderSidebar({ themeMode: 'system', systemTheme: 'light' });
+    expect(screen.getByRole('button', { name: '切换到深色' })).toBeInTheDocument();
+  });
+
+  it('skips the system step when it would look identical to the current mode', () => {
+    // Dark system, current mode dark: `system` would render dark too, so the
+    // click must skip straight to light instead of a same-looking `system`.
+    renderSidebar({ themeMode: 'dark', systemTheme: 'dark' });
     expect(screen.getByRole('button', { name: '切换到浅色' })).toBeInTheDocument();
+  });
+
+  it('still offers system when it would produce a visible change', () => {
+    // Dark system, current mode light: `system` would render dark, a real
+    // change, so it stays in the cycle.
+    renderSidebar({ themeMode: 'light', systemTheme: 'dark' });
+    expect(screen.getByRole('button', { name: '切换到跟随系统' })).toBeInTheDocument();
   });
 });
 

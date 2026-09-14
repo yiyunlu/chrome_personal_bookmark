@@ -140,7 +140,7 @@ function App() {
   const suppressCardOpenUntilRef = useRef(0);
   const suppressNextCardClickRef = useRef(false);
 
-  const { themeMode, resolvedTheme, handleThemeModeChange } = useTheme();
+  const { themeMode, resolvedTheme, systemTheme, handleThemeModeChange } = useTheme();
   const { undoToast, showUndo, handleUndo } = useUndoStack();
 
   const dragEnabled = search.trim() === '';
@@ -1447,6 +1447,7 @@ function App() {
           activeSourceId={activeSourceId}
           onSourceChange={handleSourceChange}
           themeMode={themeMode}
+          systemTheme={systemTheme}
           onThemeModeChange={handleThemeModeChange}
           languageSetting={languageSetting}
           onLanguageChange={handleLanguageChange}
