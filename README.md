@@ -6,10 +6,10 @@ A Chrome extension that replaces your new tab page with a powerful bookmark mana
 
 - **Bookmark management** — Create, edit, move, and delete bookmarks with drag-and-drop reordering
 - **Collections** — Organize bookmarks into folders with nested subfolders
-- **AI smart categorize** — Automatically suggest collection assignments based on URL and title patterns
-- **Smart search** — Fuzzy matching, category expansion ("social media" finds Twitter, Reddit), and optional AI semantic search
+- **AI smart categorize** — Suggest collection assignments from URL/title patterns (Claude optional when an API key is set in Settings)
+- **Smart search** — Fuzzy matching and category expansion ("social media" finds Twitter, Reddit); Claude can further refine results when configured
 - **Dead link detection** — Scan bookmarks for broken URLs with batch checking
-- **AI chat assistant** — Natural language commands: "search React", "find duplicates", "move GitHub to Development"
+- **AI chat assistant** — Natural language helpers (search, find duplicates, move bookmarks); richer with Claude, otherwise rule/mock based
 - **Auto-organize** — One-click URL deduplication + alphabetical sort
 - **Batch operations** — Multi-select bookmarks for bulk move or delete
 - **Save tabs** — Save all open tabs as bookmarks in one click
@@ -68,16 +68,16 @@ npm run format     # Prettier formatting
 
 AI features work in two modes:
 
-- **Mock mode** (default) — Pattern-based categorization using domain and title matching. No API key needed.
-- **Claude API mode** — Set your Anthropic API key for real AI-powered categorization, semantic search, and natural language chat.
+- **Mock mode** (default) — Pattern-based categorization and helpers using domain/title matching. No API key needed.
+- **Claude API mode** — Open the sidebar **Settings** panel, paste your Anthropic API key, and save. With a key, categorize / search / chat can call Claude; without one they stay on local/mock behavior.
 
-To enable Claude API mode, store your API key in Chrome storage under `tabhub_ai_api_key`.
+Do not treat every "AI" label as fully wired Claude: mock mode is the default until a key is saved in Settings.
 
 ## Documentation
 
 - [User Manual](./USER_MANUAL.md) — Complete usage guide for end users
 - [CLAUDE.md](./CLAUDE.md) — Developer reference for AI assistants and contributors
-- [plan.md](./plan.md) — Development roadmap and completed phases
+- [ENHANCEMENT_PLAN.md](./ENHANCEMENT_PLAN.md) — Historical enhancement notes (superseded; see notice at top of that file)
 
 ## Permissions
 
