@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { UndoToast } from '../components/UndoToast';
 import { EditBookmarkModal } from '../components/EditBookmarkModal';
@@ -48,9 +48,6 @@ const undoState = (overrides = {}) => ({
 
 const undoButton = () => screen.getByRole('button', { name: '撤销' });
 
-afterEach(() => {
-  document.getElementById('tabhub-undo-toaster-host')?.remove();
-});
 
 describe('UndoToast', () => {
   it('keeps an aria-live region mounted even with no toast on screen', () => {

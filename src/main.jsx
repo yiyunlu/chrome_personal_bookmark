@@ -1799,6 +1799,16 @@ function App() {
         undoToast={undoToast}
         onUndo={() => handleUndo(() => refresh(activeSourceRef.current))}
         theme={resolvedTheme}
+        elevate={Boolean(
+          saveTabsState ||
+            editorState ||
+            settingsOpen ||
+            showTrash ||
+            confirmDialog ||
+            promptDialog ||
+            aiCategorizeState ||
+            deadLinkState
+        )}
       />
     </>
   );
