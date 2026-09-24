@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { DismissableLayerBranch } from '@radix-ui/react-dismissable-layer';
 import { Undo2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { Button } from './ui/button';
@@ -26,6 +27,12 @@ import { Button } from './ui/button';
    `aria-live` on this same node keeps hideOthers from marking Undo.
    `data-sonner-toaster` keeps DialogShell's outside-click guard.
    `pointer-events: auto` restores hits while body is pointer-inert.
+
+   Wrap the popover root in Radix `DismissableLayerBranch` so modal Dialog's
+   shared module-level `branches` Set contains this node. Then
+   `shouldHandlePointerDownOutside` returns false and Save Tabs never starts
+   the outside-dismiss flow when Undo is clicked (preventDefault alone was
+   unreliable for HTML popover top-layer target/focus paths).
    ──────────────────────────────────────────────────────────────────────────── */
 
 const TOAST_STYLE = {
@@ -123,7 +130,7 @@ export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div
+    <DismissableLayerBranch
       ref={layerRef}
       popover="manual"
       role="status"
@@ -140,7 +147,7 @@ export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false
           onUndo={() => onUndoRef.current?.()}
         />
       ) : null}
-    </div>,
+    </DismissableLayerBranch>,
     document.body
   );
 }
