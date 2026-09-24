@@ -696,10 +696,13 @@ function App() {
 
   const handleSaveTabs = useCallback(async () => {
     const openTabs = await getOpenTabs();
-    if (openTabs.length === 0) return;
+    if (openTabs.length === 0) {
+      showUndo(t('noOpenTabsToSave'), null);
+      return;
+    }
     const folderName = new Date().toISOString().slice(0, 19).replace('T', ' ');
     setSaveTabsState({ tabs: openTabs, folderName });
-  }, []);
+  }, [showUndo]);
 
   const handleSaveTabsConfirm = useCallback(
     async ({ selectedTabIds, folderName, targetCollectionId }) => {
