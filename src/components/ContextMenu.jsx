@@ -122,14 +122,29 @@ export function ContextMenu({
 
         {contextMenu?.kind === 'collection' && (
           <>
-            <DropdownMenuItem onSelect={() => onRenameCollection?.()}>
-              <FolderPen className={MUTED_GLYPH} />
-              {t('renameFolder')}
-            </DropdownMenuItem>
-            <DropdownMenuItem className={DANGER_ITEM} onSelect={() => onDeleteCollection?.()}>
-              <Trash2 />
-              {t('deleteFolder')}
-            </DropdownMenuItem>
+            {contextMenu.collection?.editable || contextMenu.collection?.deletable ? (
+              <>
+                <DropdownMenuItem
+                  disabled={!contextMenu.collection?.editable}
+                  onSelect={() => onRenameCollection?.()}
+                >
+                  <FolderPen className={MUTED_GLYPH} />
+                  {t('renameFolder')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={DANGER_ITEM}
+                  disabled={!contextMenu.collection?.deletable}
+                  onSelect={() => onDeleteCollection?.()}
+                >
+                  <Trash2 />
+                  {t('deleteFolder')}
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem onSelect={() => onClose?.()}>
+                {t('unfiledNoActions')}
+              </DropdownMenuItem>
+            )}
           </>
         )}
       </DropdownMenuContent>

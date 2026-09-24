@@ -1273,10 +1273,10 @@ function App() {
   }, []);
 
   const openCollectionContextMenu = useCallback((event, collection) => {
-    // Always suppress the OS menu on a collection header — even Unfiled
-    // (editable/deletable false) — otherwise smoke sees the native menu.
+    // Always suppress the OS menu and open ours — including Unfiled, whose
+    // items render disabled / as a no-op row (see ContextMenu).
     event.preventDefault();
-    if (!collection.editable && !collection.deletable) return;
+    event.stopPropagation();
     setContextMenu({ kind: 'collection', x: event.clientX, y: event.clientY, collection });
   }, []);
 
@@ -1475,6 +1475,7 @@ function App() {
        it. Sticky resolves against the nearest scrolling ancestor, so while the page
        body was the thing that actually scrolled the headers would have stuck to the
        viewport and slid over the toolbar. */
+    <>
     <div className="relative h-screen bg-background">
       <div className="flex h-screen">
         <Sidebar
@@ -1791,14 +1792,15 @@ function App() {
         onCancel={() => setPromptDialog(null)}
       />
 
-      {/* Sonner's Toaster lives inside UndoToast; `theme` is this app's own
-          resolved theme (shadcn's stock wrapper would read next-themes). */}
+    </div>
+      {/* Outside the `relative` root so Sonner's fixed toaster is not trapped
+          under DialogShell portals (body, z-90). */}
       <UndoToast
         undoToast={undoToast}
         onUndo={() => handleUndo(() => refresh(activeSourceRef.current))}
         theme={resolvedTheme}
       />
-    </div>
+    </>
   );
 }
 

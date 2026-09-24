@@ -7,68 +7,37 @@ import { Button } from './ui/button';
 import { Toaster } from './ui/sonner';
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   The undo toast, on Sonner (P4).
+   The undo toast, on Sonner (P4), portaled to a stable body host.
 
-   Why it moved off a plain `fixed` div: P1 raised the dialogs to z-90/z-100 to
-   clear ChatPanel (z-50) and this toast (z-80), and a modal Radix Dialog does
-   two more things while it is open —
+   Why Sonner: a modal Radix Dialog sets `pointer-events: none` on <body> and
+   `aria-hidden` on siblings; Sonner's always-mounted `aria-live` section is
+   exempt from hideOthers, and we restore hit-testing via TOASTER_STYLE.
 
-     · DismissableLayer's `disableOutsidePointerEvents` sets
-       `pointer-events: none` on <body>. The property inherits, so a toast
-       rendered anywhere under <body> stops being hit-testable: the Undo button
-       silently ignores clicks.
-     · `hideOthers(content)` (aria-hidden) walks <body>'s children and marks
-       everything that is not an ancestor of the dialog with `aria-hidden`,
-       which takes the toast away from screen readers too.
-
-   A z-index bump fixes neither. Two properties of Sonner's Toaster do:
-
-     · its container is `position: fixed; z-index: 999999999` (its own injected
-       stylesheet), so it is never under a dialog scrim; and
-     · it always renders a `<section aria-live="polite">`, even with zero
-       toasts. `aria-hidden`'s hideOthers explicitly exempts `[aria-live]`
-       elements (node_modules/aria-hidden/dist/es2015/index.js: `targets.push(
-       …querySelectorAll('[aria-live], script'))`), so that section — and
-       everything inside it — is skipped, and so are its ancestors. Because the
-       Toaster is mounted for the lifetime of the app rather than only while a
-       toast is up, the exemption is in place *before* any dialog opens, which
-       is what the old conditionally-rendered toast could not guarantee.
-
-   Pointer events still have to be restored explicitly; see TOASTER_STYLE.
-
-   Timing is *not* owned here. `useUndoStack` starts and clears the 8s window
-   (src/hooks/useUndoStack.js) and this component is a pure projection of its
-   `undoToast` state onto Sonner's store: one toast per `undoToast.id`, updated
-   in place while `pending` flips, dismissed when the state goes back to null.
+   Why a stable body host: App's root uses `position: relative` (stacking
+   context), so an in-tree toaster with z-index 999999999 still paints under
+   DialogShell portals on `document.body` (z-90). A dedicated host appended
+   once to `document.body` keeps the toaster above Save Tabs (smoke item 7).
+   Host is created synchronously so the Toaster never remounts (a remount
+   would drop an in-flight toast.custom).
    ──────────────────────────────────────────────────────────────────────────── */
 
-/* Re-enables hit testing for the toast list and its children while a modal
-   dialog holds `pointer-events: none` on <body> — the same escape hatch Radix
-   uses for its own content. Sonner spreads `style` onto the toast <ol>. */
-const TOASTER_STYLE = { pointerEvents: 'auto' };
+const TOASTER_STYLE = { pointerEvents: 'auto', zIndex: 2147483647 };
 
-/* `duration: Infinity` because useUndoStack owns the clock; a second timer in
-   Sonner could only disagree with it. `dismissible: false` keeps the old
-   behaviour that the toast is dismissed by Undo or by the timeout, never by a
-   swipe. */
 const TOAST_OPTIONS = { duration: Infinity, dismissible: false };
 
-/* The panel itself — same geometry and copy as the pre-P4 toast, now in token
-   classes (P6c). The colours are the contract's mapping of what was inline:
-   --panel-bg is `bg-card`, --panel-border `border-border`, --shadow
-   `shadow-panel` (which only displaces a stock shadow because src/lib/cn.js
-   registers the custom scale), --text `text-card-foreground`.
+const HOST_ID = 'tabhub-undo-toaster-host';
 
-   `pointer-events-auto` is load-bearing, not cosmetic: a modal Radix dialog
-   holds `pointer-events: none` on <body> and the property inherits, so without
-   it the Undo button silently ignores clicks. See the header comment.
+function getToasterHost() {
+  if (typeof document === 'undefined') return null;
+  let node = document.getElementById(HOST_ID);
+  if (!node) {
+    node = document.createElement('div');
+    node.id = HOST_ID;
+    document.body.appendChild(node);
+  }
+  return node;
+}
 
-   The chip takes the accent-soft look the rest of the app now wears —
-   `bg-primary/10` + `text-primary`, as Toolbar's manage chip and the sidebar's
-   active rows do. The ghost variant's `hover:text-accent-foreground` is
-   overridden back to `text-primary`, and its hover surface restated, because
-   the pre-migration chip did not change on hover. 12px glyph via
-   `[&_svg]:size-3`: a `size` prop inside a Button is inert. */
 function UndoToastBody({ message, pending, onUndo }) {
   return (
     <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 text-card-foreground shadow-panel">
@@ -90,15 +59,13 @@ function UndoToastBody({ message, pending, onUndo }) {
 /**
  * @param undoToast the `useUndoStack` state object, or null
  * @param onUndo     invoked by the Undo button
- * @param theme      resolved theme from `useTheme` — Sonner's own theming,
- *                   which shadcn normally wires to `next-themes`
+ * @param theme      resolved theme from `useTheme`
  */
 export function UndoToast({ undoToast, onUndo, theme = 'system' }) {
   const onUndoRef = useRef(onUndo);
   const shownIdRef = useRef(null);
+  const host = getToasterHost();
 
-  // The callback identity changes every App render; keeping it in a ref means
-  // that does not re-publish (and so re-animate) the toast.
   useEffect(() => {
     onUndoRef.current = onUndo;
   }, [onUndo]);
@@ -116,8 +83,6 @@ export function UndoToast({ undoToast, onUndo, theme = 'system' }) {
       }
       return;
     }
-    // showUndo() replaces an unexpired toast with a new id; the old one has no
-    // duration of its own, so it has to be taken down explicitly.
     if (shown !== null && shown !== id) sonnerToast.dismiss(shown);
     shownIdRef.current = id;
     sonnerToast.custom(
@@ -136,18 +101,10 @@ export function UndoToast({ undoToast, onUndo, theme = 'system' }) {
     []
   );
 
-  // Mounted unconditionally: that is what keeps the aria-live region present
-  // (and therefore exempt from hideOthers) before a dialog ever opens.
-  // `offset` reproduces the old `bottom-4 right-4`.
-  // Portal to `document.body`: App's root is `position: relative` (stacking
-  // context), while DialogShell portals to body at z-90 — an in-tree Sonner
-  // with z-index 999999999 still paints *under* the dialog. Body-level portal
-  // lets the toaster clear Save Tabs so Undo stays clickable (smoke item 7).
-  if (typeof document === 'undefined') {
-    return <Toaster theme={theme} position="bottom-right" offset={16} style={TOASTER_STYLE} />;
-  }
+  if (!host) return null;
+
   return createPortal(
     <Toaster theme={theme} position="bottom-right" offset={16} style={TOASTER_STYLE} />,
-    document.body
+    host
   );
 }

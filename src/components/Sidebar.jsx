@@ -482,8 +482,12 @@ export function Sidebar({
                     )}
                     data-nav-indent={isNested ? 'nested' : 'root'}
                     onClick={() => onCollectionSelect(collection.id)}
-                    onContextMenu={(e) => onCollectionContextMenu(e, collection)}
-                    title={collection.editable || collection.deletable ? t('rightClickHint') : ''}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onCollectionContextMenu(e, collection);
+                    }}
+                    title={collection.editable || collection.deletable ? t('rightClickHint') : collection.title === t('unfiled') ? t('unfiledNoActions') : ''}
                   >
                     <span
                       className={cn(

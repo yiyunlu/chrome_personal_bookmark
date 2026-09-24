@@ -30,7 +30,7 @@ function Harness({ handlers = {} }) {
 
   const openCollectionContextMenu = useCallback((event, col) => {
     event.preventDefault();
-    if (!col.editable && !col.deletable) return;
+    event.stopPropagation();
     setContextMenu({ kind: 'collection', x: event.clientX, y: event.clientY, collection: col });
   }, []);
 
@@ -112,6 +112,56 @@ describe('ContextMenu (Radix DropdownMenu)', () => {
     expect(screen.getByText(t('deleteFolder')).closest('[role="menuitem"]')).toBeInTheDocument();
     // Card-only entries must not leak into the collection menu.
     expect(screen.queryByText(t('openInNewTab'))).toBeNull();
+  });
+
+  it('opens an app menu on Unfiled instead of returning early (no OS menu)', async () => {
+    const unfiled = {
+      ...collection,
+      id: 'root-1',
+      title: 'Unfiled',
+      folderTitle: 'Unfiled',
+      editable: false,
+      deletable: false
+    };
+    function UnfiledHarness() {
+      const [contextMenu, setContextMenu] = useState(null);
+      return (
+        <div>
+          <section data-module-sortable="true">
+            <CollectionCard
+              collection={unfiled}
+              collapsed={false}
+              moduleDraggable={false}
+              cardDragEnabled
+              manageMode={false}
+              selectedCardIds={new Set()}
+              onToggleCollapse={() => {}}
+              onCardClick={() => {}}
+              onCardContextMenu={() => {}}
+              onCollectionContextMenu={(event, col) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setContextMenu({ kind: 'collection', x: event.clientX, y: event.clientY, collection: col });
+              }}
+              onEditCard={() => {}}
+              onDeleteCard={() => {}}
+              onToggleCardSelect={() => {}}
+              onOpenAll={() => {}}
+              onTagClick={() => {}}
+            />
+          </section>
+          <ContextMenu contextMenu={contextMenu} onClose={() => setContextMenu(null)} />
+        </div>
+      );
+    }
+    render(<UnfiledHarness />);
+    const header = document.querySelector('[data-collection-id="root-1"]');
+    // Native capture listener on the sticky header — fire on the header row.
+    const row = header.querySelector('.sticky') || header.firstElementChild;
+    fireEvent.contextMenu(row, { clientX: 30, clientY: 40 });
+    await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
+    expect(screen.getByText(t('unfiledNoActions'))).toBeInTheDocument();
+    expect(screen.queryByText(t('renameFolder'))).toBeNull();
   });
 
   it('anchors the menu at the pointer coordinates', async () => {
