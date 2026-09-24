@@ -701,9 +701,12 @@ function App() {
   const handleSaveTabs = useCallback(async () => {
     const openTabs = await getOpenTabs();
     if (openTabs.length === 0) {
+      // Informational only — replaces any in-flight undo (empty-tabs path).
       showUndo(t('noOpenTabsToSave'), null);
       return;
     }
+    // Do not touch the undo stack here: smoke 7 needs the delete-undo chip to
+    // stay alive while Save Tabs is open (DialogUndoChip paints it in-portal).
     const folderName = new Date().toISOString().slice(0, 19).replace('T', ' ');
     setSaveTabsState({ tabs: openTabs, folderName });
   }, [showUndo]);

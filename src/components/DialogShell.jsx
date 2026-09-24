@@ -4,6 +4,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '../lib/cn';
 import { AlertDialog, AlertDialogOverlay, AlertDialogPortal, AlertDialogTitle } from './ui/alert-dialog';
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from './ui/dialog';
+import { DialogUndoChip } from './UndoToast';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Shared shells over the vendored shadcn Dialog / AlertDialog primitives.
@@ -167,6 +168,8 @@ export function DialogShell({ open, onClose, title, className, children, layer =
           {title ? <DialogTitle className="sr-only">{title}</DialogTitle> : null}
           {children}
         </DialogPrimitive.Content>
+        {/* Above overlay/content (z-90): chip must share this portal for smoke 7. */}
+        <DialogUndoChip />
       </DialogPortal>
     </Dialog>
   );
@@ -198,6 +201,7 @@ export function AlertDialogShell({ open, onClose, title, className, children, la
           {title ? <AlertDialogTitle className="sr-only">{title}</AlertDialogTitle> : null}
           {children}
         </AlertDialogPrimitive.Content>
+        <DialogUndoChip />
       </AlertDialogPortal>
     </AlertDialog>
   );
