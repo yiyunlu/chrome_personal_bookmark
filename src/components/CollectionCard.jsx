@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { BookmarkIcon } from './BookmarkIcon';
 import {
   Check,
@@ -282,6 +282,22 @@ export const CollectionCard = React.memo(function CollectionCard({
   onOpenAll,
   onTagClick
 }) {
+  const headerRef = useRef(null);
+
+  // Capture-phase native listener: React's bubble onContextMenu + preventDefault
+  // was not enough to suppress Chrome's page menu on Unfiled in extension pages.
+  useEffect(() => {
+    const node = headerRef.current;
+    if (!node) return undefined;
+    const onContextMenu = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onCollectionContextMenu?.(event, collection);
+    };
+    node.addEventListener('contextmenu', onContextMenu, true);
+    return () => node.removeEventListener('contextmenu', onContextMenu, true);
+  }, [collection, onCollectionContextMenu]);
+
   return (
     // Not a shadcn <Card>: this is the `[data-module-sortable]` drag host and the
     // design gives a group no panel of its own — a sticky header on the page
@@ -292,8 +308,8 @@ export const CollectionCard = React.memo(function CollectionCard({
           menu. `z-[2]` is the design's own stacking value; the header has to clear
           the cards that scroll under it and nothing else. */}
       <div
+        ref={headerRef}
         className="group sticky top-0 z-[2] flex w-full items-center gap-2 border-b border-border bg-background pt-3 pb-[9px]"
-        onContextMenu={(e) => onCollectionContextMenu?.(e, collection)}
       >
         <span
           className={cn(
