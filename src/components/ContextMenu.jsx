@@ -1,190 +1,153 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ExternalLink, FolderPen, Pencil, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from './ui/dropdown-menu';
 import { t } from '../lib/i18n';
 
-export function ContextMenu({ contextMenu, onOpenNewTab, onEditCard, onDeleteCard, onRenameCollection, onDeleteCollection, onClose }) {
-  const menuRef = useRef(null);
+// Destructive items: shadcn's own convention, expressed with token classes only.
+const DANGER_ITEM =
+  'text-destructive focus:bg-destructive/10 focus:text-destructive [&_svg]:text-destructive';
 
-  // Focus the first menu item when opened
+/* P6c: the item glyphs carry no `size` prop. DropdownMenuItem ships
+   `[&>svg]:size-4`, a class, which already beat the 14px these used to ask for
+   — so dropping the prop changes nothing on screen and takes the last
+   off-scale icon sizes out of the file. Their colour is `text-muted-foreground`
+   (the legacy --muted) as a class; the destructive rows take theirs from
+   DANGER_ITEM. */
+const MUTED_GLYPH = 'text-muted-foreground';
+
+/**
+ * Right-click menu for bookmark cards and collection headers.
+ *
+ * Radix's `ContextMenu` primitive is not usable here: it derives its position
+ * from a `Trigger` that must *wrap* the right-clicked element, and the two
+ * trigger sites (`Sidebar`'s collection rows and `CollectionCard`'s cards) are
+ * draggable hosts owned by SortableJS — wrapping or re-rendering them is what
+ * desyncs React's virtual DOM during a drop. So this uses `DropdownMenu`
+ * anchored to a zero-size virtual anchor placed at the stored pointer
+ * coordinates, which keeps the pre-existing `contextMenu` state object and the
+ * component's prop API byte-for-byte identical while handing Radix the whole
+ * menu: roving focus (`ArrowUp`/`ArrowDown`/`Home`/`End`/typeahead), `Escape`,
+ * focus trapping, outside-dismiss, collision-aware placement and ARIA.
+ */
+export function ContextMenu({
+  contextMenu,
+  onOpenNewTab,
+  onEditCard,
+  onDeleteCard,
+  onRenameCollection,
+  onDeleteCollection,
+  onClose
+}) {
+  const open = !!contextMenu;
+  const contentRef = useRef(null);
+
+  // Controlled open (right-click sets state) does not always move focus into
+  // the menu in Chrome; without focus, Arrow/Home/End/Esc never reach Radix.
   useEffect(() => {
-    if (!contextMenu) return;
-    const raf = requestAnimationFrame(() => {
-      const first = menuRef.current?.querySelector('[role="menuitem"]');
-      if (first) first.focus();
+    if (!open) return undefined;
+    const id = requestAnimationFrame(() => {
+      const root = contentRef.current;
+      if (!root) return;
+      const item = root.querySelector('[role="menuitem"]');
+      if (item && typeof item.focus === 'function') item.focus();
+      else if (typeof root.focus === 'function') root.focus();
     });
-    return () => cancelAnimationFrame(raf);
-  }, [contextMenu]);
-
-  const handleKeyDown = useCallback(
-    (e) => {
-      const items = menuRef.current ? Array.from(menuRef.current.querySelectorAll('[role="menuitem"]')) : [];
-      const currentIndex = items.indexOf(document.activeElement);
-
-      switch (e.key) {
-        case 'ArrowDown': {
-          e.preventDefault();
-          const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
-          items[next]?.focus();
-          break;
-        }
-        case 'ArrowUp': {
-          e.preventDefault();
-          const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
-          items[prev]?.focus();
-          break;
-        }
-        case 'Escape':
-          e.preventDefault();
-          e.stopPropagation();
-          onClose?.();
-          break;
-        case 'Tab':
-          // Prevent tab from leaving the menu; close it instead
-          e.preventDefault();
-          onClose?.();
-          break;
-        default:
-          break;
-      }
-    },
-    [onClose]
-  );
-
-  if (!contextMenu) return null;
+    return () => cancelAnimationFrame(id);
+  }, [open, contextMenu?.kind, contextMenu?.x, contextMenu?.y]);
 
   return (
-    <div
-      ref={menuRef}
-      role="menu"
-      className="fixed z-50 min-w-[10rem] rounded-xl border p-1 animate-slide-up"
-      style={{
-        top: contextMenu.y,
-        left: contextMenu.x,
-        background: 'var(--panel-bg)',
-        borderColor: 'var(--panel-border)',
-        boxShadow: 'var(--shadow)'
+    <DropdownMenu
+      open={open}
+      // Not modal: a modal menu locks body scroll and sets `pointer-events:
+      // none` on everything outside the portal, which would freeze the
+      // SortableJS lists underneath.
+      modal={false}
+      onOpenChange={(next) => {
+        if (!next) onClose?.();
       }}
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={handleKeyDown}
     >
-      {contextMenu.kind === 'card' && (
-        <>
-          <button
-            type="button"
-            role="menuitem"
-            className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
-            style={{ color: 'var(--text)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--hover)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.background = 'var(--hover)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onClick={onOpenNewTab}
-          >
-            <ExternalLink size={14} style={{ color: 'var(--muted)' }} />
-            {t('openInNewTab')}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
-            style={{ color: 'var(--text)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--hover)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.background = 'var(--hover)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onClick={onEditCard}
-          >
-            <Pencil size={14} style={{ color: 'var(--muted)' }} />
-            {t('editBookmark')}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
-            style={{ color: 'var(--danger)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--danger-soft)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.background = 'var(--danger-soft)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onClick={onDeleteCard}
-          >
-            <Trash2 size={14} />
-            {t('deleteToTrash')}
-          </button>
-        </>
-      )}
-      {contextMenu.kind === 'collection' && (
-        <>
-          <button
-            type="button"
-            role="menuitem"
-            className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
-            style={{ color: 'var(--text)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--hover)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.background = 'var(--hover)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onClick={onRenameCollection}
-          >
-            <FolderPen size={14} style={{ color: 'var(--muted)' }} />
-            {t('renameFolder')}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="w-full flex items-center gap-2 text-left rounded-lg px-2.5 py-2 text-sm hover:opacity-80"
-            style={{ color: 'var(--danger)' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--danger-soft)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.background = 'var(--danger-soft)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-            onClick={onDeleteCollection}
-          >
-            <Trash2 size={14} />
-            {t('deleteFolder')}
-          </button>
-        </>
-      )}
-    </div>
+      <DropdownMenuTrigger asChild>
+        {/* Virtual anchor: a 0x0, non-interactive box at the pointer. Radix
+            measures it to place the menu, so the menu opens exactly where the
+            user right-clicked. */}
+        <span
+          aria-hidden="true"
+          data-context-menu-anchor=""
+          className="pointer-events-none fixed block h-0 w-0"
+          style={{ left: contextMenu?.x ?? 0, top: contextMenu?.y ?? 0 }}
+        />
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        ref={contentRef}
+        side="bottom"
+        align="start"
+        sideOffset={0}
+        collisionPadding={8}
+        className="min-w-[10rem]"
+        aria-label={contextMenu?.kind === 'collection' ? t('collectionActions') : t('bookmarkActions')}
+        // Radix labels the menu from its trigger, which here is the empty,
+        // aria-hidden virtual anchor. Clearing it leaves aria-label as the only
+        // source of the accessible name instead of relying on that lookup
+        // resolving to an empty string.
+        aria-labelledby={undefined}
+        // Keep focus where it was. Radix would otherwise restore focus to the
+        // virtual anchor, which is invisible and carries no context.
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        // A second right-click inside the menu should not surface the browser
+        // menu on top of ours.
+        onContextMenu={(event) => event.preventDefault()}
+      >
+        {contextMenu?.kind === 'card' && (
+          <>
+            <DropdownMenuItem onSelect={() => onOpenNewTab?.()}>
+              <ExternalLink className={MUTED_GLYPH} />
+              {t('openInNewTab')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onEditCard?.()}>
+              <Pencil className={MUTED_GLYPH} />
+              {t('editBookmark')}
+            </DropdownMenuItem>
+            <DropdownMenuItem className={DANGER_ITEM} onSelect={() => onDeleteCard?.()}>
+              <Trash2 />
+              {t('deleteToTrash')}
+            </DropdownMenuItem>
+          </>
+        )}
+
+        {contextMenu?.kind === 'collection' && (
+          <>
+            {contextMenu.collection?.editable || contextMenu.collection?.deletable ? (
+              <>
+                <DropdownMenuItem
+                  disabled={!contextMenu.collection?.editable}
+                  onSelect={() => onRenameCollection?.()}
+                >
+                  <FolderPen className={MUTED_GLYPH} />
+                  {t('renameFolder')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={DANGER_ITEM}
+                  disabled={!contextMenu.collection?.deletable}
+                  onSelect={() => onDeleteCollection?.()}
+                >
+                  <Trash2 />
+                  {t('deleteFolder')}
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem onSelect={() => onClose?.()}>
+                {t('unfiledNoActions')}
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

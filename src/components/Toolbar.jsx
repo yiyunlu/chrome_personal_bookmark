@@ -1,6 +1,94 @@
 import React from 'react';
-import { AlertTriangle, Brain, CheckSquare, Download, Plus, Search, Sparkles, Square } from 'lucide-react';
+import {
+  AlertTriangle,
+  Brain,
+  CheckSquare,
+  Download,
+  LayoutGrid,
+  List,
+  Plus,
+  Search,
+  Sparkles,
+  Square
+} from 'lucide-react';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Separator } from './ui/separator';
+import { SORT_MODES, DEFAULT_SORT_MODE } from '../lib/sortCards';
 import { t } from '../lib/i18n';
+import { cn } from '../lib/cn';
+
+/* S2 — the header from TabHub.dc.html, expressed in token classes.
+
+   Geometry that is not on a Tailwind step (34px search, 30px control rows,
+   26px view buttons) is written as an arbitrary length, the way P5a wrote the
+   design's 12.5px/10.5px tile type. Radii are the only values forced onto a
+   scale, per the style contract: the design's 4px and 5px both round to
+   `rounded-sm` (6px), its 8px is `rounded-md` exactly.
+
+   Icon sizes come from the contract, not the design: nothing passes a `size`
+   prop inside a <Button> (the cva's `[&_svg]:size-4` owns it), so the design's
+   13px glyphs render at 16px. The `[&_svg]:size-3.5` override P0 added here is
+   gone, as the contract requires. */
+
+/* Search field. Overrides of shadcn's Input base, all resolved through cn():
+   `h-9`→34px, `border-input`→`border-border` (the design's --line; the focus
+   state is what moves it to --line2), `bg-transparent`→`bg-card`,
+   `px-3 py-1`→`p-0 pl-8 pr-10` (0 40px 0 32px), `shadow-sm`→none.
+
+   The accent focus ring is kept from P3 and is now a token class. It is written
+   as `ring-2` + `ring-primary`: those are two different tailwind-merge groups
+   (`ring-w` and `ring-color`), unlike the arbitrary accent ring / `ring-opacity-30`
+   pair that silently resolved to the opacity alone and cost nine controls their
+   accent ring.
+
+   `md:text-[12.5px]` is not redundant. shadcn's Input ships `text-base md:text-sm`;
+   tailwind-merge keys the responsive variant separately, so an unprefixed
+   `text-[12.5px]` removes `text-base` and leaves `md:text-sm` — which then wins
+   from 768px up, i.e. on every real window. Found by resolving the string, not
+   by reading it: the previous `text-sm` here happened to agree with the
+   leftover, so the bug had nowhere to show. */
+const SEARCH_INPUT_CLASS = cn(
+  'h-[34px] w-full rounded-md border-border bg-card p-0 pl-8 pr-10 shadow-none',
+  'text-[12.5px] md:text-[12.5px] text-foreground',
+  'focus-visible:border-input focus-visible:ring-2 focus-visible:ring-primary'
+);
+
+/* Row 2's ghost actions: 30px tall, the design's 12.5px control type. */
+const GHOST_ACTION_CLASS =
+  'h-[30px] gap-1.5 rounded-md px-2.5 text-[12.5px] font-normal text-muted-foreground ' +
+  'hover:bg-card hover:text-foreground';
+
+/* Save-current-tabs — the one filled action in the header. */
+const PRIMARY_ACTION_CLASS = 'h-[30px] gap-1.5 rounded-md px-3 text-[12.5px] font-medium shadow-none';
+
+/* Manage mode (V2-A): a plain Button variant swap — `outline` idle,
+   `secondary` active — rather than a bespoke accent-soft chip. Both variants
+   carry `shadow-sm`; the design draws no elevation on this control. */
+const MANAGE_BUTTON_CLASS = 'h-[30px] gap-1.5 text-[12.5px] shadow-none';
+
+/* One cell of the grid/list segmented control, at the design's 26x26
+   geometry. Active is the plain `secondary` variant, idle `ghost` — both
+   stock Button variants, so no hover-pair restatement (mechanism E) is
+   needed here. `shadow-none` removes `secondary`'s elevation, which the
+   design does not draw. */
+const VIEW_BUTTON_CLASS = 'h-[26px] w-[26px] shadow-none';
+
+const VIEW_OPTIONS = [
+  { value: 'grid', icon: LayoutGrid, labelKey: 'gridView' },
+  { value: 'list', icon: List, labelKey: 'listView' }
+];
+
+/* Sort select (V2-A, new). `manual` is the only mode that keeps card
+   drag-and-drop enabled (see main.jsx) — everything else is a pure derived
+   view over the cards bookmarkService already returns. */
+const SORT_OPTIONS = SORT_MODES.map((value) => ({
+  value,
+  labelKey: `sort${value.charAt(0).toUpperCase()}${value.slice(1)}`
+}));
+
+const SORT_TRIGGER_CLASS = 'h-[30px] w-[132px] shrink-0 text-[12.5px]';
 
 export function Toolbar({
   activeSource,
@@ -16,127 +104,153 @@ export function Toolbar({
   onNewCollection,
   search,
   onSearchChange,
-  searchInputRef
+  searchInputRef,
+  /* S2/S3 interface. Both optional so either phase can merge first:
+     `view` falls back to 'grid', and without `onViewChange` the control is
+     rendered inert rather than omitted. */
+  view = 'grid',
+  onViewChange,
+  /* Optional; absent (or 0) means no badge on the dead-link action. */
+  deadLinkCount,
+  /* V2-A — sort. Defaults to 'manual' (Chrome's own order) and, like the
+     view toggle, renders inert rather than omitted without a handler. */
+  sortMode = DEFAULT_SORT_MODE,
+  onSortChange
 }) {
+  const badgeCount = Number(deadLinkCount) > 0 ? deadLinkCount : 0;
+
   return (
-    <header className="mb-5 space-y-3">
-      {/* Search bar */}
-      <div className="relative">
-        <Search
-          size={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          style={{ color: 'var(--muted)' }}
-        />
-        <input
-          ref={searchInputRef}
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={t('searchPlaceholder')}
-          className="w-full max-w-2xl pl-9 pr-16 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-opacity-30"
-          style={{
-            background: 'var(--input-bg)',
-            borderColor: 'var(--input-border)',
-            color: 'var(--text)'
-          }}
-        />
-        <kbd
-          className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[0.65rem] border pointer-events-none"
-          style={{ borderColor: 'var(--input-border)', color: 'var(--muted)' }}
+    <header>
+      {/* Row 1 — search, spacer, sort, view toggle, manage mode */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-[520px]">
+          <Search size={16} className="pointer-events-none absolute left-[11px] top-1/2 -translate-y-1/2 text-faint" />
+          <Input
+            ref={searchInputRef}
+            id="tabhub-search"
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={t('searchPlaceholder')}
+            aria-label={t('searchPlaceholder')}
+            className={SEARCH_INPUT_CLASS}
+          />
+          <kbd className="pointer-events-none absolute right-[9px] top-1/2 -translate-y-1/2 rounded-sm border border-border px-[5px] py-px font-mono text-[10px] text-faint">
+            /
+          </kbd>
+        </div>
+
+        <div className="flex-1" />
+
+        <Select value={sortMode} onValueChange={onSortChange}>
+          <SelectTrigger aria-label={t('sortMode')} className={SORT_TRIGGER_CLASS}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
+            {SORT_OPTIONS.map(({ value, labelKey }) => (
+              <SelectItem key={value} value={value}>
+                {t(labelKey)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div role="group" aria-label={t('viewMode')} className="flex gap-px rounded-md border border-border p-[1px]">
+          {VIEW_OPTIONS.map(({ value, icon: Icon, labelKey }) => (
+            <Button
+              key={value}
+              type="button"
+              variant={view === value ? 'secondary' : 'ghost'}
+              size="icon"
+              aria-label={t(labelKey)}
+              aria-pressed={view === value}
+              disabled={!onViewChange}
+              onClick={onViewChange ? () => onViewChange(value) : undefined}
+              className={VIEW_BUTTON_CLASS}
+            >
+              <Icon />
+            </Button>
+          ))}
+        </div>
+
+        <Button
+          type="button"
+          variant={manageMode ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={onToggleManage}
+          title={t('shortcutManageKey')}
+          aria-pressed={!!manageMode}
+          className={MANAGE_BUTTON_CLASS}
         >
-          /
-        </kbd>
+          {manageMode ? <CheckSquare /> : <Square />}
+          <span>{manageMode ? t('exitManageMode') : t('enterManageMode')}</span>
+        </Button>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
+      {/* Row 2 — the filled save action, a divider, then the ghost actions */}
+      <div className="flex flex-wrap items-center gap-1 pb-[13px] pt-3">
+        <Button
+          type="button"
+          size="sm"
+          className={PRIMARY_ACTION_CLASS}
           onClick={onSaveTabs}
           disabled={!activeSourceId && !tabHubRootId}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: 'var(--btn-primary)', color: 'var(--btn-primary-text)' }}
           title={t('shortcutSaveKey')}
         >
-          <Download size={14} />
+          <Download />
           <span>{t('saveTabs')}</span>
-        </button>
+        </Button>
 
-        <button
+        <Separator orientation="vertical" className="mx-[5px] h-[18px]" />
+
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
+          className={GHOST_ACTION_CLASS}
           onClick={onAutoOrganize}
           disabled={autoOrganizing}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{
-            background: 'var(--panel-bg)',
-            borderColor: 'var(--input-border)',
-            color: 'var(--text)'
-          }}
           title={t('shortcutOrganizeKey')}
         >
-          <Sparkles size={14} style={{ color: 'var(--accent)' }} />
+          <Sparkles />
           <span>{autoOrganizing ? t('autoOrganizing') : t('autoOrganize')}</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
+          className={GHOST_ACTION_CLASS}
           onClick={onAICategorize}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
-          style={{
-            background: 'var(--panel-bg)',
-            borderColor: 'var(--input-border)',
-            color: 'var(--text)'
-          }}
           title={t('shortcutAICategorize')}
         >
-          <Brain size={14} style={{ color: 'var(--accent)' }} />
+          <Brain />
           <span>{t('aiCategorize')}</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
+          className={GHOST_ACTION_CLASS}
           onClick={onCheckDeadLinks}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
-          style={{
-            background: 'var(--panel-bg)',
-            borderColor: 'var(--input-border)',
-            color: 'var(--text)'
-          }}
           title={t('shortcutDeadLink')}
         >
-          <AlertTriangle size={14} style={{ color: 'var(--danger)' }} />
+          <AlertTriangle />
           <span>{t('deadLinkCheck')}</span>
-        </button>
+          {badgeCount > 0 && (
+            <span className="rounded-sm bg-primary/10 px-[5px] font-mono text-[10px] tabular-nums text-primary">
+              {badgeCount}
+            </span>
+          )}
+        </Button>
 
-        <button
-          type="button"
-          onClick={onNewCollection}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
-          style={{
-            background: 'var(--panel-bg)',
-            borderColor: 'var(--input-border)',
-            color: 'var(--text)'
-          }}
-        >
-          <Plus size={14} style={{ color: 'var(--accent)' }} />
+        <Button type="button" variant="ghost" size="sm" className={GHOST_ACTION_CLASS} onClick={onNewCollection}>
+          <Plus />
           <span>{t('newCollection')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onToggleManage}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium"
-          style={{
-            background: manageMode ? 'var(--accent-soft)' : 'var(--panel-bg)',
-            borderColor: manageMode ? 'var(--accent)' : 'var(--input-border)',
-            color: manageMode ? 'var(--accent)' : 'var(--text)'
-          }}
-          title={t('shortcutManageKey')}
-        >
-          {manageMode ? <CheckSquare size={14} /> : <Square size={14} />}
-          <span>{manageMode ? t('exitManageMode') : t('enterManageMode')}</span>
-        </button>
+        </Button>
 
         {activeSource && (
-          <span className="text-xs ml-1" style={{ color: 'var(--muted)' }}>
+          <span className="ml-1 text-xs text-muted-foreground">
             {t('current')}: {activeSource.isTabHub ? 'TabHub' : activeSource.title}
           </span>
         )}
@@ -145,45 +259,67 @@ export function Toolbar({
   );
 }
 
-export function BatchToolbar({ selectedCount, onBatchMove, onBatchTrash, onClearSelections }) {
+/* V2-D — the design's bottom-docked bar (`design/TabHub-v2.dc.html`'s
+   `hasSelection` block). It renders at the bottom of the main column, after
+   the scroll container, not inside it — see main.jsx. */
+const BATCH_BUTTON_CLASS = 'h-[30px] text-[12.5px]';
+
+export function BatchToolbar({ selectedCount, onBatchMove, onBatchOpenWindow, onBatchTrash, onClearSelections }) {
   return (
-    <div
-      className="flex flex-wrap items-center gap-2 mb-4 px-3 py-2 rounded-xl border animate-fade-in"
-      style={{
-        background: 'var(--accent-soft)',
-        borderColor: 'var(--accent)'
-      }}
-    >
-      <span className="text-sm font-medium" style={{ color: 'var(--accent)' }}>
-        {t('selectedCount', selectedCount)}
-      </span>
-      <div className="flex-1" />
-      <button
-        type="button"
-        disabled={selectedCount === 0}
-        onClick={onBatchMove}
-        className="px-2.5 py-1 rounded-lg border text-xs font-medium disabled:opacity-40"
-        style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
-      >
-        {t('batchMove')}
-      </button>
-      <button
-        type="button"
-        disabled={selectedCount === 0}
-        onClick={onBatchTrash}
-        className="px-2.5 py-1 rounded-lg text-xs font-medium"
-        style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}
-      >
-        {t('delete')}
-      </button>
-      <button
-        type="button"
-        onClick={onClearSelections}
-        className="px-2.5 py-1 rounded-lg border text-xs"
-        style={{ background: 'var(--panel-bg)', borderColor: 'var(--input-border)', color: 'var(--muted)' }}
-      >
-        {t('clearSelection')}
-      </button>
+    <div className="shrink-0 border-t bg-card px-[22px] py-2">
+      <div className="flex items-center gap-2">
+        <span className="text-[12.5px] font-medium">
+          {t('selectedPrefix')} <span className="font-mono tabular-nums text-primary">{selectedCount}</span>{' '}
+          {t('selectedSuffix')}
+        </span>
+
+        <Separator orientation="vertical" className="mx-[5px] h-[18px]" />
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={BATCH_BUTTON_CLASS}
+          disabled={selectedCount === 0}
+          onClick={onBatchMove}
+        >
+          {t('batchMove')}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={BATCH_BUTTON_CLASS}
+          disabled={selectedCount === 0}
+          onClick={onBatchOpenWindow}
+        >
+          {t('batchOpenWindow')}
+        </Button>
+
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          className={BATCH_BUTTON_CLASS}
+          disabled={selectedCount === 0}
+          onClick={onBatchTrash}
+        >
+          {t('delete')}
+        </Button>
+
+        <div className="flex-1" />
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={cn(BATCH_BUTTON_CLASS, 'text-muted-foreground')}
+          onClick={onClearSelections}
+        >
+          {t('clearSelection')}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,8 @@
 # TabHub — Enhancement Plan
 
+> **SUPERSEDED (2026-09-23)** — This document is historical. Do **not** open tickets from old Phase 0 / P2 (or other phased backlog) items here. Current product truth is the code on `ui/shadcn-migration` plus the 2026-09-23 optimization review. Prefer live UI + `USER_MANUAL.md` / `CLAUDE.md` over this plan.
+
+
 _Generated from a multi-angle review (correctness, architecture/tech-debt, product/UX) of HEAD on `claude/add-claude-documentation-QRFUx`._
 
 This plan is organized as a phased roadmap. Each item carries **effort** (S ≤ 0.5d, M = 1–2d, L = 3d+) and a concrete first step with `file:line` anchors. Phases are ordered so that earlier work de-risks and unblocks later work.

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<!-- Claude Design project c3755d9a, file TabHub-v2.dc.html — generated 2026-09-13 on top of the
+     published TabHub Design System (3d6170b7). Visual source of truth for the V2 phases in
+     SHADCN_MIGRATION.md. Behaviour still follows the existing app; the only NEW function the
+     user approved from this file is the sort Select (最近添加 / 按标题 / 按域名). -->
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="_ds/tabhub-design-system-3d6170b7-3a62-496b-8ebb-a1b71b92c9aa/fonts/fonts.css" />
+<link rel="stylesheet" href="_ds/tabhub-design-system-3d6170b7-3a62-496b-8ebb-a1b71b92c9aa/_ds_bundle.css" />
+<link rel="stylesheet" href="_ds/tabhub-design-system-3d6170b7-3a62-496b-8ebb-a1b71b92c9aa/styles.css" />
+<script src="_ds/tabhub-design-system-3d6170b7-3a62-496b-8ebb-a1b71b92c9aa/_ds_bundle.js"></script>
+<style>
+  /* 本文件全部视觉来自 TabHub Design System（组件 + token 类）。
+     在 v1 基础上的 5 处优化：
+     1. 管理模式批量工具栏 —— 开启「管理」后卡片出现选择框，底部浮出批量条（已选计数 / 移动到 / 删除 / 取消），
+        原先只能逐条操作。
+     2. 空状态 —— 搜索无结果或分类为空时给出说明文案 + 一键清除筛选，替代 v1 的一行灰字。
+     3. 排序与来源改用 DS Select —— 原先来源是自造的按钮循环切换，看不到全部选项；排序此前完全缺失。
+     4. 信息密度 —— 侧栏计数与卡片域名统一等宽数字 / mono，分组头吸顶时改用 DS Separator 与 Badge 计数，
+        列表视图行高 36px、标签用 secondary Badge 同行显示，不再增加行高。
+     5. 暗色模式 —— 主题切换收进右上角图标按钮（带 Tooltip），data-theme 驱动全部 token，深浅两套同时可用。 */
+  html,body{margin:0;padding:0}
+  a{color:hsl(var(--ui-primary));text-decoration:none}
+  a:hover{color:hsl(var(--ui-primary));text-decoration:underline}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:hsl(var(--ui-input));border-radius:8px;border:3px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-track{background:transparent}
+</style>
+</helmet>
+
+<x-import component-from-global-scope="TabHub.TooltipProvider" delay-duration="{{ 300 }}" hint-size="100%,100%">
+<div class="flex h-screen min-h-[200px] overflow-hidden bg-background text-foreground text-[13px]">
+
+  <aside class="flex w-[232px] shrink-0 flex-col border-r bg-sidebar">
+    <div class="flex items-center gap-2 px-3 pt-3 pb-[9px]">
+      <div class="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"></path></svg>
+      </div>
+      <div class="text-[13.5px] font-semibold tracking-[-0.01em]">TabHub</div>
+      <div class="ml-auto font-mono text-[10.5px] tabular-nums text-faint">{{ total }}</div>
+    </div>
+
+    <div class="px-2.5 pb-2">
+      <x-import component-from-global-scope="TabHub.Select" value="{{ src }}" on-value-change="{{ setSrc }}" hint-size="100%,30px">
+        <x-import component-from-global-scope="TabHub.SelectTrigger" class-name="h-[30px] text-[12.5px]" hint-size="100%,30px">
+          <x-import component-from-global-scope="TabHub.SelectValue" hint-size="auto,18px"></x-import>
+        </x-import>
+        <x-import component-from-global-scope="TabHub.SelectContent" hint-size="10rem,auto">
+          <x-import component-from-global-scope="TabHub.SelectItem" value="书签栏" hint-size="100%,28px">书签栏</x-import>
+          <x-import component-from-global-scope="TabHub.SelectItem" value="其他书签" hint-size="100%,28px">其他书签</x-import>
+          <x-import component-from-global-scope="TabHub.SelectItem" value="移动书签" hint-size="100%,28px">移动书签</x-import>
+        </x-import>
+      </x-import>
+    </div>
+
+    <x-import component-from-global-scope="TabHub.ScrollArea" class-name="min-h-0 flex-1" hint-size="100%,100%">
+      <div class="flex flex-col gap-px px-2 pb-3">
+        <div onClick="{{ clearFolder }}" class="{{ allRowClass }}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"></path></svg>
+          <span class="flex-1 truncate font-medium">全部收藏</span>
+          <span class="font-mono text-[10.5px] tabular-nums">{{ total }}</span>
+        </div>
+
+        <div class="px-2 pt-3 pb-[5px] text-[10px] font-semibold uppercase tracking-[0.09em] text-faint">分类</div>
+
+        <sc-for list="{{ folders }}" as="f" hint-placeholder-count="10">
+          <div onClick="{{ f.onClick }}" class="{{ f.rowClass }}">
+            <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+            <span class="flex-1 truncate">{{ f.name }}</span>
+            <span class="font-mono text-[10.5px] tabular-nums text-faint">{{ f.count }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </x-import>
+
+    <div class="flex items-center gap-1 border-t p-2">
+      <x-import component-from-global-scope="TabHub.Tooltip" hint-size="26px,26px">
+        <x-import component-from-global-scope="TabHub.TooltipTrigger" aria-label="切换主题" onClick="{{ toggleTheme }}" class-name="flex h-[26px] w-[26px] items-center justify-center rounded-md border-transparent bg-transparent text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" hint-size="26px,26px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"></path></svg>
+        </x-import>
+        <x-import component-from-global-scope="TabHub.TooltipContent" side="top" hint-size="auto,24px">{{ themeLabel }}</x-import>
+      </x-import>
+      <div class="flex-1"></div>
+      <x-import component-from-global-scope="TabHub.Button" variant="ghost" size="sm" class-name="h-[26px] text-[11.5px] text-muted-foreground" hint-size="auto,26px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 006.5 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 13.9a2 2 0 110-4h.1A1.6 1.6 0 004.6 7.5l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 0010 3.1V3a2 2 0 114 0v.1a1.6 1.6 0 002.7 1.1l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 001.1 2.7H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1.3z"></path></svg>
+        设置
+      </x-import>
+    </div>
+  </aside>
+
+  <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
+    <header class="shrink-0 px-[22px] pt-3">
+      <div class="flex items-center gap-2">
+        <div class="relative flex max-w-[520px] flex-1 items-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" class="absolute left-[11px] text-faint"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+          <x-import component-from-global-scope="TabHub.Input" value="{{ q }}" on-change="{{ onSearch }}" placeholder="搜索标题、URL 或标签" aria-label="搜索书签" class-name="h-[34px] pl-8 text-[12.5px]" hint-size="100%,34px"></x-import>
+        </div>
+
+        <div class="flex-1"></div>
+
+        <x-import component-from-global-scope="TabHub.Select" value="{{ sort }}" on-value-change="{{ setSort }}" hint-size="128px,30px">
+          <x-import component-from-global-scope="TabHub.SelectTrigger" class-name="h-[30px] text-[12.5px]" style="width:132px" hint-size="132px,30px">
+            <x-import component-from-global-scope="TabHub.SelectValue" hint-size="auto,18px"></x-import>
+          </x-import>
+          <x-import component-from-global-scope="TabHub.SelectContent" align="end" hint-size="10rem,auto">
+            <x-import component-from-global-scope="TabHub.SelectItem" value="最近添加" hint-size="100%,28px">最近添加</x-import>
+            <x-import component-from-global-scope="TabHub.SelectItem" value="按标题" hint-size="100%,28px">按标题</x-import>
+            <x-import component-from-global-scope="TabHub.SelectItem" value="按域名" hint-size="100%,28px">按域名</x-import>
+          </x-import>
+        </x-import>
+
+        <div class="flex gap-px rounded-md border p-[1px]">
+          <x-import component-from-global-scope="TabHub.Button" variant="{{ gridVariant }}" size="icon" aria-label="网格视图" title="网格视图" onClick="{{ setGrid }}" class-name="h-[26px] w-[26px]" hint-size="26px,26px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"></rect><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"></rect><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"></rect><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"></rect></svg>
+          </x-import>
+          <x-import component-from-global-scope="TabHub.Button" variant="{{ listVariant }}" size="icon" aria-label="列表视图" title="列表视图" onClick="{{ setList }}" class-name="h-[26px] w-[26px]" hint-size="26px,26px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </x-import>
+        </div>
+
+        <x-import component-from-global-scope="TabHub.Button" variant="{{ manageVariant }}" size="sm" onClick="{{ toggleManage }}" class-name="h-[30px] text-[12.5px]" hint-size="auto,30px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M9 12l2 2 4-4"></path></svg>
+          管理
+        </x-import>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1 pt-3 pb-[13px]">
+        <x-import component-from-global-scope="TabHub.Button" size="sm" class-name="h-[30px] text-[12.5px]" hint-size="auto,30px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 11l5 5 5-5M4 20h16"></path></svg>
+          保存当前标签页
+        </x-import>
+
+        <x-import component-from-global-scope="TabHub.Separator" orientation="vertical" class-name="mx-[5px] h-[18px]" hint-size="1px,18px"></x-import>
+
+        <x-import component-from-global-scope="TabHub.Button" variant="ghost" size="sm" class-name="h-[30px] text-[12.5px] text-muted-foreground" hint-size="auto,30px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l1.4 3.1L9.5 8.5 6.4 9.9 5 13l-1.4-3.1L.5 8.5l3.1-1.4zM16 9l1.9 4.1L22 15l-4.1 1.9L16 21l-1.9-4.1L10 15l4.1-1.9z"></path></svg>
+          自动整理
+        </x-import>
+        <x-import component-from-global-scope="TabHub.Button" variant="ghost" size="sm" class-name="h-[30px] text-[12.5px] text-muted-foreground" hint-size="auto,30px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg>
+          AI 分类
+        </x-import>
+        <x-import component-from-global-scope="TabHub.Button" variant="ghost" size="sm" class-name="h-[30px] text-[12.5px] text-muted-foreground" hint-size="auto,30px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.3L2.6 17.6A1.6 1.6 0 004 20h16a1.6 1.6 0 001.4-2.4L13.7 4.3a1.9 1.9 0 00-3.4 0z"></path><path d="M12 9v4M12 16.5v.01"></path></svg>
+          失效检测
+          <span class="rounded-sm bg-primary/10 px-[5px] font-mono text-[10px] tabular-nums text-primary">4</span>
+        </x-import>
+        <x-import component-from-global-scope="TabHub.Button" variant="ghost" size="sm" class-name="h-[30px] text-[12.5px] text-muted-foreground" hint-size="auto,30px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+          新建分类
+        </x-import>
+      </div>
+    </header>
+
+    <div class="min-h-0 flex-1 overflow-y-auto px-[22px] pb-10">
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+        <section>
+          <div class="sticky top-0 z-[2] flex items-center gap-2 border-b bg-background pt-3 pb-[9px]">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-faint"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+            <h2 class="m-0 text-[12.5px] font-semibold tracking-[0.01em]">{{ g.name }}</h2>
+            <x-import component-from-global-scope="TabHub.Badge" variant="secondary" class-name="font-mono text-[10px] tabular-nums text-faint" hint-size="auto,18px">{{ g.count }}</x-import>
+            <div class="flex-1"></div>
+            <x-import component-from-global-scope="TabHub.Button" variant="ghost" size="sm" onClick="{{ g.onSelectAll }}" class-name="h-[26px] text-[11.5px] text-muted-foreground hover:bg-primary/10 hover:text-primary" hint-size="auto,26px">全选</x-import>
+            <x-import component-from-global-scope="TabHub.DropdownMenu" hint-size="26px,26px">
+              <x-import component-from-global-scope="TabHub.DropdownMenuTrigger" aria-label="分类操作" class-name="flex h-[26px] w-[26px] items-center justify-center rounded-md border-transparent bg-transparent text-faint transition-colors hover:bg-secondary hover:text-foreground" hint-size="26px,26px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+              </x-import>
+              <x-import component-from-global-scope="TabHub.DropdownMenuContent" align="end" hint-size="10rem,auto">
+                <x-import component-from-global-scope="TabHub.DropdownMenuItem" hint-size="100%,28px">重命名分类</x-import>
+                <x-import component-from-global-scope="TabHub.DropdownMenuItem" hint-size="100%,28px">在新窗口打开全部</x-import>
+                <x-import component-from-global-scope="TabHub.DropdownMenuItem" hint-size="100%,28px">导出为 HTML</x-import>
+                <x-import component-from-global-scope="TabHub.DropdownMenuSeparator" hint-size="100%,1px"></x-import>
+                <x-import component-from-global-scope="TabHub.DropdownMenuItem" class-name="text-destructive" hint-size="100%,28px">删除分类</x-import>
+              </x-import>
+            </x-import>
+          </div>
+
+          <sc-if value="{{ isGrid }}" hint-placeholder-val="{{ true }}">
+            <div class="mt-3 mb-[26px] grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-[9px]">
+              <sc-for list="{{ g.items }}" as="b" hint-placeholder-count="8">
+                <x-import component-from-global-scope="TabHub.Card" class-name="{{ b.cardClass }}" onClick="{{ b.onClick }}" title="{{ b.url }}" hint-size="100%,56px">
+                  <div class="flex items-start gap-2.5">
+                    <sc-if value="{{ manage }}" hint-placeholder-val="{{ false }}">
+                      <div class="{{ b.boxClass }}">
+                        <sc-if value="{{ b.selected }}" hint-placeholder-val="{{ false }}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></sc-if>
+                      </div>
+                    </sc-if>
+                    <div class="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md font-mono text-[10.5px] font-medium text-white mt-[3px]" style="background:{{ b.tint }}">{{ b.letter }}</div>
+                    <div class="min-w-0 flex-1">
+                      <div class="truncate text-[12.5px] font-medium leading-[1.35]">{{ b.title }}</div>
+                      <div class="truncate font-mono text-[10.5px] text-faint mt-[3px]">{{ b.url }}</div>
+                    </div>
+                  </div>
+                </x-import>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isList }}" hint-placeholder-val="{{ false }}">
+            <div class="mt-3 mb-[26px] flex flex-col overflow-hidden rounded-xl border bg-card">
+              <sc-for list="{{ g.items }}" as="b" hint-placeholder-count="8">
+                <div onClick="{{ b.onClick }}" class="{{ b.rowClass }}">
+                  <sc-if value="{{ manage }}" hint-placeholder-val="{{ false }}">
+                    <div class="{{ b.boxClass }}">
+                      <sc-if value="{{ b.selected }}" hint-placeholder-val="{{ false }}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg></sc-if>
+                    </div>
+                  </sc-if>
+                  <div class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-sm font-mono text-[9.5px] text-white" style="background:{{ b.tint }}">{{ b.letter }}</div>
+                  <div class="max-w-[42%] truncate text-[12.5px] font-medium">{{ b.title }}</div>
+                  <div class="flex-1 truncate font-mono text-[10.5px] text-faint">{{ b.url }}</div>
+                  <sc-if value="{{ b.hasTags }}" hint-placeholder-val="{{ false }}">
+                    <div class="flex shrink-0 gap-1">
+                      <sc-for list="{{ b.tags }}" as="t" hint-placeholder-count="1">
+                        <x-import component-from-global-scope="TabHub.Badge" variant="secondary" class-name="text-[10px]" hint-size="auto,18px">{{ t }}</x-import>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </section>
+      </sc-for>
+
+      <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+        <div class="flex flex-col items-center justify-center gap-3 pt-3" style="min-height:340px">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl border bg-card text-faint">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+          </div>
+          <div class="text-center">
+            <div class="text-[12.5px] font-medium">{{ emptyTitle }}</div>
+            <div class="mt-1 text-[11.5px] text-muted-foreground">{{ emptyHint }}</div>
+          </div>
+          <x-import component-from-global-scope="TabHub.Button" variant="outline" size="sm" onClick="{{ resetFilters }}" class-name="h-[30px] text-[12.5px]" hint-size="auto,30px">清除筛选</x-import>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ hasSelection }}" hint-placeholder-val="{{ false }}">
+      <div class="shrink-0 border-t bg-card px-[22px] py-2">
+        <div class="flex items-center gap-2">
+          <span class="text-[12.5px] font-medium">已选 <span class="font-mono tabular-nums text-primary">{{ selectedCount }}</span> 项</span>
+          <x-import component-from-global-scope="TabHub.Separator" orientation="vertical" class-name="mx-[5px] h-[18px]" hint-size="1px,18px"></x-import>
+          <x-import component-from-global-scope="TabHub.Button" variant="outline" size="sm" class-name="h-[30px] text-[12.5px]" hint-size="auto,30px">移动到…</x-import>
+          <x-import component-from-global-scope="TabHub.Button" variant="outline" size="sm" class-name="h-[30px] text-[12.5px]" hint-size="auto,30px">添加标签</x-import>
+          <x-import component-from-global-scope="TabHub.Button" variant="outline" size="sm" class-name="h-[30px] text-[12.5px]" hint-size="auto,30px">在新窗口打开</x-import>
+          <x-import component-from-global-scope="TabHub.Button" variant="destructive" size="sm" class-name="h-[30px] text-[12.5px]" hint-size="auto,30px">删除</x-import>
+          <div class="flex-1"></div>
+          <x-import component-from-global-scope="TabHub.Button" variant="ghost" size="sm" onClick="{{ clearSelection }}" class-name="h-[30px] text-[12.5px] text-muted-foreground" hint-size="auto,30px">取消选择</x-import>
+        </div>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-import>
+
+</x-dc>
+<!-- The DCLogic script (sample data + state) is omitted: it is the design tool's mock, not app behaviour.
+     Class strings it computed and that matter for implementation:
+       ROW        = "flex h-[30px] cursor-pointer select-none items-center gap-2 rounded-md px-2 transition-colors"
+       active row = ROW + " bg-primary/10 text-primary";  idle row = ROW + " text-muted-foreground hover:bg-secondary hover:text-foreground"; nested = " pl-[22px]"
+       cardClass  = "p-[11px] cursor-pointer select-none transition-colors " + (selected ? "border-primary bg-primary/10" : "hover:bg-secondary hover:border-input")
+       rowClass   = "flex h-9 cursor-pointer select-none items-center gap-2.5 border-b px-3 transition-colors " + (selected ? "bg-primary/10" : "hover:bg-secondary")
+       boxClass   = "mt-[3px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-sm border transition-colors " + (selected ? "border-primary bg-primary text-primary-foreground" : "border-input")
+       gridVariant/listVariant = active ? "secondary" : "ghost";  manageVariant = manage ? "secondary" : "outline"
+       emptyTitle = q ? "没有匹配的书签" : "这个分类还是空的";  emptyHint = q ? "试试更短的关键词，或换一个分类" : "把当前标签页保存进来，或用「自动整理」填充"
+       themeLabel = dark ? "切换到浅色" : "切换到深色" -->
+</body>
+</html>

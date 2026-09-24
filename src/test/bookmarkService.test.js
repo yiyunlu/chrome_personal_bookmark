@@ -5,7 +5,8 @@ import {
   importCollections,
   ensureTrashFolder,
   ensureTabHubRootFolder,
-  subscribeBookmarksChanges
+  subscribeBookmarksChanges,
+  openCardsInNewWindow
 } from '../lib/bookmarkService';
 
 // Helper to build a minimal bookmark tree for the Chrome mock.
@@ -530,6 +531,48 @@ describe('bookmarkService', () => {
       expect(chrome.bookmarks.onChanged.removeListener).toHaveBeenCalled();
       expect(chrome.bookmarks.onMoved.removeListener).toHaveBeenCalled();
       expect(chrome.bookmarks.onChildrenReordered.removeListener).toHaveBeenCalled();
+    });
+  });
+
+  describe('openCardsInNewWindow (V2-D batch bar — 在新窗口打开)', () => {
+    it('opens one new window with every selected card’s url, in selection order', () => {
+      const create = vi.fn();
+      const cards = [
+        { id: 'a', url: 'https://a.example' },
+        { id: 'b', url: 'https://b.example' },
+        { id: 'c', url: 'https://c.example' }
+      ];
+
+      openCardsInNewWindow(cards, { windows: { create } });
+
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(create).toHaveBeenCalledWith({
+        url: ['https://a.example', 'https://b.example', 'https://c.example']
+      });
+    });
+
+    it('skips cards without a url', () => {
+      const create = vi.fn();
+      const cards = [{ id: 'a', url: 'https://a.example' }, { id: 'b', url: '' }, { id: 'c' }];
+
+      openCardsInNewWindow(cards, { windows: { create } });
+
+      expect(create).toHaveBeenCalledWith({ url: ['https://a.example'] });
+    });
+
+    it('is a no-op with no cards', () => {
+      const create = vi.fn();
+
+      openCardsInNewWindow([], { windows: { create } });
+
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op when chrome.windows is absent', () => {
+      const cards = [{ id: 'a', url: 'https://a.example' }];
+
+      expect(() => openCardsInNewWindow(cards, {})).not.toThrow();
+      expect(() => openCardsInNewWindow(cards, undefined)).not.toThrow();
     });
   });
 });

@@ -1,0 +1,360 @@
+{
+  "pkg": "tabhub",
+  "globalName": "TabHub",
+  "shape": "package",
+  "srcDir": "src/components/ui",
+  "tsconfig": "jsconfig.json",
+  "buildCmd": "npx tailwindcss -c tailwind.sync.config.js -i src/index.css -o dist/assets/tabhub.css --minify && mkdir -p dist/assets/fonts && cp src/fonts/*.woff2 dist/assets/fonts/",
+  "cssEntry": "dist/assets/tabhub.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "provider": {
+    "component": "TooltipProvider"
+  },
+  "projectId": "3d6170b7-3a62-496b-8ebb-a1b71b92c9aa",
+  "entry": "./dist/index.es.js",
+  "dtsPropsFor": {
+    "Button": "variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'; size?: 'default' | 'sm' | 'lg' | 'icon'; asChild?: boolean; disabled?: boolean; type?: 'button' | 'submit' | 'reset'; onClick?: React.MouseEventHandler<HTMLButtonElement>; 'aria-label'?: string; title?: string; className?: string; children?: React.ReactNode;",
+    "Badge": "variant?: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string; children?: React.ReactNode;",
+    "Input": "type?: string; value?: string; defaultValue?: string; placeholder?: string; disabled?: boolean; readOnly?: boolean; id?: string; name?: string; onChange?: React.ChangeEventHandler<HTMLInputElement>; onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>; 'aria-label'?: string; className?: string;",
+    "Textarea": "value?: string; defaultValue?: string; placeholder?: string; rows?: number; disabled?: boolean; id?: string; name?: string; onChange?: React.ChangeEventHandler<HTMLTextAreaElement>; 'aria-label'?: string; className?: string;",
+    "Label": "htmlFor?: string; className?: string; children?: React.ReactNode;",
+    "Switch": "checked?: boolean; defaultChecked?: boolean; onCheckedChange?: (checked: boolean) => void; disabled?: boolean; id?: string; 'aria-label'?: string; className?: string;",
+    "Separator": "orientation?: 'horizontal' | 'vertical'; decorative?: boolean; className?: string;",
+    "Card": "className?: string; children?: React.ReactNode;",
+    "CardHeader": "className?: string; children?: React.ReactNode;",
+    "CardContent": "className?: string; children?: React.ReactNode;",
+    "CardFooter": "className?: string; children?: React.ReactNode;",
+    "CardTitle": "className?: string; children?: React.ReactNode;",
+    "CardDescription": "className?: string; children?: React.ReactNode;",
+    "ScrollArea": "type?: 'auto' | 'always' | 'scroll' | 'hover'; className?: string; children?: React.ReactNode;",
+    "ScrollBar": "orientation?: 'vertical' | 'horizontal'; className?: string;",
+    "Select": "value?: string; defaultValue?: string; onValueChange?: (value: string) => void; open?: boolean; onOpenChange?: (open: boolean) => void; disabled?: boolean; name?: string; children?: React.ReactNode;",
+    "SelectTrigger": "id?: string; disabled?: boolean; 'aria-label'?: string; className?: string; children?: React.ReactNode;",
+    "SelectValue": "placeholder?: string; className?: string;",
+    "SelectContent": "position?: 'popper' | 'item-aligned'; side?: 'top' | 'right' | 'bottom' | 'left'; align?: 'start' | 'center' | 'end'; sideOffset?: number; alignOffset?: number; collisionPadding?: number; className?: string; children?: React.ReactNode;",
+    "SelectItem": "value: string; disabled?: boolean; className?: string; children?: React.ReactNode;",
+    "SelectGroup": "className?: string; children?: React.ReactNode;",
+    "SelectLabel": "className?: string; children?: React.ReactNode;",
+    "SelectSeparator": "className?: string;",
+    "SelectScrollUpButton": "className?: string;",
+    "SelectScrollDownButton": "className?: string;",
+    "Tooltip": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; delayDuration?: number; children?: React.ReactNode;",
+    "TooltipTrigger": "asChild?: boolean; className?: string; children?: React.ReactNode;",
+    "TooltipContent": "side?: 'top' | 'right' | 'bottom' | 'left'; align?: 'start' | 'center' | 'end'; sideOffset?: number; alignOffset?: number; collisionPadding?: number; className?: string; children?: React.ReactNode;",
+    "TooltipProvider": "delayDuration?: number; skipDelayDuration?: number; children?: React.ReactNode;",
+    "Toaster": "theme?: 'light' | 'dark' | 'system'; position?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'; richColors?: boolean; closeButton?: boolean; duration?: number; className?: string;",
+    "Dialog": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; modal?: boolean; children?: React.ReactNode;",
+    "DialogTrigger": "asChild?: boolean; className?: string; children?: React.ReactNode;",
+    "DialogPortal": "children?: React.ReactNode;",
+    "DialogOverlay": "className?: string;",
+    "DialogContent": "onEscapeKeyDown?: (event: KeyboardEvent) => void; onPointerDownOutside?: (event: Event) => void; onInteractOutside?: (event: Event) => void; onOpenAutoFocus?: (event: Event) => void; onCloseAutoFocus?: (event: Event) => void; className?: string; children?: React.ReactNode;",
+    "DialogHeader": "className?: string; children?: React.ReactNode;",
+    "DialogFooter": "className?: string; children?: React.ReactNode;",
+    "DialogTitle": "className?: string; children?: React.ReactNode;",
+    "DialogDescription": "className?: string; children?: React.ReactNode;",
+    "DialogClose": "asChild?: boolean; className?: string; children?: React.ReactNode;",
+    "AlertDialog": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; modal?: boolean; children?: React.ReactNode;",
+    "AlertDialogTrigger": "asChild?: boolean; className?: string; children?: React.ReactNode;",
+    "AlertDialogPortal": "children?: React.ReactNode;",
+    "AlertDialogOverlay": "className?: string;",
+    "AlertDialogContent": "onEscapeKeyDown?: (event: KeyboardEvent) => void; onPointerDownOutside?: (event: Event) => void; onInteractOutside?: (event: Event) => void; onOpenAutoFocus?: (event: Event) => void; onCloseAutoFocus?: (event: Event) => void; className?: string; children?: React.ReactNode;",
+    "AlertDialogHeader": "className?: string; children?: React.ReactNode;",
+    "AlertDialogFooter": "className?: string; children?: React.ReactNode;",
+    "AlertDialogTitle": "className?: string; children?: React.ReactNode;",
+    "AlertDialogDescription": "className?: string; children?: React.ReactNode;",
+    "AlertDialogAction": "onClick?: React.MouseEventHandler<HTMLButtonElement>; asChild?: boolean; className?: string; children?: React.ReactNode;",
+    "AlertDialogCancel": "onClick?: React.MouseEventHandler<HTMLButtonElement>; asChild?: boolean; className?: string; children?: React.ReactNode;",
+    "DropdownMenu": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; modal?: boolean; children?: React.ReactNode;",
+    "DropdownMenuTrigger": "disabled?: boolean; asChild?: boolean; className?: string; children?: React.ReactNode;",
+    "DropdownMenuContent": "side?: 'top' | 'right' | 'bottom' | 'left'; align?: 'start' | 'center' | 'end'; sideOffset?: number; alignOffset?: number; collisionPadding?: number; className?: string; children?: React.ReactNode;",
+    "DropdownMenuItem": "disabled?: boolean; inset?: boolean; onSelect?: (event: Event) => void; className?: string; children?: React.ReactNode;",
+    "DropdownMenuCheckboxItem": "checked?: boolean | 'indeterminate'; onCheckedChange?: (checked: boolean) => void; disabled?: boolean; className?: string; children?: React.ReactNode;",
+    "DropdownMenuRadioGroup": "value?: string; onValueChange?: (value: string) => void; children?: React.ReactNode;",
+    "DropdownMenuRadioItem": "value: string; disabled?: boolean; className?: string; children?: React.ReactNode;",
+    "DropdownMenuLabel": "inset?: boolean; className?: string; children?: React.ReactNode;",
+    "DropdownMenuSeparator": "className?: string;",
+    "DropdownMenuShortcut": "className?: string; children?: React.ReactNode;",
+    "DropdownMenuGroup": "className?: string; children?: React.ReactNode;",
+    "DropdownMenuPortal": "children?: React.ReactNode;",
+    "DropdownMenuSub": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; children?: React.ReactNode;",
+    "DropdownMenuSubTrigger": "inset?: boolean; disabled?: boolean; className?: string; children?: React.ReactNode;",
+    "DropdownMenuSubContent": "side?: 'top' | 'right' | 'bottom' | 'left'; align?: 'start' | 'center' | 'end'; sideOffset?: number; alignOffset?: number; collisionPadding?: number; className?: string; children?: React.ReactNode;",
+    "ContextMenu": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; modal?: boolean; children?: React.ReactNode;",
+    "ContextMenuTrigger": "disabled?: boolean; asChild?: boolean; className?: string; children?: React.ReactNode;",
+    "ContextMenuContent": "side?: 'top' | 'right' | 'bottom' | 'left'; align?: 'start' | 'center' | 'end'; sideOffset?: number; alignOffset?: number; collisionPadding?: number; className?: string; children?: React.ReactNode;",
+    "ContextMenuItem": "disabled?: boolean; inset?: boolean; onSelect?: (event: Event) => void; className?: string; children?: React.ReactNode;",
+    "ContextMenuCheckboxItem": "checked?: boolean | 'indeterminate'; onCheckedChange?: (checked: boolean) => void; disabled?: boolean; className?: string; children?: React.ReactNode;",
+    "ContextMenuRadioGroup": "value?: string; onValueChange?: (value: string) => void; children?: React.ReactNode;",
+    "ContextMenuRadioItem": "value: string; disabled?: boolean; className?: string; children?: React.ReactNode;",
+    "ContextMenuLabel": "inset?: boolean; className?: string; children?: React.ReactNode;",
+    "ContextMenuSeparator": "className?: string;",
+    "ContextMenuShortcut": "className?: string; children?: React.ReactNode;",
+    "ContextMenuGroup": "className?: string; children?: React.ReactNode;",
+    "ContextMenuPortal": "children?: React.ReactNode;",
+    "ContextMenuSub": "open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void; children?: React.ReactNode;",
+    "ContextMenuSubTrigger": "inset?: boolean; disabled?: boolean; className?: string; children?: React.ReactNode;",
+    "ContextMenuSubContent": "side?: 'top' | 'right' | 'bottom' | 'left'; align?: 'start' | 'center' | 'end'; sideOffset?: number; alignOffset?: number; collisionPadding?: number; className?: string; children?: React.ReactNode;"
+  },
+  "docsDir": ".design-sync/docs",
+  "overrides": {
+    "Dialog": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogContent": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogHeader": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogFooter": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogTitle": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogDescription": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogClose": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogTrigger": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogPortal": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "DialogOverlay": {
+      "cardMode": "single",
+      "viewport": "720x480"
+    },
+    "AlertDialog": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogContent": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogHeader": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogFooter": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogTitle": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogDescription": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogAction": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogCancel": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogTrigger": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogPortal": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "AlertDialogOverlay": {
+      "cardMode": "single",
+      "viewport": "720x360"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuTrigger": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuContent": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuCheckboxItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuRadioItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuLabel": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuSeparator": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuShortcut": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuGroup": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuPortal": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuSub": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuSubContent": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuSubTrigger": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "DropdownMenuRadioGroup": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenu": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuTrigger": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuContent": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuCheckboxItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuRadioItem": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuLabel": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuSeparator": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuShortcut": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuGroup": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuPortal": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuSub": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuSubContent": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuSubTrigger": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "ContextMenuRadioGroup": {
+      "cardMode": "single",
+      "viewport": "560x460"
+    },
+    "Select": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectTrigger": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectValue": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectContent": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectGroup": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectLabel": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectItem": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "SelectSeparator": {
+      "cardMode": "single",
+      "viewport": "480x340"
+    },
+    "Tooltip": {
+      "cardMode": "single",
+      "viewport": "480x200"
+    },
+    "TooltipTrigger": {
+      "cardMode": "single",
+      "viewport": "480x200"
+    },
+    "TooltipContent": {
+      "cardMode": "single",
+      "viewport": "480x200"
+    },
+    "TooltipProvider": {
+      "cardMode": "single",
+      "viewport": "480x200"
+    },
+    "Toaster": {
+      "cardMode": "single",
+      "viewport": "560x220"
+    }
+  },
+  "extraEntries": [
+    "./.design-sync/entries/toast.js"
+  ]
+}
