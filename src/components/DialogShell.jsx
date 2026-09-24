@@ -167,9 +167,9 @@ export function DialogShell({ open, onClose, title, className, children, layer =
               Do not "deduplicate" one surface without doing all nine. */}
           {title ? <DialogTitle className="sr-only">{title}</DialogTitle> : null}
           {children}
+          {/* In-panel: body portals lose to the Save Tabs scrim in Chrome. */}
+          <DialogUndoChip />
         </DialogPrimitive.Content>
-        {/* Above overlay/content (z-90): chip must share this portal for smoke 7. */}
-        <DialogUndoChip />
       </DialogPortal>
     </Dialog>
   );
@@ -200,8 +200,8 @@ export function AlertDialogShell({ open, onClose, title, className, children, la
         >
           {title ? <AlertDialogTitle className="sr-only">{title}</AlertDialogTitle> : null}
           {children}
+          <DialogUndoChip />
         </AlertDialogPrimitive.Content>
-        <DialogUndoChip />
       </AlertDialogPortal>
     </AlertDialog>
   );

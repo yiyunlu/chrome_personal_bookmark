@@ -9,18 +9,32 @@ import { Button } from './ui/button';
 
    Smoke 7: delete → S → click Undo while Save Tabs stays open.
 
-   Radix `DialogPortal` does `Children.map` + `Portal asChild` per child, so the
-   in-dialog chip MUST be a `forwardRef` host element — a plain function component
-   cannot receive the portal ref and never paints (a3f4a29 FAIL). Opening Save
-   Tabs does not clear `undoToast`; the body chip was only hidden via `elevate`.
+   Body portals (max z-index, MutationObserver, popover top layer) and Radix
+   DialogPortal-asChild hosts all failed in real Chrome: opening Save Tabs left
+   the chip gone even though `undoToast` state stayed set. The reliable surface
+   is *inside* DialogPrimitive.Content — same stacking context as the panel,
+   `position:absolute` within the fixed panel (not a body sibling under the
+   scrim). `DialogShell` renders that chip; `UndoToast` keeps the body chip only
+   while no modal is open (`elevate`).
    ──────────────────────────────────────────────────────────────────────────── */
 
-const TOAST_STYLE = {
+const BODY_TOAST_STYLE = {
   position: 'fixed',
   right: '1rem',
   bottom: '1rem',
   margin: 0,
-  zIndex: 110,
+  zIndex: 80,
+  pointerEvents: 'auto'
+};
+
+/* Inside Content: panel is position:fixed + transformed, so absolute is relative
+   to the panel box. Sit above the footer actions, clear of the close button. */
+const PANEL_TOAST_STYLE = {
+  position: 'absolute',
+  right: '3rem',
+  top: '0.75rem',
+  margin: 0,
+  zIndex: 20,
   pointerEvents: 'auto'
 };
 
@@ -60,37 +74,20 @@ export function UndoToastBody({ message, pending, onUndo }) {
   );
 }
 
-/**
- * Portaled by DialogShell as a DialogPortal child. Must forwardRef: Radix Portal
- * uses asChild and merges onto this DOM node.
- */
-export const DialogUndoChip = React.forwardRef(function DialogUndoChip(props, ref) {
+/** Rendered inside DialogPrimitive.Content (not portaled to body). */
+export function DialogUndoChip() {
   const view = useSyncExternalStore(subscribeUndoToastView, getUndoToastView, getUndoToastView);
-
-  if (!view.undoToast) {
-    // asChild still needs a real element; keep it out of hit-testing and layout.
-    return (
-      <div
-        ref={ref}
-        {...props}
-        data-tabhub-undo-in-dialog=""
-        aria-hidden="true"
-        style={{ display: 'none' }}
-      />
-    );
-  }
+  if (!view.undoToast) return null;
 
   return (
     <div
-      ref={ref}
-      {...props}
       role="status"
       aria-live="polite"
       data-sonner-toaster=""
       data-tabhub-undo-toast=""
       data-tabhub-undo-in-dialog=""
       data-theme={view.theme}
-      style={{ ...(props.style || {}), ...TOAST_STYLE }}
+      style={PANEL_TOAST_STYLE}
     >
       <UndoToastBody
         message={view.undoToast.message}
@@ -99,7 +96,7 @@ export const DialogUndoChip = React.forwardRef(function DialogUndoChip(props, re
       />
     </div>
   );
-});
+}
 
 /**
  * @param undoToast the `useUndoStack` state object, or null
@@ -120,13 +117,15 @@ export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false
       onUndo: () => onUndoRef.current?.(),
       theme
     });
+  }, [undoToast, theme]);
+
+  useLayoutEffect(() => {
     return () => {
       publishView({ undoToast: null, onUndo: null, theme: 'system' });
     };
-  }, [undoToast, theme]);
+  }, []);
 
   if (typeof document === 'undefined') return null;
-  // DialogShell paints the chip while a modal is open.
   if (elevate) return null;
   if (!undoToast) {
     return createPortal(
@@ -136,7 +135,7 @@ export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false
         data-sonner-toaster=""
         data-tabhub-undo-toast=""
         data-theme={theme}
-        style={{ ...TOAST_STYLE, pointerEvents: 'none' }}
+        style={{ ...BODY_TOAST_STYLE, pointerEvents: 'none' }}
       />,
       document.body
     );
@@ -149,7 +148,7 @@ export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false
       data-sonner-toaster=""
       data-tabhub-undo-toast=""
       data-theme={theme}
-      style={TOAST_STYLE}
+      style={BODY_TOAST_STYLE}
     >
       <UndoToastBody
         message={undoToast.message}

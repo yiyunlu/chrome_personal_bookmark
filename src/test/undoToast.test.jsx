@@ -173,21 +173,20 @@ describe('UndoToast reachability while a dialog is open', () => {
     expect(onUndo).toHaveBeenCalledTimes(1);
   });
 
-  it('stacks its container above the dialog layers', async () => {
+  it('keeps the in-panel chip pointer-reachable while a dialog is open', async () => {
     await renderWithDialog();
 
-    // Inline stacking on the aria-live layer — must clear DialogShell z-90/100.
-    const list = document.querySelector('[data-sonner-toaster]');
-    expect(Number(getComputedStyle(list).zIndex)).toBeGreaterThanOrEqual(110);
+    const list = document.querySelector('[data-tabhub-undo-in-dialog]');
+    expect(list).not.toBeNull();
+    expect(getComputedStyle(list).pointerEvents).toBe('auto');
+    expect(undoButton().closest('[aria-hidden="true"]')).toBeNull();
   });
 
-  it('paints the chip inside the dialog portal, not only on document.body', async () => {
+  it('paints the undo chip inside the open dialog panel', async () => {
     await renderWithDialog();
     const layer = document.querySelector('[data-tabhub-undo-in-dialog]');
     expect(layer).not.toBeNull();
-    // Radix DialogPortal asChild requires a real host node (forwardRef).
-    expect(layer.tagName).toBe('DIV');
-    expect(layer).not.toHaveStyle({ display: 'none' });
+    expect(layer.closest('[role="dialog"]')).not.toBeNull();
     expect(undoButton()).toBeInTheDocument();
     // Opening a dialog must not clear the undo message (PM: not just z-index).
     expect(screen.getByText('已移入回收站 1 项')).toBeInTheDocument();
