@@ -1169,9 +1169,15 @@ function App() {
   );
 
   const handleEscape = useCallback(() => {
-    // Close the topmost overlay only.
+    // Close the topmost overlay only. DialogShell surfaces usually dismiss via
+    // Radix (capture + stopPropagation); this list is the fallback when a
+    // layer is not the highest DismissableLayer (Esc would otherwise no-op).
     if (contextMenu) {
       setContextMenu(null);
+    } else if (confirmDialog) {
+      setConfirmDialog(null);
+    } else if (promptDialog) {
+      setPromptDialog(null);
     } else if (editorState) {
       setEditorState(null);
     } else if (batchMoveState) {
@@ -1180,10 +1186,28 @@ function App() {
       setAICategorizeState(null);
     } else if (deadLinkState) {
       setDeadLinkState(null);
+    } else if (showTrash) {
+      setShowTrash(false);
+    } else if (saveTabsState) {
+      setSaveTabsState(null);
+    } else if (settingsOpen) {
+      setSettingsOpen(false);
     } else if (chatOpen) {
       setChatOpen(false);
     }
-  }, [contextMenu, editorState, batchMoveState, aiCategorizeState, deadLinkState, chatOpen]);
+  }, [
+    contextMenu,
+    confirmDialog,
+    promptDialog,
+    editorState,
+    batchMoveState,
+    aiCategorizeState,
+    deadLinkState,
+    showTrash,
+    saveTabsState,
+    settingsOpen,
+    chatOpen
+  ]);
 
   useKeyboardShortcuts({
     searchInputRef,
@@ -1249,8 +1273,10 @@ function App() {
   }, []);
 
   const openCollectionContextMenu = useCallback((event, collection) => {
-    if (!collection.editable && !collection.deletable) return;
+    // Always suppress the OS menu on a collection header — even Unfiled
+    // (editable/deletable false) — otherwise smoke sees the native menu.
     event.preventDefault();
+    if (!collection.editable && !collection.deletable) return;
     setContextMenu({ kind: 'collection', x: event.clientX, y: event.clientY, collection });
   }, []);
 

@@ -29,8 +29,8 @@ function Harness({ handlers = {} }) {
   }, []);
 
   const openCollectionContextMenu = useCallback((event, col) => {
-    if (!col.editable && !col.deletable) return;
     event.preventDefault();
+    if (!col.editable && !col.deletable) return;
     setContextMenu({ kind: 'collection', x: event.clientX, y: event.clientY, collection: col });
   }, []);
 

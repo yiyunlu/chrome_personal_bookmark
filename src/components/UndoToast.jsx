@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Undo2 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import { t } from '../lib/i18n';
@@ -138,5 +139,15 @@ export function UndoToast({ undoToast, onUndo, theme = 'system' }) {
   // Mounted unconditionally: that is what keeps the aria-live region present
   // (and therefore exempt from hideOthers) before a dialog ever opens.
   // `offset` reproduces the old `bottom-4 right-4`.
-  return <Toaster theme={theme} position="bottom-right" offset={16} style={TOASTER_STYLE} />;
+  // Portal to `document.body`: App's root is `position: relative` (stacking
+  // context), while DialogShell portals to body at z-90 — an in-tree Sonner
+  // with z-index 999999999 still paints *under* the dialog. Body-level portal
+  // lets the toaster clear Save Tabs so Undo stays clickable (smoke item 7).
+  if (typeof document === 'undefined') {
+    return <Toaster theme={theme} position="bottom-right" offset={16} style={TOASTER_STYLE} />;
+  }
+  return createPortal(
+    <Toaster theme={theme} position="bottom-right" offset={16} style={TOASTER_STYLE} />,
+    document.body
+  );
 }
