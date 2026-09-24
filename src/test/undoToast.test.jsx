@@ -1,24 +1,20 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { toast } from 'sonner';
 import { UndoToast } from '../components/UndoToast';
 import { EditBookmarkModal } from '../components/EditBookmarkModal';
 import { useUndoStack } from '../hooks/useUndoStack';
 import { tick } from './dialogHelpers';
 
-/* P4. Two things are under test here:
+/* Undo toast projection + reachability while a dialog is open.
 
-   1. the Sonner bridge — one toast per `undoToast.id`, updated in place while
-      `pending` flips, dismissed when the state clears, and the 8s window still
-      owned by `useUndoStack`; and
+   1. one chip per `undoToast` state, updated in place while `pending` flips,
+      cleared when state clears; the 8s window is owned by `useUndoStack`; and
    2. the reachability regression P1 left behind. A modal Radix Dialog puts
-      `pointer-events: none` on <body> and `aria-hidden` on everything that is
-      not an ancestor of its content, so the undo toast was inert and invisible
-      to assistive tech while any dialog was open — whatever its z-index. The
-      tests below assert on `getComputedStyle().pointerEvents` and on
-      `aria-hidden` ancestry, not on class strings, and they carry two controls
-      that prove the assertions can fail. */
+      `pointer-events: none` on <body> and `aria-hidden` on siblings, so the
+      undo chip must live in an always-mounted `aria-live` body portal with
+      restored pointer-events. Tests assert computed `pointerEvents` and
+      `aria-hidden` ancestry, with two controls that prove the assertions can fail. */
 
 const editorState = {
   id: 'b1',
@@ -53,17 +49,18 @@ const undoState = (overrides = {}) => ({
 const undoButton = () => screen.getByRole('button', { name: '撤销' });
 
 afterEach(() => {
-  act(() => toast.dismiss());
+  document.getElementById('tabhub-undo-toaster-host')?.remove();
 });
 
-describe('UndoToast on Sonner', () => {
+describe('UndoToast', () => {
   it('keeps an aria-live region mounted even with no toast on screen', () => {
     render(<UndoToast undoToast={null} onUndo={vi.fn()} theme="light" />);
 
     // This is the node hideOthers() exempts, and it has to exist *before* a
-    // dialog opens for the exemption to cover it.
-    expect(document.querySelector('section[aria-live="polite"]')).not.toBeNull();
-    expect(document.querySelector('[data-sonner-toast]')).toBeNull();
+    // dialog opens for the exemption to cover it. The chip itself is the
+    // aria-live container (not a sibling empty section), so Undo stays kept.
+    expect(document.querySelector('[data-sonner-toaster][aria-live="polite"]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: '撤销' })).toBeNull();
   });
 
   it('publishes the message and an undo action, and calls back exactly once', async () => {
@@ -79,15 +76,13 @@ describe('UndoToast on Sonner', () => {
   it('updates the same toast in place when the action goes pending', async () => {
     const state = undoState();
     const { rerender } = render(<UndoToast undoToast={state} onUndo={vi.fn()} theme="light" />);
-    await tick();
-    expect(document.querySelectorAll('[data-sonner-toast]')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: '撤销' })).toBeInTheDocument();
 
     rerender(<UndoToast undoToast={{ ...state, pending: true }} onUndo={vi.fn()} theme="light" />);
-    await tick();
 
     expect(screen.getByRole('button', { name: '撤销中…' })).toBeInTheDocument();
     // Updated, not stacked.
-    expect(document.querySelectorAll('[data-sonner-toast]')).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: '撤销中…' })).toHaveLength(1);
   });
 
   it('replaces the previous toast when a second undo is offered', async () => {
@@ -111,15 +106,13 @@ describe('UndoToast on Sonner', () => {
     await waitFor(() => expect(screen.queryByText(state.message)).toBeNull());
   });
 
-  it('drives Sonner from the app theme, not next-themes', async () => {
+  it('receives the app theme on the toast layer, not next-themes', () => {
     const state = undoState();
     const { rerender } = render(<UndoToast undoToast={state} onUndo={vi.fn()} theme="dark" />);
-    await tick();
-    expect(document.querySelector('[data-sonner-toaster]')).toHaveAttribute('data-sonner-theme', 'dark');
+    expect(document.querySelector('[data-sonner-toaster]')).toHaveAttribute('data-theme', 'dark');
 
     rerender(<UndoToast undoToast={state} onUndo={vi.fn()} theme="light" />);
-    await tick();
-    expect(document.querySelector('[data-sonner-toaster]')).toHaveAttribute('data-sonner-theme', 'light');
+    expect(document.querySelector('[data-sonner-toaster]')).toHaveAttribute('data-theme', 'light');
   });
 });
 
@@ -183,8 +176,7 @@ describe('UndoToast reachability while a dialog is open', () => {
   it('stacks its container above the dialog layers', async () => {
     await renderWithDialog();
 
-    // Sonner's own injected stylesheet, not a Tailwind class: read the computed
-    // value so the assertion is about what the browser would stack.
+    // Inline stacking on the aria-live layer — must clear DialogShell z-90/100.
     const list = document.querySelector('[data-sonner-toaster]');
     expect(Number(getComputedStyle(list).zIndex)).toBeGreaterThan(100);
   });
@@ -220,9 +212,6 @@ describe('the 8s undo window survives the migration', () => {
       await act(async () => {
         fireEvent.click(screen.getByText('delete'));
       });
-      // Sonner publishes one macrotask later (it flushSyncs outside the caller's
-      // batch), and that has to be a separate act() from the click: the effect
-      // that calls toast.custom has not run until this one commits.
       await advance(1);
       expect(screen.getByText('已移入回收站 1 项')).toBeInTheDocument();
 
@@ -247,29 +236,15 @@ describe('the 8s undo window survives the migration', () => {
       await act(async () => {
         fireEvent.click(screen.getByText('delete'));
       });
-      // Sonner publishes one macrotask later (it flushSyncs outside the caller's
-      // batch), and that has to be a separate act() from the click: the effect
-      // that calls toast.custom has not run until this one commits.
       await advance(1);
       expect(screen.getByText('已移入回收站 1 项')).toBeInTheDocument();
 
       await advance(8100);
 
-      // Past the deadline the hook has dropped the action. Sonner is still
-      // walking the toast out at this point, so press the button that is still
-      // on screen: the deadline has to be enforced by the hook, not by whether
-      // the node has finished animating away.
-      await act(async () => {
-        fireEvent.click(undoButton());
-      });
-      expect(onUndo).not.toHaveBeenCalled();
-
-      // …and it does leave. (Two turns of the clock: Sonner marks the toast
-      // removed on one frame and unmounts it 200ms after that, each step
-      // needing its own React commit.)
-      await advance(1000);
-      await advance(1000);
+      // Past the deadline the hook has dropped the action and the chip unmounts
+      // with it (no Sonner exit animation). Deadline is enforced by the hook.
       expect(screen.queryByRole('button', { name: '撤销' })).toBeNull();
+      expect(onUndo).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
     }
