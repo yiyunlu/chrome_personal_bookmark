@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { UndoToast } from '../components/UndoToast';
 import { EditBookmarkModal } from '../components/EditBookmarkModal';
@@ -48,9 +48,43 @@ const undoState = (overrides = {}) => ({
 
 const undoButton = () => screen.getByRole('button', { name: '撤销' });
 
+function isLayerOpen(layer) {
+  return (
+    layer.hasAttribute('data-jsdom-popover-open') ||
+    (typeof layer.matches === 'function' && layer.matches(':popover-open'))
+  );
+}
 
+/* jsdom applies `display:none` to closed [popover] and has no Popover API.
+   Smoke 7 relies on showPopover for top-layer paint; mirror that here. */
+beforeAll(() => {
+  if (typeof HTMLElement === 'undefined') return;
+  if (typeof HTMLElement.prototype.showPopover === 'function') return;
 
+  const origMatches = Element.prototype.matches;
+  Element.prototype.matches = function matches(selectors) {
+    if (selectors === ':popover-open') {
+      return this.hasAttribute('data-jsdom-popover-open');
+    }
+    try {
+      return origMatches.call(this, selectors);
+    } catch (err) {
+      if (typeof selectors === 'string' && selectors.includes(':popover-open')) {
+        return this.hasAttribute('data-jsdom-popover-open');
+      }
+      throw err;
+    }
+  };
 
+  HTMLElement.prototype.showPopover = function showPopover() {
+    this.setAttribute('data-jsdom-popover-open', '');
+    this.style.setProperty('display', 'block', 'important');
+  };
+  HTMLElement.prototype.hidePopover = function hidePopover() {
+    this.removeAttribute('data-jsdom-popover-open');
+    this.style.setProperty('display', 'none', 'important');
+  };
+});
 
 describe('UndoToast', () => {
   it('keeps an aria-live region mounted even with no toast on screen', () => {
@@ -59,7 +93,9 @@ describe('UndoToast', () => {
     // This is the node hideOthers() exempts, and it has to exist *before* a
     // dialog opens for the exemption to cover it. The chip itself is the
     // aria-live container (not a sibling empty section), so Undo stays kept.
-    expect(document.querySelector('[data-sonner-toaster][aria-live="polite"]')).not.toBeNull();
+    const layer = document.querySelector('[data-sonner-toaster][aria-live="polite"]');
+    expect(layer).not.toBeNull();
+    expect(layer).toHaveAttribute('popover', 'manual');
     expect(screen.queryByRole('button', { name: '撤销' })).toBeNull();
   });
 
@@ -117,7 +153,7 @@ describe('UndoToast', () => {
 });
 
 describe('UndoToast reachability while a dialog is open', () => {
-  /** Renders the toast, a dialog, and the two controls. */
+  /** Renders the toast (elevated), a dialog, and the two controls. */
   async function renderWithDialog(onUndo = vi.fn()) {
     const view = render(
       <div>
@@ -157,7 +193,7 @@ describe('UndoToast reachability while a dialog is open', () => {
     expect(legacy.closest('[aria-hidden="true"]')).toBeNull();
     expect(getComputedStyle(legacy).pointerEvents).toBe('none');
 
-    // The Sonner toast — reachable on both counts.
+    // Body popover chip — reachable on both counts.
     const button = undoButton();
     expect(button.closest('[aria-hidden="true"]')).toBeNull();
     expect(getComputedStyle(button).pointerEvents).toBe('auto');
@@ -173,23 +209,56 @@ describe('UndoToast reachability while a dialog is open', () => {
     expect(onUndo).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the in-panel chip pointer-reachable while a dialog is open', async () => {
+  it('stacks its body popover container above the dialog layers', async () => {
     await renderWithDialog();
 
-    const list = document.querySelector('[data-tabhub-undo-in-dialog]');
+    // Inline stacking on the aria-live layer — must clear DialogShell z-90/100.
+    const list = document.querySelector('[data-sonner-toaster]');
     expect(list).not.toBeNull();
+    expect(document.body.contains(list)).toBe(true);
+    expect(list.closest('[role="dialog"]')).toBeNull();
     expect(getComputedStyle(list).pointerEvents).toBe('auto');
-    expect(undoButton().closest('[aria-hidden="true"]')).toBeNull();
+    expect(Number(getComputedStyle(list).zIndex)).toBeGreaterThan(100);
   });
 
-  it('paints the undo chip inside the open dialog panel', async () => {
+  it('enters the top layer via popover while a dialog is open', async () => {
     await renderWithDialog();
-    const layer = document.querySelector('[data-tabhub-undo-in-dialog]');
+    const layer = document.querySelector('[data-tabhub-undo-toast]');
     expect(layer).not.toBeNull();
-    expect(layer.closest('[role="dialog"]')).not.toBeNull();
-    expect(undoButton()).toBeInTheDocument();
+    expect(layer.parentElement).toBe(document.body);
+    expect(layer.getAttribute('popover')).toBe('manual');
+    // jsdom polyfill marker, or :popover-open in real browsers.
+    expect(isLayerOpen(layer)).toBe(true);
     // Opening a dialog must not clear the undo message (PM: not just z-index).
     expect(screen.getByText('已移入回收站 1 项')).toBeInTheDocument();
+  });
+
+  it('restacks with hide+show when elevate flips on after the chip is already open', async () => {
+    const state = undoState();
+    const { rerender } = render(
+      <UndoToast undoToast={state} onUndo={vi.fn()} theme="light" elevate={false} />
+    );
+    await tick();
+
+    const layer = document.querySelector('[data-tabhub-undo-toast]');
+    expect(layer.getAttribute('popover')).toBe('manual');
+    expect(isLayerOpen(layer)).toBe(true);
+
+    // Simulate Save Tabs opening after delete: elevate flips true while undoToast stays set.
+    rerender(
+      <div>
+        <UndoToast undoToast={state} onUndo={vi.fn()} theme="light" elevate />
+        <Editor />
+      </div>
+    );
+    await tick();
+
+    const layerAfter = document.querySelector('[data-tabhub-undo-toast]');
+    expect(layerAfter).not.toBeNull();
+    expect(layerAfter.parentElement).toBe(document.body);
+    expect(isLayerOpen(layerAfter)).toBe(true);
+    expect(undoButton()).toBeInTheDocument();
+    expect(document.querySelector('[data-tabhub-undo-in-dialog]')).toBeNull();
   });
 });
 
