@@ -185,7 +185,9 @@ describe('UndoToast reachability while a dialog is open', () => {
     await renderWithDialog();
     const layer = document.querySelector('[data-tabhub-undo-in-dialog]');
     expect(layer).not.toBeNull();
-    expect(layer.closest('[data-radix-portal], [role="dialog"]') || layer.closest('body')).toBeTruthy();
+    // Radix DialogPortal asChild requires a real host node (forwardRef).
+    expect(layer.tagName).toBe('DIV');
+    expect(layer).not.toHaveStyle({ display: 'none' });
     expect(undoButton()).toBeInTheDocument();
     // Opening a dialog must not clear the undo message (PM: not just z-index).
     expect(screen.getByText('已移入回收站 1 项')).toBeInTheDocument();
