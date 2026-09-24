@@ -1,47 +1,55 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { Undo2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { Button } from './ui/button';
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Undo toast — HTML Popover top layer (UX-P0-UNDO-Z).
+   Undo toast (UX-P0-UNDO-Z).
 
    Smoke 7: delete → S → click Undo while Save Tabs stays open.
 
-   A plain `position:fixed` chip on `document.body` (even at max z-index, even
-   re-appended after the dialog portal) still lost to Save Tabs in Chrome: Radix
-   Dialog portals + RemoveScroll/`pointer-events: none` on <body> leave the chip
-   covered or inert under the scrim. Sonner's list had the same paint fight once
-   the dialog opened.
+   Body-fixed / max-z-index / MutationObserver / HTML Popover all failed in
+   Chrome once Save Tabs opened: the chip vanished even though `undoToast`
+   state was still set (handleSaveTabs does not clear it when tabs exist).
+   Popover UA `display:none` on close made "state still there" look identical
+   to a cleared stack.
 
-   `popover="manual"` + `showPopover()` puts this node in the browser top layer,
-   which paints above ordinary fixed portals (DialogShell is a div portal, not a
-   modal <dialog>). Re-calling showPopover is unnecessary while open; we only
-   show while `undoToast` is set and hide when it clears. `elevate` re-asserts
-   the top-layer entry if a modal opens after the chip (no-op when already open).
-
-   `aria-live` on this same node keeps hideOthers from marking Undo.
-   `data-sonner-toaster` keeps DialogShell's outside-click guard.
-   `pointer-events: auto` restores hits while body is pointer-inert.
+   Fix: while a DialogShell is open, paint the chip *inside that dialog's
+   Radix portal* (sibling of overlay/content, z above LAYER_BASE) so it shares
+   the modal stacking context. While no modal is open, paint the same chip on
+   `document.body`. A tiny external store lets DialogShell read the live chip
+   without wrapping the app in a React context provider.
    ──────────────────────────────────────────────────────────────────────────── */
 
 const TOAST_STYLE = {
   position: 'fixed',
   right: '1rem',
   bottom: '1rem',
-  left: 'auto',
-  top: 'auto',
   margin: 0,
-  padding: 0,
-  border: 'none',
-  background: 'transparent',
-  overflow: 'visible',
-  zIndex: 2147483647,
+  zIndex: 110,
   pointerEvents: 'auto'
 };
 
-function UndoToastBody({ message, pending, onUndo }) {
+/** @type {{ undoToast: object|null, onUndo: Function|null, theme: string }} */
+let viewState = { undoToast: null, onUndo: null, theme: 'system' };
+const viewListeners = new Set();
+
+function publishView(next) {
+  viewState = next;
+  viewListeners.forEach((listener) => listener());
+}
+
+export function subscribeUndoToastView(listener) {
+  viewListeners.add(listener);
+  return () => viewListeners.delete(listener);
+}
+
+export function getUndoToastView() {
+  return viewState;
+}
+
+export function UndoToastBody({ message, pending, onUndo }) {
   return (
     <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 text-card-foreground shadow-panel">
       <span className="text-sm">{message}</span>
@@ -59,66 +67,74 @@ function UndoToastBody({ message, pending, onUndo }) {
   );
 }
 
-function isPopoverOpen(el) {
-  try {
-    return typeof el.matches === 'function' && el.matches(':popover-open');
-  } catch {
-    return false;
-  }
-}
+/** Chip rendered inside DialogShell / AlertDialogShell portals. */
+export function DialogUndoChip() {
+  const view = useSyncExternalStore(subscribeUndoToastView, getUndoToastView, getUndoToastView);
+  if (!view.undoToast) return null;
 
-function showLayer(el) {
-  if (!el || typeof el.showPopover !== 'function') return;
-  if (isPopoverOpen(el)) return;
-  try {
-    el.showPopover();
-  } catch {
-    // Already open or popover unsupported in this environment.
-  }
-}
-
-function hideLayer(el) {
-  if (!el || typeof el.hidePopover !== 'function') return;
-  if (!isPopoverOpen(el)) return;
-  try {
-    el.hidePopover();
-  } catch {
-    // Already closed.
-  }
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      data-sonner-toaster=""
+      data-tabhub-undo-toast=""
+      data-tabhub-undo-in-dialog=""
+      data-theme={view.theme}
+      style={TOAST_STYLE}
+    >
+      <UndoToastBody
+        message={view.undoToast.message}
+        pending={!!view.undoToast.pending}
+        onUndo={() => view.onUndo?.()}
+      />
+    </div>
+  );
 }
 
 /**
  * @param undoToast the `useUndoStack` state object, or null
  * @param onUndo     invoked by the Undo button
- * @param theme      resolved theme from `useTheme` (kept for API parity)
- * @param elevate    true while any modal is open — re-assert top-layer stacking
+ * @param theme      resolved theme from `useTheme`
+ * @param elevate    true while any modal is open — body chip hides; DialogUndoChip shows
  */
 export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false }) {
   const onUndoRef = useRef(onUndo);
-  const layerRef = useRef(null);
 
   useLayoutEffect(() => {
     onUndoRef.current = onUndo;
   }, [onUndo]);
 
   useLayoutEffect(() => {
-    const el = layerRef.current;
-    if (!el) return undefined;
-
-    if (undoToast) {
-      showLayer(el);
-    } else {
-      hideLayer(el);
-    }
-    return undefined;
-  }, [undoToast, elevate]);
+    publishView({
+      undoToast,
+      onUndo: () => onUndoRef.current?.(),
+      theme
+    });
+    return () => {
+      publishView({ undoToast: null, onUndo: null, theme: 'system' });
+    };
+  }, [undoToast, theme]);
 
   if (typeof document === 'undefined') return null;
+  // DialogShell paints the chip while a modal is open.
+  if (elevate) return null;
+  if (!undoToast) {
+    // Keep an always-mounted aria-live host for hideOthers exemption before any dialog.
+    return createPortal(
+      <div
+        role="status"
+        aria-live="polite"
+        data-sonner-toaster=""
+        data-tabhub-undo-toast=""
+        data-theme={theme}
+        style={{ ...TOAST_STYLE, pointerEvents: 'none' }}
+      />,
+      document.body
+    );
+  }
 
   return createPortal(
     <div
-      ref={layerRef}
-      popover="manual"
       role="status"
       aria-live="polite"
       data-sonner-toaster=""
@@ -126,13 +142,11 @@ export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false
       data-theme={theme}
       style={TOAST_STYLE}
     >
-      {undoToast ? (
-        <UndoToastBody
-          message={undoToast.message}
-          pending={!!undoToast.pending}
-          onUndo={() => onUndoRef.current?.()}
-        />
-      ) : null}
+      <UndoToastBody
+        message={undoToast.message}
+        pending={!!undoToast.pending}
+        onUndo={() => onUndoRef.current?.()}
+      />
     </div>,
     document.body
   );
