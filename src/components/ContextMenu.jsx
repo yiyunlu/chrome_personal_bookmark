@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ExternalLink, FolderPen, Pencil, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -44,6 +44,21 @@ export function ContextMenu({
   onClose
 }) {
   const open = !!contextMenu;
+  const contentRef = useRef(null);
+
+  // Controlled open (right-click sets state) does not always move focus into
+  // the menu in Chrome; without focus, Arrow/Home/End/Esc never reach Radix.
+  useEffect(() => {
+    if (!open) return undefined;
+    const id = requestAnimationFrame(() => {
+      const root = contentRef.current;
+      if (!root) return;
+      const item = root.querySelector('[role="menuitem"]');
+      if (item && typeof item.focus === 'function') item.focus();
+      else if (typeof root.focus === 'function') root.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, contextMenu?.kind, contextMenu?.x, contextMenu?.y]);
 
   return (
     <DropdownMenu
@@ -69,6 +84,7 @@ export function ContextMenu({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
+        ref={contentRef}
         side="bottom"
         align="start"
         sideOffset={0}
