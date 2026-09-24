@@ -649,10 +649,14 @@ function App() {
     async (cards) => {
       if (!cards.length) return;
 
-      if (!tabHubRootId) return;
+      // Trash must live under the active source root — same place
+      // getCollectionsPayload reads trashFolderId from — or refresh()
+      // clears hasTrash and the sidebar footer icon vanishes.
+      const trashRootId = activeSourceId || tabHubRootId;
+      if (!trashRootId) return;
 
       try {
-        const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(tabHubRootId);
+        const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(trashRootId);
         if (!trashFolderId) setTrashFolderId(trashFolder.id);
 
         const snapshots = cards.map((card) => ({
@@ -679,7 +683,7 @@ function App() {
         await refresh(activeSourceRef.current);
       }
     },
-    [tabHubRootId, trashFolderId, showUndo, refresh]
+    [activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]
   );
 
   const openEditorByCard = useCallback((card) => {
@@ -735,11 +739,12 @@ function App() {
 
   const handleAutoOrganize = useCallback(async () => {
     if (autoOrganizing || !collections.length) return;
-    if (!tabHubRootId) return;
+    const trashRootId = activeSourceId || tabHubRootId;
+    if (!trashRootId) return;
 
     setAutoOrganizing(true);
     try {
-      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(tabHubRootId);
+      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(trashRootId);
       if (!trashFolderId) setTrashFolderId(trashFolder.id);
       const cardsBefore = collections.flatMap((c) =>
         c.cards.map((card) => ({ id: card.id, title: card.title, url: card.url, parentId: card.parentId, index: card.index }))
@@ -805,7 +810,7 @@ function App() {
     } finally {
       setAutoOrganizing(false);
     }
-  }, [autoOrganizing, collections, tabHubRootId, trashFolderId, showUndo, refresh]);
+  }, [autoOrganizing, collections, activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]);
 
   const handleAICategorize = useCallback(async () => {
     if (!collections.length) return;
@@ -1026,11 +1031,12 @@ function App() {
   }, [activeSourceId, tabHubRootId, showUndo, refresh]);
 
   const handleViewTrash = useCallback(async () => {
-    if (!tabHubRootId) return;
-    const { items } = await getTrashContents(tabHubRootId);
+    const trashRootId = activeSourceId || tabHubRootId;
+    if (!trashRootId) return;
+    const { items } = await getTrashContents(trashRootId);
     setTrashItems(items);
     setShowTrash(true);
-  }, [tabHubRootId]);
+  }, [activeSourceId, tabHubRootId]);
 
   const handleRestoreFromTrash = useCallback(async (item) => {
     const rootId = activeSourceId || tabHubRootId;
@@ -1039,7 +1045,7 @@ function App() {
     showUndo(t('restoredBookmark'), async () => {
       if (trashFolderId) await moveBookmark(item.id, trashFolderId, 0);
     });
-    const { items } = await getTrashContents(tabHubRootId);
+    const { items } = await getTrashContents(rootId);
     setTrashItems(items);
     await refresh(activeSourceRef.current);
   }, [activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]);
