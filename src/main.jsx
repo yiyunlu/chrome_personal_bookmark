@@ -706,7 +706,7 @@ function App() {
       return;
     }
     // Do not touch the undo stack here: smoke 7 needs the delete-undo chip to
-    // stay alive while Save Tabs is open (DialogUndoChip paints it in-portal).
+    // stay alive while Save Tabs is open (elevate restacks the popover chip).
     const folderName = new Date().toISOString().slice(0, 19).replace('T', ' ');
     setSaveTabsState({ tabs: openTabs, folderName });
   }, [showUndo]);
