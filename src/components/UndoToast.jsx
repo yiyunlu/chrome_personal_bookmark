@@ -9,17 +9,10 @@ import { Button } from './ui/button';
 
    Smoke 7: delete → S → click Undo while Save Tabs stays open.
 
-   Body-fixed / max-z-index / MutationObserver / HTML Popover all failed in
-   Chrome once Save Tabs opened: the chip vanished even though `undoToast`
-   state was still set (handleSaveTabs does not clear it when tabs exist).
-   Popover UA `display:none` on close made "state still there" look identical
-   to a cleared stack.
-
-   Fix: while a DialogShell is open, paint the chip *inside that dialog's
-   Radix portal* (sibling of overlay/content, z above LAYER_BASE) so it shares
-   the modal stacking context. While no modal is open, paint the same chip on
-   `document.body`. A tiny external store lets DialogShell read the live chip
-   without wrapping the app in a React context provider.
+   Radix `DialogPortal` does `Children.map` + `Portal asChild` per child, so the
+   in-dialog chip MUST be a `forwardRef` host element — a plain function component
+   cannot receive the portal ref and never paints (a3f4a29 FAIL). Opening Save
+   Tabs does not clear `undoToast`; the body chip was only hidden via `elevate`.
    ──────────────────────────────────────────────────────────────────────────── */
 
 const TOAST_STYLE = {
@@ -67,20 +60,37 @@ export function UndoToastBody({ message, pending, onUndo }) {
   );
 }
 
-/** Chip rendered inside DialogShell / AlertDialogShell portals. */
-export function DialogUndoChip() {
+/**
+ * Portaled by DialogShell as a DialogPortal child. Must forwardRef: Radix Portal
+ * uses asChild and merges onto this DOM node.
+ */
+export const DialogUndoChip = React.forwardRef(function DialogUndoChip(props, ref) {
   const view = useSyncExternalStore(subscribeUndoToastView, getUndoToastView, getUndoToastView);
-  if (!view.undoToast) return null;
+
+  if (!view.undoToast) {
+    // asChild still needs a real element; keep it out of hit-testing and layout.
+    return (
+      <div
+        ref={ref}
+        {...props}
+        data-tabhub-undo-in-dialog=""
+        aria-hidden="true"
+        style={{ display: 'none' }}
+      />
+    );
+  }
 
   return (
     <div
+      ref={ref}
+      {...props}
       role="status"
       aria-live="polite"
       data-sonner-toaster=""
       data-tabhub-undo-toast=""
       data-tabhub-undo-in-dialog=""
       data-theme={view.theme}
-      style={TOAST_STYLE}
+      style={{ ...(props.style || {}), ...TOAST_STYLE }}
     >
       <UndoToastBody
         message={view.undoToast.message}
@@ -89,7 +99,7 @@ export function DialogUndoChip() {
       />
     </div>
   );
-}
+});
 
 /**
  * @param undoToast the `useUndoStack` state object, or null
@@ -119,7 +129,6 @@ export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false
   // DialogShell paints the chip while a modal is open.
   if (elevate) return null;
   if (!undoToast) {
-    // Keep an always-mounted aria-live host for hideOthers exemption before any dialog.
     return createPortal(
       <div
         role="status"
