@@ -1,54 +1,33 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Undo2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { Button } from './ui/button';
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Undo toast — direct body portal (UX-P0-UNDO-Z).
+   Undo toast — compact body portal (UX-P0-UNDO-Z).
 
-   Why not Sonner's toast list for the visible chip: a modal Radix Dialog calls
-   hideOthers(), which keeps `[aria-live]` nodes and their *ancestors*, but marks
-   *siblings* aria-hidden. Sonner puts `aria-live` on an empty <section> beside
-   the toast <ol>, so the real Undo chip is hidden from the a11y tree — and in
-   practice the Save Tabs smoke (delete → S → click Undo) could not see or hit it
-   above the dialog scrim.
+   Smoke 7: delete → S → click Undo while Save Tabs stays open.
 
-   Fix: one always-mounted `aria-live` container that *wraps* the chip (so the
-   button stays a descendant of the exempt node), portaled to document.body with
-   a top stacking layer. `data-sonner-toaster` keeps DialogShell's outside-click
-   guard (ignoreToastInteractions) working without renaming that contract.
+   A full-viewport `inset:0` host at max z-index still vanished under Save Tabs:
+   Radix wraps the dialog in RemoveScroll, which locks body scroll; a fixed
+   fullscreen layer interacted badly and the chip disappeared after S even though
+   it was visible before. The chip is now a compact `position:fixed` node on
+   `document.body` (no fullscreen wrapper). While a chip is up, a MutationObserver
+   re-appends it after any late dialog portal so paint order stays above z-90.
+
+   `aria-live` on this same node keeps hideOthers from marking Undo.
+   `data-sonner-toaster` keeps DialogShell's outside-click guard.
    ──────────────────────────────────────────────────────────────────────────── */
 
-const HOST_ID = 'tabhub-undo-toaster-host';
-
-const HOST_STYLE = {
-  position: 'fixed',
-  inset: 0,
-  zIndex: 2147483647,
-  pointerEvents: 'none'
-};
-
 const TOAST_STYLE = {
-  pointerEvents: 'auto',
-  zIndex: 2147483647
+  position: 'fixed',
+  right: '1rem',
+  bottom: '1rem',
+  margin: 0,
+  zIndex: 2147483647,
+  pointerEvents: 'auto'
 };
-
-function ensureToasterHost() {
-  if (typeof document === 'undefined') return null;
-  let node = document.getElementById(HOST_ID);
-  if (!node) {
-    node = document.createElement('div');
-    node.id = HOST_ID;
-    document.body.appendChild(node);
-  }
-  // Keep the layer after late-mounted dialog portals.
-  if (document.body.lastElementChild !== node) {
-    document.body.appendChild(node);
-  }
-  Object.assign(node.style, HOST_STYLE);
-  return node;
-}
 
 function UndoToastBody({ message, pending, onUndo }) {
   return (
@@ -68,38 +47,51 @@ function UndoToastBody({ message, pending, onUndo }) {
   );
 }
 
+function moveToBodyEnd(el) {
+  if (el && el.parentNode === document.body && document.body.lastElementChild !== el) {
+    document.body.appendChild(el);
+  }
+}
+
 /**
  * @param undoToast the `useUndoStack` state object, or null
  * @param onUndo     invoked by the Undo button
  * @param theme      resolved theme from `useTheme` (kept for API parity)
+ * @param elevate    true while any modal is open — re-assert body-end stacking
  */
-export function UndoToast({ undoToast, onUndo, theme = 'system' }) {
+export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false }) {
   const onUndoRef = useRef(onUndo);
-  const [host, setHost] = useState(null);
-
-  useLayoutEffect(() => {
-    setHost(ensureToasterHost());
-  }, []);
-
-  // Re-append above dialog portals whenever a chip is shown (Save Tabs opens later).
-  useLayoutEffect(() => {
-    if (undoToast) setHost(ensureToasterHost());
-  }, [undoToast]);
+  const layerRef = useRef(null);
 
   useLayoutEffect(() => {
     onUndoRef.current = onUndo;
   }, [onUndo]);
 
-  if (!host) return null;
+  // Keep the chip after Radix dialog portals that mount later (Save Tabs).
+  useLayoutEffect(() => {
+    const el = layerRef.current;
+    if (!el) return undefined;
+
+    moveToBodyEnd(el);
+    if (!undoToast && !elevate) return undefined;
+
+    const observer = new MutationObserver(() => {
+      moveToBodyEnd(el);
+    });
+    observer.observe(document.body, { childList: true });
+    return () => observer.disconnect();
+  }, [undoToast, elevate]);
+
+  if (typeof document === 'undefined') return null;
 
   return createPortal(
     <div
+      ref={layerRef}
       role="status"
       aria-live="polite"
       data-sonner-toaster=""
       data-tabhub-undo-toast=""
       data-theme={theme}
-      className="fixed right-4 bottom-4"
       style={TOAST_STYLE}
     >
       {undoToast ? (
@@ -110,6 +102,6 @@ export function UndoToast({ undoToast, onUndo, theme = 'system' }) {
         />
       ) : null}
     </div>,
-    host
+    document.body
   );
 }
