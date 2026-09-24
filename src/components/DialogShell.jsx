@@ -133,8 +133,9 @@ function useReturnFocus() {
 const TOAST_ROOT_SELECTOR = '[data-sonner-toaster]';
 
 function ignoreToastInteractions(event) {
-  const target = event.target;
-  if (target instanceof Element && target.closest(TOAST_ROOT_SELECTOR)) {
+  const raw = event.target;
+  const el = raw instanceof Element ? raw : raw?.parentElement;
+  if (el instanceof Element && el.closest(TOAST_ROOT_SELECTOR)) {
     event.preventDefault();
   }
 }
@@ -156,6 +157,7 @@ export function DialogShell({ open, onClose, title, className, children, layer =
           className={cn(PANEL_CLASS, layer, className || 'max-w-lg')}
           onEscapeKeyDown={stopEscapePropagation}
           onPointerDownOutside={ignoreToastInteractions}
+          onFocusOutside={ignoreToastInteractions}
           onInteractOutside={ignoreToastInteractions}
           onOpenAutoFocus={returnFocus.onOpenAutoFocus}
           onCloseAutoFocus={returnFocus.onCloseAutoFocus}

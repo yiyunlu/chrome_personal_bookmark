@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { DismissableLayerBranch } from '@radix-ui/react-dismissable-layer';
 import { DialogShell } from '../components/DialogShell';
 
 /**
@@ -16,13 +17,15 @@ import { DialogShell } from '../components/DialogShell';
 function Harness({ onClose }) {
   return (
     <>
-      {/* Stand-in for Sonner's container. The aria-live attribute is not
-          decoration: aria-hidden's hideOthers() collects [aria-live] nodes and
-          descends past them instead of marking them, which is the only reason the
-          real toast stays in the a11y tree while a dialog is open. */}
-      <section aria-live="polite" data-sonner-toaster="">
-        <button type="button">Undo</button>
-      </section>
+      {/* Stand-in for the Undo toast. aria-live keeps hideOthers() from marking
+          it; data-sonner-toaster matches DialogShell's ignoreToastInteractions;
+          DismissableLayerBranch mirrors production so Radix branches skip
+          outside-dismiss when the toast is clicked. */}
+      <DismissableLayerBranch asChild>
+        <section aria-live="polite" data-sonner-toaster="">
+          <button type="button">Undo</button>
+        </section>
+      </DismissableLayerBranch>
       <button type="button" data-testid="page-button">unrelated page button</button>
       <DialogShell open onClose={onClose} title="Save tabs">
         <div>
