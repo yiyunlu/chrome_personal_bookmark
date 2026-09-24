@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { UndoToast } from '../components/UndoToast';
 import { EditBookmarkModal } from '../components/EditBookmarkModal';
@@ -49,6 +49,39 @@ const undoState = (overrides = {}) => ({
 const undoButton = () => screen.getByRole('button', { name: '撤销' });
 
 
+/* jsdom applies `display:none` to closed [popover] and has no Popover API.
+   Smoke 7 relies on showPopover for top-layer paint; mirror that here. */
+beforeAll(() => {
+  if (typeof HTMLElement === 'undefined') return;
+  if (typeof HTMLElement.prototype.showPopover === 'function') return;
+
+  const origMatches = Element.prototype.matches;
+  Element.prototype.matches = function matches(selectors) {
+    if (selectors === ':popover-open') {
+      return this.hasAttribute('data-jsdom-popover-open');
+    }
+    try {
+      return origMatches.call(this, selectors);
+    } catch (err) {
+      if (typeof selectors === 'string' && selectors.includes(':popover-open')) {
+        return this.hasAttribute('data-jsdom-popover-open');
+      }
+      throw err;
+    }
+  };
+
+  HTMLElement.prototype.showPopover = function showPopover() {
+    this.setAttribute('data-jsdom-popover-open', '');
+    this.style.setProperty('display', 'block', 'important');
+  };
+  HTMLElement.prototype.hidePopover = function hidePopover() {
+    this.removeAttribute('data-jsdom-popover-open');
+    this.style.setProperty('display', 'none', 'important');
+  };
+});
+
+
+
 describe('UndoToast', () => {
   it('keeps an aria-live region mounted even with no toast on screen', () => {
     render(<UndoToast undoToast={null} onUndo={vi.fn()} theme="light" />);
@@ -56,7 +89,9 @@ describe('UndoToast', () => {
     // This is the node hideOthers() exempts, and it has to exist *before* a
     // dialog opens for the exemption to cover it. The chip itself is the
     // aria-live container (not a sibling empty section), so Undo stays kept.
-    expect(document.querySelector('[data-sonner-toaster][aria-live="polite"]')).not.toBeNull();
+    const layer = document.querySelector('[data-sonner-toaster][aria-live="polite"]');
+    expect(layer).not.toBeNull();
+    expect(layer).toHaveAttribute('popover', 'manual');
     expect(screen.queryByRole('button', { name: '撤销' })).toBeNull();
   });
 
@@ -176,6 +211,17 @@ describe('UndoToast reachability while a dialog is open', () => {
     // Inline stacking on the aria-live layer — must clear DialogShell z-90/100.
     const list = document.querySelector('[data-sonner-toaster]');
     expect(Number(getComputedStyle(list).zIndex)).toBeGreaterThan(100);
+  });
+
+  it('enters the top layer via popover while a dialog is open', async () => {
+    await renderWithDialog();
+    const layer = document.querySelector('[data-tabhub-undo-toast]');
+    expect(layer).toHaveAttribute('popover', 'manual');
+    // jsdom polyfill marker, or :popover-open in real browsers.
+    const open =
+      layer.hasAttribute('data-jsdom-popover-open') ||
+      (typeof layer.matches === 'function' && layer.matches(':popover-open'));
+    expect(open).toBe(true);
   });
 });
 
