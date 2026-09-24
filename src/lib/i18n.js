@@ -206,6 +206,7 @@ const dictionaries = {
     newCollectionOption: '新建集合',
     tabsSelected: (n) => `已选 ${n} 个标签页`,
     savedTabs: (n) => `已保存 ${n} 个标签页`,
+    noOpenTabsToSave: '当前没有可保存的普通标签页（请先打开至少一个网页）',
     // Modal dialogs
     confirm: '确认',
     deleteBookmarkTitle: '删除书签',
@@ -430,6 +431,7 @@ const dictionaries = {
     newCollectionOption: 'New Collection',
     tabsSelected: (n) => `${n} tabs selected`,
     savedTabs: (n) => `Saved ${n} tabs`,
+    noOpenTabsToSave: 'No open tabs to save (open at least one regular page first)',
     // Modal dialogs
     confirm: 'Confirm',
     deleteBookmarkTitle: 'Delete Bookmark',
