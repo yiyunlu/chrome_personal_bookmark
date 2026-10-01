@@ -18,6 +18,7 @@ import {
   openBookmarkInCurrentTab,
   openBookmarkInNewTab,
   openCardsInNewWindow,
+  activateTab,
   removeCollectionFolder,
   renameCollectionFolder,
   saveCurrentWindowTabsToCollection,
@@ -55,6 +56,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { PromptModal } from './components/PromptModal';
 import { SaveTabsModal } from './components/SaveTabsModal';
+import { CommandPalette } from './components/CommandPalette';
 import { Button } from './components/ui/button';
 
 /* The grid/list view state lives in App (Toolbar renders the control, App owns
@@ -121,6 +123,7 @@ function App() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [promptDialog, setPromptDialog] = useState(null);
   const [saveTabsState, setSaveTabsState] = useState(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [crossSourceResults, setCrossSourceResults] = useState([]);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1168,14 +1171,75 @@ function App() {
     settingsOpen ||
     saveTabsState ||
     confirmDialog ||
+    promptDialog ||
+    paletteOpen
+  );
+
+  // Cmd/Ctrl+K. Closing always works; opening is refused while any other overlay
+  // (context menu included) is up, so the palette never stacks on a dialog.
+  const handleTogglePalette = useCallback(() => {
+    setPaletteOpen((open) => {
+      if (open) return false;
+      const blocked = !!(
+        contextMenu ||
+        editorState ||
+        batchMoveState ||
+        aiCategorizeState ||
+        deadLinkState ||
+        showTrash ||
+        settingsOpen ||
+        saveTabsState ||
+        confirmDialog ||
+        promptDialog
+      );
+      return !blocked;
+    });
+  }, [
+    contextMenu,
+    editorState,
+    batchMoveState,
+    aiCategorizeState,
+    deadLinkState,
+    showTrash,
+    settingsOpen,
+    saveTabsState,
+    confirmDialog,
     promptDialog
+  ]);
+
+  const handlePaletteSelect = useCallback(
+    async (item, { newTab } = {}) => {
+      try {
+        if (item.type === 'tab') {
+          await activateTab(item.id);
+        } else if (item.type === 'bookmark') {
+          if (newTab) await openBookmarkInNewTab(item.url);
+          else await openBookmarkInCurrentTab(item.url);
+        } else if (item.type === 'collection') {
+          // Jump: drop the search filter, show only that collection, expand it.
+          setSearch('');
+          setActiveCollectionId(item.id);
+          setCollapsedCollectionIds((prev) => {
+            if (!prev.has(item.id)) return prev;
+            const next = new Set(prev);
+            next.delete(item.id);
+            return next;
+          });
+        }
+      } catch (e) {
+        logError('handlePaletteSelect', e);
+      }
+    },
+    []
   );
 
   const handleEscape = useCallback(() => {
     // Close the topmost overlay only. DialogShell surfaces usually dismiss via
     // Radix (capture + stopPropagation); this list is the fallback when a
     // layer is not the highest DismissableLayer (Esc would otherwise no-op).
-    if (contextMenu) {
+    if (paletteOpen) {
+      setPaletteOpen(false);
+    } else if (contextMenu) {
       setContextMenu(null);
     } else if (confirmDialog) {
       setConfirmDialog(null);
@@ -1199,6 +1263,7 @@ function App() {
       setChatOpen(false);
     }
   }, [
+    paletteOpen,
     contextMenu,
     confirmDialog,
     promptDialog,
@@ -1219,7 +1284,8 @@ function App() {
     onToggleManage,
     autoOrganizing,
     disabled: modalOpen,
-    onEscape: handleEscape
+    onEscape: handleEscape,
+    onTogglePalette: handleTogglePalette
   });
 
   // --- Event handlers ---
@@ -1694,6 +1760,15 @@ function App() {
         onClose={() => setSaveTabsState(null)}
       />
 
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        cards={allCards}
+        collections={collections}
+        loadTabs={getOpenTabs}
+        onSelect={handlePaletteSelect}
+      />
+
       {chatOpen ? (
         <ChatPanel
           open={chatOpen}
@@ -1803,6 +1878,7 @@ function App() {
         onUndo={() => handleUndo(() => refresh(activeSourceRef.current))}
         theme={resolvedTheme}
         elevate={Boolean(
+          paletteOpen ||
           saveTabsState ||
             editorState ||
             settingsOpen ||

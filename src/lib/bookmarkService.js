@@ -362,6 +362,11 @@ export async function openBookmarkInCurrentTab(url) {
   return updateTabApi(undefined, { url });
 }
 
+/** Switch to an already-open tab (same window — `getOpenTabs` lists current window only). */
+export async function activateTab(tabId) {
+  return updateTabApi(tabId, { active: true });
+}
+
 export async function openBookmarkInNewTab(url) {
   return createTabApi({ url, active: false });
 }
