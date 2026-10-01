@@ -59,6 +59,8 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { PromptModal } from './components/PromptModal';
 import { SaveTabsModal } from './components/SaveTabsModal';
 import { CommandPalette } from './components/CommandPalette';
+import { OpenTabsPanel } from './components/OpenTabsPanel';
+import { dropOpenTabIntoCollection } from './lib/openTabDrop';
 import { Button } from './components/ui/button';
 
 /* The grid/list view state lives in App (Toolbar renders the control, App owns
@@ -749,6 +751,19 @@ function App() {
       }
     },
     [activeSourceId, tabHubRootId, showUndo, refresh, activeSourceRef]
+  );
+
+  // FEAT-3: an open tab dropped on a collection becomes one bookmark there.
+  const handleOpenTabDrop = useCallback(
+    (collection, tab) =>
+      dropOpenTabIntoCollection({
+        collectionId: collection.id,
+        collectionTitle: collection.title,
+        tab,
+        showUndo,
+        refresh: () => refresh(activeSourceRef.current)
+      }),
+    [showUndo, refresh, activeSourceRef]
   );
 
   const handleSaveTabsConfirm = useCallback(
@@ -1631,6 +1646,11 @@ function App() {
               sortMode={sortMode}
               onSortChange={handleSortChange}
             />
+            {/* FEAT-3 drag source. Outside the scroll container and every Sortable
+                host on purpose — see OpenTabsPanel. */}
+            <div className="mt-3">
+              <OpenTabsPanel loadTabs={getOpenTabs} />
+            </div>
           </div>
 
           {/* The design's scroll container: `flex:1; overflow-y:auto; padding:0 22px 40px`. */}
@@ -1694,6 +1714,7 @@ function App() {
                     onToggleCardSelect={toggleCardSelection}
                     onOpenAll={handleOpenAllInCollection}
                     onTagClick={handleTagClick}
+                    onOpenTabDrop={handleOpenTabDrop}
                   />
                 ))}
               </section>

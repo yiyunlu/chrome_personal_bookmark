@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BookmarkIcon } from './BookmarkIcon';
 import {
   Check,
@@ -14,6 +14,7 @@ import { t } from '../lib/i18n';
 import { logError } from '../lib/utils';
 import { generateTags } from '../lib/enrichmentService';
 import { cn } from '../lib/cn';
+import { hasOpenTabDrag, readOpenTabDrag } from '../lib/openTabDrag';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -280,7 +281,8 @@ export const CollectionCard = React.memo(function CollectionCard({
   onDeleteCard,
   onToggleCardSelect,
   onOpenAll,
-  onTagClick
+  onTagClick,
+  onOpenTabDrop
 }) {
   const headerRef = useRef(null);
 
@@ -298,12 +300,75 @@ export const CollectionCard = React.memo(function CollectionCard({
     return () => node.removeEventListener('contextmenu', onContextMenu, true);
   }, [collection, onCollectionContextMenu]);
 
+  // FEAT-3 drop target for an open tab dragged from OpenTabsPanel. It sits on the
+  // <article> (not the cards container) because a collapsed collection has no cards
+  // container at all, and an empty one has only the placeholder. Every handler bails
+  // out unless the drag carries our own dataTransfer type, so SortableJS drags and
+  // native file drags fall straight through untouched (no preventDefault, no
+  // highlight). `isOver` only flips on enter/leave: dragover itself never sets state.
+  const [isOver, setIsOver] = useState(false);
+  const overRef = useRef(false);
+  const setOver = useCallback((next) => {
+    if (overRef.current === next) return;
+    overRef.current = next;
+    setIsOver(next);
+  }, []);
+  // A cancelled drag (Esc, dropped outside the window) may not fire dragleave on
+  // the target; the source's dragend always bubbles to the document.
+  useEffect(() => {
+    if (!isOver) return undefined;
+    const clear = () => {
+      depthRef.current = 0;
+      setOver(false);
+    };
+    document.addEventListener('dragend', clear);
+    return () => document.removeEventListener('dragend', clear);
+  }, [isOver, setOver]);
+  // Enter/leave are counted rather than trusting `relatedTarget` (null in Safari and
+  // on some platforms): crossing between this article's children fires a leave on
+  // the old node AFTER the enter on the new one, so the count only reaches 0 on a
+  // real exit.
+  const depthRef = useRef(0);
+  const onTabDragEnter = (event) => {
+    if (!onOpenTabDrop || !hasOpenTabDrag(event.dataTransfer)) return;
+    depthRef.current += 1;
+    setOver(true);
+  };
+  const onTabDragOver = (event) => {
+    if (!onOpenTabDrop || !hasOpenTabDrag(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setOver(true);
+  };
+  const onTabDragLeave = (event) => {
+    if (!hasOpenTabDrag(event.dataTransfer)) return;
+    depthRef.current = Math.max(0, depthRef.current - 1);
+    if (depthRef.current === 0) setOver(false);
+  };
+  const onTabDrop = (event) => {
+    if (!onOpenTabDrop || !hasOpenTabDrag(event.dataTransfer)) return;
+    event.preventDefault();
+    depthRef.current = 0;
+    setOver(false);
+    const tab = readOpenTabDrag(event.dataTransfer);
+    if (tab) onOpenTabDrop(collection, tab);
+  };
+
   return (
     // Not a shadcn <Card>: this is the `[data-module-sortable]` drag host and the
     // design gives a group no panel of its own — a sticky header on the page
     // background, then the grid or the list. It keeps its <article> tag.
     // It must NOT set `overflow`: that would kill the sticky header inside it.
-    <article data-collection-id={collection.id} data-draggable={String(moduleDraggable)}>
+    <article
+      data-collection-id={collection.id}
+      data-draggable={String(moduleDraggable)}
+      data-open-tab-over={isOver ? 'true' : undefined}
+      className={isOver ? 'rounded-lg bg-primary/5 ring-1 ring-inset ring-primary/40' : undefined}
+      onDragEnter={onTabDragEnter}
+      onDragOver={onTabDragOver}
+      onDragLeave={onTabDragLeave}
+      onDrop={onTabDrop}
+    >
       {/* Sticky group header. Right-click anywhere on the row opens the collection
           menu. `z-[2]` is the design's own stacking value; the header has to clear
           the cards that scroll under it and nothing else. */}

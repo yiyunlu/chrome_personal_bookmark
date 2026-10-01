@@ -158,6 +158,14 @@ const dictionaries = {
       (skipped ? `，跳过 ${skipped} 个` : '') +
       (failed ? `，${failed} 个保存失败（未关闭）` : ''),
     captureFailed: '捕获失败：没有标签页被保存',
+    // Drag open tabs into a collection (FEAT-3)
+    openTabsPanel: '已打开标签',
+    openTabsHint: '把标签页拖到下方任意集合（包括已折叠或空的集合）即可保存为书签',
+    openTabsEmpty: '当前窗口没有可保存的网页标签页',
+    openTabsRefresh: '刷新标签页列表',
+    openTabSaved: (title, collection) => `已保存「${title}」到「${collection}」`,
+    openTabDuplicate: (title, collection) => `「${collection}」中已有「${title}」，已跳过`,
+    openTabSaveFailed: '保存失败：标签页没有被添加',
     // Shortcuts
     shortcutSaveKey: '快捷键: S',
     shortcutOrganizeKey: '快捷键: O',
@@ -409,6 +417,14 @@ const dictionaries = {
       (skipped ? `, skipped ${skipped}` : '') +
       (failed ? `, ${failed} failed to save (not closed)` : ''),
     captureFailed: 'Capture failed: no tabs were saved',
+    // Drag open tabs into a collection (FEAT-3)
+    openTabsPanel: 'Open tabs',
+    openTabsHint: 'Drag a tab onto any collection below (collapsed or empty ones too) to save it as a bookmark',
+    openTabsEmpty: 'No web tabs in this window to save',
+    openTabsRefresh: 'Refresh tab list',
+    openTabSaved: (title, collection) => `Saved "${title}" to "${collection}"`,
+    openTabDuplicate: (title, collection) => `Already saved "${title}" in "${collection}", skipped`,
+    openTabSaveFailed: 'Save failed: the tab was not added',
     // Shortcuts
     shortcutSaveKey: 'Shortcut: S',
     shortcutOrganizeKey: 'Shortcut: O',
