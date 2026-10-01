@@ -17,6 +17,7 @@ import {
   openAllInNewTabs,
   openBookmarkInCurrentTab,
   openBookmarkInNewTab,
+  openCardsInNewWindow,
   removeCollectionFolder,
   renameCollectionFolder,
   saveCurrentWindowTabsToCollection,
@@ -25,6 +26,7 @@ import {
 import { logError, normalizeUrlKey, sortSnapshots } from './lib/utils';
 import { smartSearch } from './lib/searchService';
 import { storageGet, storageSet } from './lib/storage';
+import { sortCards, isSortMode, isCardDragEnabled, DEFAULT_SORT_MODE, SORT_STORAGE_KEY } from './lib/sortCards';
 
 import { initLanguage, getLanguageSetting, setLanguage as setI18nLanguage, t } from './lib/i18n';
 import { useCollections } from './hooks/useCollections';
@@ -38,9 +40,11 @@ import { processChat } from './lib/chatService';
 
 import { Sidebar } from './components/Sidebar';
 import { WelcomeCard } from './components/WelcomeCard';
+import { EmptyState } from './components/EmptyState';
 import { Toolbar, BatchToolbar } from './components/Toolbar';
 import { CollectionCard } from './components/CollectionCard';
 import { ContextMenu } from './components/ContextMenu';
+import { DialogShell } from './components/DialogShell';
 import { EditBookmarkModal } from './components/EditBookmarkModal';
 import { BatchMoveModal } from './components/BatchMoveModal';
 import { AICategorizeModal } from './components/AICategorizeModal';
@@ -51,6 +55,18 @@ import { SettingsModal } from './components/SettingsModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { PromptModal } from './components/PromptModal';
 import { SaveTabsModal } from './components/SaveTabsModal';
+import { Button } from './components/ui/button';
+
+/* The grid/list view state lives in App (Toolbar renders the control, App owns
+   the state) and is persisted like every other preference — the same
+   storageGet/storageSet pair `useTheme` uses, under its own key. */
+const VIEW_STORAGE_KEY = 'tabhub_view_mode';
+
+/* The sort mode lives in App exactly like the view mode above (V2-A, new):
+   Toolbar renders the Select, App owns and persists the state under
+   `SORT_STORAGE_KEY` (src/lib/sortCards.js). Sorting is a pure derived view
+   over `collections`/`cardById` — it is applied in `visibleCollections`
+   below and never writes anything back to Chrome. */
 
 function App() {
   const {
@@ -83,6 +99,20 @@ function App() {
   const [autoOrganizing, setAutoOrganizing] = useState(false);
   const [aiCategorizeState, setAICategorizeState] = useState(null);
   const [deadLinkState, setDeadLinkState] = useState(null);
+  // Confirmed dead links from the last completed check. Separate from
+  // `deadLinkState`, which is the modal's own state and is cleared the moment the
+  // modal closes — the toolbar badge has to outlive that.
+  const [deadLinkResults, setDeadLinkResults] = useState(null);
+  // Derived, not counted. A maintained counter drifted both ways: it never
+  // dropped when a dead link was removed through the context menu or batch
+  // trash, and it never came back when a delete was undone. Reconciling the
+  // last check's dead set against allCards makes every one of those paths
+  // correct for free, because they all change allCards.
+  const deadLinkCount = useMemo(() => {
+    if (!deadLinkResults) return 0;
+    const present = new Set(allCards.map((c) => c.id));
+    return deadLinkResults.filter((r) => r.linkStatus === 'dead' && present.has(r.bookmarkId)).length;
+  }, [deadLinkResults, allCards]);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -94,6 +124,8 @@ function App() {
   const [crossSourceResults, setCrossSourceResults] = useState([]);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [view, setView] = useState('grid');
+  const [sortMode, setSortMode] = useState(DEFAULT_SORT_MODE);
   const [langReady, setLangReady] = useState(false);
   const [languageSetting, setLanguageSetting] = useState('auto');
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
@@ -108,11 +140,15 @@ function App() {
   const suppressCardOpenUntilRef = useRef(0);
   const suppressNextCardClickRef = useRef(false);
 
-  const { themeMode, handleThemeModeChange } = useTheme();
+  const { themeMode, resolvedTheme, systemTheme, handleThemeModeChange } = useTheme();
   const { undoToast, showUndo, handleUndo } = useUndoStack();
 
   const dragEnabled = search.trim() === '';
-  const cardDragEnabled = dragEnabled && !manageMode;
+  // `manual` is the only sort mode that reflects Chrome's own child order, so
+  // it is the only one where a card drag's persisted index cannot silently
+  // disagree with what the user just saw dragged (V2-A). Pulled into
+  // `isCardDragEnabled` (src/lib/sortCards.js) so the rule is unit-testable.
+  const cardDragEnabled = isCardDragEnabled({ searchIsEmpty: dragEnabled, manageMode, sortMode });
   const canSortCollections = dragEnabled && activeCollectionId === 'all';
 
   const topLevelSortableCollections = useMemo(
@@ -152,14 +188,22 @@ function App() {
     })();
 
     (async () => {
-      const [savedCollection, savedCollapsed, savedOnboarding] = await Promise.all([
+      const [savedCollection, savedCollapsed, savedOnboarding, savedView, savedSort] = await Promise.all([
         storageGet('tabhub_active_collection').catch(() => undefined),
         storageGet('tabhub_sidebar_collapsed').catch(() => undefined),
-        storageGet('tabhub_onboarding_dismissed').catch(() => undefined)
+        storageGet('tabhub_onboarding_dismissed').catch(() => undefined),
+        storageGet(VIEW_STORAGE_KEY).catch(() => undefined),
+        storageGet(SORT_STORAGE_KEY).catch(() => undefined)
       ]);
 
       if (typeof savedCollapsed === 'boolean') {
         setSidebarCollapsed(savedCollapsed);
+      }
+      if (savedView === 'grid' || savedView === 'list') {
+        setView(savedView);
+      }
+      if (isSortMode(savedSort)) {
+        setSortMode(savedSort);
       }
       if (savedCollection) {
         setActiveCollectionId(savedCollection);
@@ -183,12 +227,16 @@ function App() {
     }
   }, [sidebarCollapsed, initialLoadDoneRef]);
 
+  // The context menu is a Radix DropdownMenu, so outside-click dismissal is
+  // owned by its DismissableLayer. A window-level `click` listener would fight
+  // it: the menu is portaled to document.body, so a click on the menu's own
+  // padding or scrollbar reaches window and would close the menu before Radix
+  // decides. Scroll-to-close stays — the menu is anchored to fixed viewport
+  // coordinates and cannot follow the list it was opened from.
   useEffect(() => {
     const closeMenu = () => setContextMenu(null);
-    window.addEventListener('click', closeMenu);
     window.addEventListener('scroll', closeMenu, true);
     return () => {
-      window.removeEventListener('click', closeMenu);
       window.removeEventListener('scroll', closeMenu, true);
     };
   }, []);
@@ -260,26 +308,42 @@ function App() {
     }
 
     const filtered = collections
-      .map((collection) => ({
-        ...collection,
-        cards: collection.cards.filter((card) => {
+      .map((collection) => {
+        const cards = collection.cards.filter((card) => {
           if (!matchedCardIds) return true;
           return matchedCardIds.has(card.id);
-        })
-      }))
+        });
+        // Sorting is a pure derived view (V2-A): `manual` cards are already in
+        // Chrome's own order, and every other mode only ever reorders this
+        // rendered copy — it never writes back to Chrome, so the drag-and-drop
+        // index math elsewhere (which reads `collections`/`cardById`, not this
+        // memo) is untouched.
+        return { ...collection, cards: sortMode === 'manual' ? cards : sortCards(cards, sortMode) };
+      })
       .filter((collection) => collection.cards.length > 0 || !keyword);
 
     if (activeCollectionId === 'all') {
       return filtered;
     }
     return filtered.filter((collection) => collection.id === activeCollectionId);
-  }, [collections, deferredSearch, activeCollectionId, allCards]);
+  }, [collections, deferredSearch, activeCollectionId, allCards, sortMode]);
 
   // --- Cross-source search ---
   const visibleCardCount = useMemo(
     () => visibleCollections.reduce((sum, c) => sum + c.cards.length, 0),
     [visibleCollections]
   );
+
+  // --- V2-C: filtered-empty state ---
+  // Two distinct "nothing to show" shapes, per the design: a search with no
+  // hits (visibleCollections itself goes to []), or a single active-collection
+  // filter on a collection that simply has no cards yet (visibleCollections
+  // still holds that one collection — its own empty drop zone would otherwise
+  // render — so this is detected separately via visibleCardCount).
+  const hasActiveQuery = deferredSearch.trim().length > 0;
+  const isEmptyCollectionFilter =
+    !hasActiveQuery && activeCollectionId !== 'all' && visibleCardCount === 0;
+  const showFilteredEmptyState = visibleCollections.length === 0 || isEmptyCollectionFilter;
 
   useEffect(() => {
     const keyword = search.trim();
@@ -585,10 +649,14 @@ function App() {
     async (cards) => {
       if (!cards.length) return;
 
-      if (!tabHubRootId) return;
+      // Trash must live under the active source root — same place
+      // getCollectionsPayload reads trashFolderId from — or refresh()
+      // clears hasTrash and the sidebar footer icon vanishes.
+      const trashRootId = activeSourceId || tabHubRootId;
+      if (!trashRootId) return;
 
       try {
-        const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(tabHubRootId);
+        const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(trashRootId);
         if (!trashFolderId) setTrashFolderId(trashFolder.id);
 
         const snapshots = cards.map((card) => ({
@@ -615,7 +683,7 @@ function App() {
         await refresh(activeSourceRef.current);
       }
     },
-    [tabHubRootId, trashFolderId, showUndo, refresh]
+    [activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]
   );
 
   const openEditorByCard = useCallback((card) => {
@@ -632,10 +700,16 @@ function App() {
 
   const handleSaveTabs = useCallback(async () => {
     const openTabs = await getOpenTabs();
-    if (openTabs.length === 0) return;
+    if (openTabs.length === 0) {
+      // Informational only — replaces any in-flight undo (empty-tabs path).
+      showUndo(t('noOpenTabsToSave'), null);
+      return;
+    }
+    // Do not touch the undo stack here: smoke 7 needs the delete-undo chip to
+    // stay alive while Save Tabs is open (elevate restacks the popover chip).
     const folderName = new Date().toISOString().slice(0, 19).replace('T', ' ');
     setSaveTabsState({ tabs: openTabs, folderName });
-  }, []);
+  }, [showUndo]);
 
   const handleSaveTabsConfirm = useCallback(
     async ({ selectedTabIds, folderName, targetCollectionId }) => {
@@ -668,11 +742,12 @@ function App() {
 
   const handleAutoOrganize = useCallback(async () => {
     if (autoOrganizing || !collections.length) return;
-    if (!tabHubRootId) return;
+    const trashRootId = activeSourceId || tabHubRootId;
+    if (!trashRootId) return;
 
     setAutoOrganizing(true);
     try {
-      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(tabHubRootId);
+      const trashFolder = trashFolderId ? { id: trashFolderId } : await ensureTrashFolder(trashRootId);
       if (!trashFolderId) setTrashFolderId(trashFolder.id);
       const cardsBefore = collections.flatMap((c) =>
         c.cards.map((card) => ({ id: card.id, title: card.title, url: card.url, parentId: card.parentId, index: card.index }))
@@ -738,7 +813,7 @@ function App() {
     } finally {
       setAutoOrganizing(false);
     }
-  }, [autoOrganizing, collections, tabHubRootId, trashFolderId, showUndo, refresh]);
+  }, [autoOrganizing, collections, activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]);
 
   const handleAICategorize = useCallback(async () => {
     if (!collections.length) return;
@@ -870,6 +945,9 @@ function App() {
       });
       // Functional guard: never re-open the modal the user already closed.
       setDeadLinkState((prev) => (prev ? { loading: false, progress: null, results, error: null } : prev));
+      // The badge derives its count from this (confirmed dead only, the same
+      // set DeadLinkModal lists under "confirmed") reconciled against allCards.
+      setDeadLinkResults(results);
     } catch (err) {
       setDeadLinkState((prev) =>
         prev ? { loading: false, progress: null, results: null, error: err?.message || t('deadLinkCheckFailed') } : prev
@@ -888,6 +966,8 @@ function App() {
         onConfirm: async () => {
           setConfirmDialog(null);
           await moveCardsToTrash([card]);
+          // No manual decrement: the badge re-derives from allCards, which the
+          // trash move just changed.
           setDeadLinkState((prev) => {
             if (!prev?.results) return prev;
             return { ...prev, results: prev.results.filter((r) => r.bookmarkId !== bookmarkId) };
@@ -954,11 +1034,12 @@ function App() {
   }, [activeSourceId, tabHubRootId, showUndo, refresh]);
 
   const handleViewTrash = useCallback(async () => {
-    if (!tabHubRootId) return;
-    const { items } = await getTrashContents(tabHubRootId);
+    const trashRootId = activeSourceId || tabHubRootId;
+    if (!trashRootId) return;
+    const { items } = await getTrashContents(trashRootId);
     setTrashItems(items);
     setShowTrash(true);
-  }, [tabHubRootId]);
+  }, [activeSourceId, tabHubRootId]);
 
   const handleRestoreFromTrash = useCallback(async (item) => {
     const rootId = activeSourceId || tabHubRootId;
@@ -967,7 +1048,7 @@ function App() {
     showUndo(t('restoredBookmark'), async () => {
       if (trashFolderId) await moveBookmark(item.id, trashFolderId, 0);
     });
-    const { items } = await getTrashContents(tabHubRootId);
+    const { items } = await getTrashContents(rootId);
     setTrashItems(items);
     await refresh(activeSourceRef.current);
   }, [activeSourceId, tabHubRootId, trashFolderId, showUndo, refresh]);
@@ -1056,12 +1137,50 @@ function App() {
 
   const onToggleManage = useCallback(() => setManageMode((prev) => !prev), []);
 
-  const modalOpen = !!(contextMenu || editorState || batchMoveState || aiCategorizeState || deadLinkState);
+  // Toolbar's `onViewChange` half of the S2/S3 contract. Both props are optional
+  // on Toolbar, so whichever phase lands first still builds.
+  const handleViewChange = useCallback(async (next) => {
+    if (next !== 'grid' && next !== 'list') return;
+    setView(next);
+    await storageSet(VIEW_STORAGE_KEY, next).catch(logError);
+  }, []);
+
+  // Toolbar's sort Select (V2-A, new). Purely a view preference — it never
+  // touches Chrome bookmarks, so there is nothing to await beyond persistence.
+  const handleSortChange = useCallback(async (next) => {
+    if (!isSortMode(next)) return;
+    setSortMode(next);
+    await storageSet(SORT_STORAGE_KEY, next).catch(logError);
+  }, []);
+
+  // Every overlay that traps focus must disable the single-key shortcuts. Before
+  // the shadcn migration only 5 of the 9 surfaces were listed, which was merely
+  // odd while those overlays had no focus trap; now Radix's FocusScope yanks focus
+  // straight back, so `/` over an open dialog is a visible focus-bounce and `O`
+  // mutates bookmarks under a modal that will not re-render from it.
+  const modalOpen = !!(
+    contextMenu ||
+    editorState ||
+    batchMoveState ||
+    aiCategorizeState ||
+    deadLinkState ||
+    showTrash ||
+    settingsOpen ||
+    saveTabsState ||
+    confirmDialog ||
+    promptDialog
+  );
 
   const handleEscape = useCallback(() => {
-    // Close the topmost overlay only.
+    // Close the topmost overlay only. DialogShell surfaces usually dismiss via
+    // Radix (capture + stopPropagation); this list is the fallback when a
+    // layer is not the highest DismissableLayer (Esc would otherwise no-op).
     if (contextMenu) {
       setContextMenu(null);
+    } else if (confirmDialog) {
+      setConfirmDialog(null);
+    } else if (promptDialog) {
+      setPromptDialog(null);
     } else if (editorState) {
       setEditorState(null);
     } else if (batchMoveState) {
@@ -1070,10 +1189,28 @@ function App() {
       setAICategorizeState(null);
     } else if (deadLinkState) {
       setDeadLinkState(null);
+    } else if (showTrash) {
+      setShowTrash(false);
+    } else if (saveTabsState) {
+      setSaveTabsState(null);
+    } else if (settingsOpen) {
+      setSettingsOpen(false);
     } else if (chatOpen) {
       setChatOpen(false);
     }
-  }, [contextMenu, editorState, batchMoveState, aiCategorizeState, deadLinkState, chatOpen]);
+  }, [
+    contextMenu,
+    confirmDialog,
+    promptDialog,
+    editorState,
+    batchMoveState,
+    aiCategorizeState,
+    deadLinkState,
+    showTrash,
+    saveTabsState,
+    settingsOpen,
+    chatOpen
+  ]);
 
   useKeyboardShortcuts({
     searchInputRef,
@@ -1098,6 +1235,12 @@ function App() {
     await setI18nLanguage(lang);
     forceUpdate((n) => n + 1);
   };
+
+  // V2-C empty state's "clear filters" action: clears the search box and the
+  // active-collection filter independently, so either flavour of the
+  // filtered-empty state can reach "all collections" without touching the other.
+  const handleClearSearch = useCallback(() => setSearch(''), []);
+  const handleClearCollectionFilter = useCallback(() => setActiveCollectionId('all'), []);
 
   // Stable identities: these flow into React.memo'd CollectionCard/BookmarkCard,
   // where a fresh function per render would defeat the memo entirely.
@@ -1133,8 +1276,10 @@ function App() {
   }, []);
 
   const openCollectionContextMenu = useCallback((event, collection) => {
-    if (!collection.editable && !collection.deletable) return;
+    // Always suppress the OS menu and open ours — including Unfiled, whose
+    // items render disabled / as a no-op row (see ContextMenu).
     event.preventDefault();
+    event.stopPropagation();
     setContextMenu({ kind: 'collection', x: event.clientX, y: event.clientY, collection });
   }, []);
 
@@ -1304,6 +1449,10 @@ function App() {
     }
   };
 
+  const handleBatchOpenWindow = useCallback(() => {
+    openCardsInNewWindow(selectedCards);
+  }, [selectedCards]);
+
   const handleBatchTrash = () => {
     if (!selectedCards.length) return;
     setConfirmDialog({
@@ -1323,13 +1472,21 @@ function App() {
   if (!langReady) return null;
 
   return (
-    <div className="min-h-screen relative" style={{ background: 'var(--bg)' }}>
-      <div className="min-h-screen flex">
+    /* `h-screen` + `overflow-hidden` on <main>, not `min-h-screen`: the design's
+       content area is its own scroll container (`flex:1; overflow-y:auto`) with the
+       header pinned above it, and the group headers are `position: sticky` inside
+       it. Sticky resolves against the nearest scrolling ancestor, so while the page
+       body was the thing that actually scrolled the headers would have stuck to the
+       viewport and slid over the toolbar. */
+    <>
+    <div className="relative h-screen bg-background">
+      <div className="flex h-screen">
         <Sidebar
           sources={sources}
           activeSourceId={activeSourceId}
           onSourceChange={handleSourceChange}
           themeMode={themeMode}
+          systemTheme={systemTheme}
           onThemeModeChange={handleThemeModeChange}
           languageSetting={languageSetting}
           onLanguageChange={handleLanguageChange}
@@ -1345,152 +1502,144 @@ function App() {
           hasTrash={!!trashFolderId}
         />
 
-        <main className="flex-1 overflow-y-auto px-6 py-5">
-          <Toolbar
-            activeSource={activeSource}
-            activeSourceId={activeSourceId}
-            tabHubRootId={tabHubRootId}
-            onSaveTabs={handleSaveTabs}
-            manageMode={manageMode}
-            onToggleManage={onToggleManage}
-            autoOrganizing={autoOrganizing}
-            onAutoOrganize={handleAutoOrganize}
-            onAICategorize={handleAICategorize}
-            onCheckDeadLinks={handleCheckDeadLinks}
-            onNewCollection={handleNewCollection}
-            search={search}
-            onSearchChange={setSearch}
-            searchInputRef={searchInputRef}
-          />
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex-shrink-0 px-[22px] pt-5">
+            <Toolbar
+              activeSource={activeSource}
+              activeSourceId={activeSourceId}
+              tabHubRootId={tabHubRootId}
+              onSaveTabs={handleSaveTabs}
+              manageMode={manageMode}
+              onToggleManage={onToggleManage}
+              autoOrganizing={autoOrganizing}
+              onAutoOrganize={handleAutoOrganize}
+              onAICategorize={handleAICategorize}
+              onCheckDeadLinks={handleCheckDeadLinks}
+              onNewCollection={handleNewCollection}
+              search={search}
+              onSearchChange={setSearch}
+              searchInputRef={searchInputRef}
+              view={view}
+              onViewChange={handleViewChange}
+              deadLinkCount={deadLinkCount}
+              sortMode={sortMode}
+              onSortChange={handleSortChange}
+            />
+          </div>
 
-          {manageMode && (
+          {/* The design's scroll container: `flex:1; overflow-y:auto; padding:0 22px 40px`. */}
+          <div className="flex-1 overflow-y-auto px-[22px] pb-10">
+            {loading ? (
+              /* Loading skeleton — one group header strip plus a tile grid, matching
+                 the shape the real content resolves into. */
+              <div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="mb-[26px]">
+                    <div className="mb-3 border-b border-border pt-3 pb-[9px]">
+                      <div className="skeleton h-4 w-40" />
+                    </div>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(232px,1fr))] gap-2">
+                      {[1, 2, 3, 4].map((j) => (
+                        <div key={j} className="skeleton h-16 rounded-xl" />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="mt-3 rounded-lg border border-border bg-card p-6 text-center text-destructive">
+                {error}
+              </div>
+            ) : showFilteredEmptyState ? (
+              showOnboarding ? (
+                <WelcomeCard
+                  onSaveTabs={handleSaveTabs}
+                  onCreateCollection={handleNewCollection}
+                  onConnectAI={() => setSettingsOpen(true)}
+                  onDismiss={handleDismissOnboarding}
+                />
+              ) : (
+                <EmptyState
+                  variant={hasActiveQuery ? 'search' : 'collection'}
+                  onClearSearch={handleClearSearch}
+                  onClearCollectionFilter={handleClearCollectionFilter}
+                />
+              )
+            ) : (
+              /* No `space-y-*`: each group carries the design's own 26px bottom
+                 margin, and a gap here would stack on top of it. */
+              <section data-module-sortable="true">
+                {visibleCollections.map((collection) => (
+                  <CollectionCard
+                    key={collection.id}
+                    collection={collection}
+                    collapsed={collapsedCollectionIds.has(collection.id)}
+                    view={view}
+                    moduleDraggable={canSortCollections && collection.editable && collection.parentId === activeSourceId}
+                    cardDragEnabled={cardDragEnabled}
+                    manageMode={manageMode}
+                    selectedCardIds={selectedCardIds}
+                    onToggleCollapse={toggleCollection}
+                    onCardClick={handleCardClick}
+                    onCardContextMenu={openCardContextMenu}
+                    onCollectionContextMenu={openCollectionContextMenu}
+                    onEditCard={openEditorByCard}
+                    onDeleteCard={handleDeleteCardByCard}
+                    onToggleCardSelect={toggleCardSelection}
+                    onOpenAll={handleOpenAllInCollection}
+                    onTagClick={handleTagClick}
+                  />
+                ))}
+              </section>
+            )}
+
+            {/* Cross-source search results */}
+            {crossSourceResults.length > 0 && (
+              <section className="mt-6">
+                <h3 className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('otherSourceResults')}
+                </h3>
+                {crossSourceResults.map((group) => (
+                  <div
+                    key={group.sourceId}
+                    className="mb-4 overflow-hidden rounded-lg border border-border bg-card shadow-panel"
+                  >
+                    <div className="border-b border-border px-4 py-2 text-xs font-medium text-muted-foreground">
+                      {t('fromSource', group.sourceName)}
+                    </div>
+                    <div className="space-y-1.5 px-3 py-2">
+                      {group.cards.map((card) => (
+                        <div
+                          key={card.id}
+                          className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-accent"
+                          onClick={() => openBookmarkInCurrentTab(card.url)}
+                          title={card.url}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-[12.5px] font-medium text-foreground">
+                              {card.title}
+                            </div>
+                            <div className="truncate font-mono text-[10.5px] text-faint">
+                              {card.url}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            )}
+          </div>
+
+          {manageMode && selectedCards.length > 0 && (
             <BatchToolbar
               selectedCount={selectedCards.length}
               onBatchMove={openBatchMove}
+              onBatchOpenWindow={handleBatchOpenWindow}
               onBatchTrash={handleBatchTrash}
               onClearSelections={clearSelections}
             />
-          )}
-
-          {loading ? (
-            /* Loading skeleton */
-            <div className="space-y-5">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl border p-4"
-                  style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)' }}
-                >
-                  <div className="skeleton h-5 w-40 mb-4" />
-                  <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-                    {[1, 2, 3, 4].map((j) => (
-                      <div key={j} className="skeleton h-16 rounded-xl" />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : error ? (
-            <div
-              className="rounded-2xl border p-6 text-center"
-              style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)', color: 'var(--danger)' }}
-            >
-              {error}
-            </div>
-          ) : visibleCollections.length === 0 ? (
-            showOnboarding ? (
-              <WelcomeCard
-                onSaveTabs={handleSaveTabs}
-                onCreateCollection={handleNewCollection}
-                onConnectAI={() => setSettingsOpen(true)}
-                onDismiss={handleDismissOnboarding}
-              />
-            ) : (
-              <div
-                className="rounded-2xl border p-12 text-center"
-                style={{ borderColor: 'var(--panel-border)', background: 'var(--panel-bg)' }}
-              >
-                <div className="text-4xl mb-3">📑</div>
-                <div className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                  {t('noBookmarks')}
-                </div>
-                <div className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
-                  {t('noBookmarksHint')}
-                </div>
-              </div>
-            )
-          ) : (
-            <section className="space-y-4" data-module-sortable="true">
-              {visibleCollections.map((collection) => (
-                <CollectionCard
-                  key={collection.id}
-                  collection={collection}
-                  collapsed={collapsedCollectionIds.has(collection.id)}
-                  moduleDraggable={canSortCollections && collection.editable && collection.parentId === activeSourceId}
-                  cardDragEnabled={cardDragEnabled}
-                  manageMode={manageMode}
-                  selectedCardIds={selectedCardIds}
-                  onToggleCollapse={toggleCollection}
-                  onCardClick={handleCardClick}
-                  onCardContextMenu={openCardContextMenu}
-                  onEditCard={openEditorByCard}
-                  onDeleteCard={handleDeleteCardByCard}
-                  onToggleCardSelect={toggleCardSelection}
-                  onOpenAll={handleOpenAllInCollection}
-                  onTagClick={handleTagClick}
-                />
-              ))}
-            </section>
-          )}
-
-          {/* Cross-source search results */}
-          {crossSourceResults.length > 0 && (
-            <section className="mt-6">
-              <h3
-                className="text-xs font-semibold uppercase tracking-wide mb-3 px-1"
-                style={{ color: 'var(--muted)' }}
-              >
-                {t('otherSourceResults')}
-              </h3>
-              {crossSourceResults.map((group) => (
-                <div
-                  key={group.sourceId}
-                  className="mb-4 rounded-2xl border overflow-hidden"
-                  style={{
-                    background: 'var(--panel-bg)',
-                    borderColor: 'var(--panel-border)',
-                    boxShadow: 'var(--shadow)'
-                  }}
-                >
-                  <div
-                    className="px-4 py-2 text-xs font-medium"
-                    style={{ color: 'var(--muted)', borderBottom: '1px solid var(--panel-border)' }}
-                  >
-                    {t('fromSource', group.sourceName)}
-                  </div>
-                  <div className="px-3 py-2 space-y-1.5">
-                    {group.cards.map((card) => (
-                      <div
-                        key={card.id}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                        style={{ background: 'var(--card-bg)' }}
-                        onClick={() => openBookmarkInCurrentTab(card.url)}
-                        title={card.url}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm truncate" style={{ color: 'var(--text)' }}>
-                            {card.title}
-                          </div>
-                          <div className="text-[0.7rem] truncate" style={{ color: 'var(--muted)' }}>
-                            {card.url}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </section>
           )}
         </main>
       </div>
@@ -1563,61 +1712,77 @@ function App() {
         onImport={handleImport}
       />
 
-      {showTrash && trashItems && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.4)' }}
-          onClick={(e) => e.target === e.currentTarget && setShowTrash(false)}
-        >
-          <div
-            className="rounded-2xl border shadow-xl w-full max-w-lg mx-4 max-h-[70vh] flex flex-col animate-fade-in"
-            style={{ background: 'var(--panel-bg)', borderColor: 'var(--panel-border)' }}
-          >
-            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b" style={{ borderColor: 'var(--panel-border)' }}>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--text)' }}>{t('trash')}</h2>
+      {/* The ninth overlay. P1 owned the dialog sweep but was forbidden to touch
+          main.jsx, so this one kept its hand-rolled `fixed inset-0 z-50`
+          backdrop and ended up *below* both the new dialogs (z-90) and the
+          toast. On DialogShell it gets the same Radix focus trap, Escape,
+          outside-click dismissal and accessible name as the other eight, and
+          the confirm it can open (Empty trash, LAYER_TOP z-100) lands above it
+          by construction rather than by luck. */}
+      <DialogShell
+        open={showTrash && !!trashItems}
+        onClose={() => setShowTrash(false)}
+        title={t('trash')}
+        className="max-w-lg"
+      >
+        {trashItems && (
+          <>
+            <div className="flex items-center justify-between border-b border-border px-5 pt-4 pb-3">
+              <h2 className="text-base font-semibold text-foreground">{t('trash')}</h2>
               <div className="flex gap-2">
                 {trashItems.length > 0 && (
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
                     onClick={handleEmptyTrash}
-                    className="px-2.5 py-1 rounded-lg text-xs font-medium"
-                    style={{ background: 'var(--danger-soft)', color: 'var(--danger)' }}
                   >
                     {t('emptyTrash')}
-                  </button>
+                  </Button>
                 )}
-                <button onClick={() => setShowTrash(false)} className="text-sm" style={{ color: 'var(--muted)' }}>{t('close')}</button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => setShowTrash(false)}
+                >
+                  {t('close')}
+                </Button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-5 py-3">
+            <div className="max-h-[60vh] overflow-y-auto px-5 py-3">
               {trashItems.length === 0 ? (
-                <p className="text-sm text-center py-6" style={{ color: 'var(--muted)' }}>{t('trashEmpty')}</p>
+                <p className="py-6 text-center text-sm text-muted-foreground">{t('trashEmpty')}</p>
               ) : (
                 <div className="space-y-2">
                   {trashItems.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg border"
-                      style={{ borderColor: 'var(--card-border)', background: 'var(--card-bg)' }}
+                      className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm truncate" style={{ color: 'var(--text)' }}>{item.title}</div>
-                        <div className="text-xs truncate" style={{ color: 'var(--muted)' }}>{item.url}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm text-foreground">{item.title}</div>
+                        <div className="truncate font-mono text-xs text-faint">{item.url}</div>
                       </div>
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 flex-shrink-0 px-2 text-primary hover:text-primary"
                         onClick={() => handleRestoreFromTrash(item)}
-                        className="px-2 py-1 rounded text-xs font-medium flex-shrink-0"
-                        style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
                       >
                         {t('restore')}
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </DialogShell>
 
       <ConfirmModal
         open={!!confirmDialog}
@@ -1630,8 +1795,25 @@ function App() {
         onCancel={() => setPromptDialog(null)}
       />
 
-      <UndoToast undoToast={undoToast} onUndo={() => handleUndo(() => refresh(activeSourceRef.current))} />
     </div>
+      {/* Outside the `relative` root so Sonner's fixed toaster is not trapped
+          under DialogShell portals (body, z-90). */}
+      <UndoToast
+        undoToast={undoToast}
+        onUndo={() => handleUndo(() => refresh(activeSourceRef.current))}
+        theme={resolvedTheme}
+        elevate={Boolean(
+          saveTabsState ||
+            editorState ||
+            settingsOpen ||
+            showTrash ||
+            confirmDialog ||
+            promptDialog ||
+            aiCategorizeState ||
+            deadLinkState
+        )}
+      />
+    </>
   );
 }
 

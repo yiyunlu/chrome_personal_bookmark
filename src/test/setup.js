@@ -61,3 +61,19 @@ globalThis.chrome = {
     lastError: null
   }
 };
+
+// ── jsdom gaps Radix relies on ───────────────────────────────────────────────
+// Radix's Popper measures its anchor with ResizeObserver and scrolls the active
+// menu/select item into view. jsdom implements neither. Lives here rather than
+// per test file because Dialog (P1), ContextMenu (P2), Select (P3) and
+// Tooltip/Sonner (P4) all need it.
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}

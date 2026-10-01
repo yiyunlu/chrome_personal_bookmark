@@ -1,88 +1,256 @@
+/* ── Fonts ───────────────────────────────────────────────────────────────────
+   IBM Plex, bundled rather than loaded from Google Fonts: a webfont link would
+   put a network request on every new-tab open, which is both a latency and a
+   privacy cost for a page that opens dozens of times a day.
+
+   Latin and latin-ext subsets only, ~230 KB total. CJK is deliberately NOT
+   bundled — Noto Sans SC is several megabytes and IBM Plex has no CJK glyphs
+   anyway, so Chinese text falls through to the system face (PingFang SC,
+   Microsoft YaHei, Noto Sans CJK). `unicode-range` means a browser downloads
+   only the subsets a given page actually needs.
+   ────────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/IBMPlexMono-400-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/IBMPlexMono-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/IBMPlexMono-500-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/IBMPlexMono-500-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-400-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-400-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-500-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-500-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-600-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-600-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Theme variables ── */
+/* ── Design tokens ──────────────────────────────────────────────────────────
+   --ui-* are shadcn/ui's own slate tokens, copied verbatim from the shadcn
+   registry (ui.shadcn.com/r/colors/slate.json) as HSL triplets, because
+   tailwind.config.js consumes them as hsl(var(--ui-x)).
+
+   There is no longer a legacy alias layer. It existed so the migration could
+   re-skin 384 `var(--x)` usages across 18 components without touching them; P6
+   drove that count to zero, so the aliases were deleted and `--ui-*` is now the
+   only palette. `--shadow` survives alone, because tailwind.config.js's
+   `shadow-panel` utility reads it.
+
+   NOTE: the palette is TabHub.dc.html's, not shadcn's. It has a real brand accent
+   (--ui-primary), which shadcn's monochrome neutral does not. The design ships
+   four accent options. Swapping to another really is these two lines now that
+   --ui-ring is pinned to --ui-primary rather than duplicating its triplet:
+     #e04a37 vermillion · #3b6fd4 blue (current) · #2f8f5b green · #7a4fd0 purple
+   ────────────────────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --bg: #eef2f6;
-  --text: #1f2937;
-  --muted: #64748b;
-  --sidebar-bg: #f0f3f7;
-  --sidebar-text: #1f2937;
-  --sidebar-hover: rgba(59, 130, 246, 0.08);
-  --sidebar-active: rgba(59, 130, 246, 0.12);
-  --panel-bg: #ffffff;
-  --panel-border: #e2e8f0;
-  --input-bg: #ffffff;
-  --input-border: #cbd5e1;
-  --btn-bg: #334155;
-  --btn-text: #ffffff;
-  --btn-primary: #3b82f6;
-  --btn-primary-text: #ffffff;
-  --card-bg: #ffffff;
-  --card-border: #e2e8f0;
-  --hover: #f8fafc;
+
+  /* shadcn slate — light */
+  /* ── Design tokens: TabHub.dc.html (Claude Design) ────────────────────────
+     The palette is the design's, converted to HSL triplets because the Tailwind
+     config consumes hsl(var(--ui-x)). It is a WARM neutral — every grey carries a
+     15-30 degree hue — and it has a real brand accent. That is a deliberate
+     departure from shadcn's achromatic neutral: the design file is the source of
+     truth for visuals, the app is the source of truth for behaviour. */
+  --ui-radius: 0.5rem;
+  --ui-background: 30 28.6% 97.3%;        /* --bg    #faf8f6 */
+  --ui-foreground: 15 8% 9.8%;            /* --ink   #1b1817 */
+  --ui-card: 0 0% 100%;                   /* --card  #ffffff */
+  --ui-card-foreground: 15 8% 9.8%;
+  --ui-popover: 0 0% 100%;
+  --ui-popover-foreground: 15 8% 9.8%;
+  --ui-primary: 219.6 64% 53.1%;          /* --accent #3b6fd4 (design prop) */
+  --ui-primary-foreground: 0 0% 100%;
+  --ui-secondary: 30 27.3% 95.7%;         /* --cardh #f7f4f1 */
+  --ui-secondary-foreground: 15 8% 9.8%;
+  --ui-muted: 30 27.3% 95.7%;
+  --ui-muted-foreground: 18 4.9% 40%;     /* --dim   #6b6461 */
+  --ui-accent: 30 27.3% 95.7%;            /* hover surface = --cardh */
+  --ui-accent-foreground: 15 8% 9.8%;
+  --ui-border: 24 16.1% 87.8%;            /* --line  #e5dfdb */
+  --ui-input: 23.1 13.4% 81%;             /* --line2 #d5cdc8 */
+  /* Pinned, not duplicated: P6a made every converted field take its focus
+     colour from `ring-ring`, so an accent swap that missed this line would
+     silently leave 20+ controls ringed in the old colour. */
+  --ui-ring: var(--ui-primary);
+  --ui-sidebar: 30 21.4% 94.5%;           /* --panel #f4f1ee */
+  /* The dialog scrim. Was `bg-slate-900/40` — the only stock-Tailwind palette
+     colour left outside src/components/ui/, and slate sits at ~222deg against
+     this warm 15-30deg ramp. Gate 12 is structurally blind to stock-palette
+     classes, so nothing would have caught it. */
+  --ui-scrim: 15 8% 9.8%;                 /* = the design's --ink */
+  /* The design has a THIRD text level (--faint) that shadcn's scale lacks: used
+     for counts, URLs and section labels. */
+  --ui-faint: 23.1 5.8% 56.3%;            /* --faint #968e89 */
+  /* The design defines no destructive colour, so this is T.red from its own tint
+     palette (#d0402c). It was a darker, muted red while the accent was vermillion;
+     with a blue accent there is no collision and the natural red can be used. */
+  --ui-destructive: 7.3 65.1% 49.4%;
+  --ui-destructive-foreground: 0 0% 100%;
+  --ui-warning: 32.1 94.6% 43.7%;
+  --ui-warning-foreground: 0 0% 100%;
+
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 6px 16px rgba(15, 23, 42, 0.06);
-  --accent: #3b82f6;
-  --accent-soft: rgba(59, 130, 246, 0.1);
-  --danger: #ef4444;
-  --danger-soft: rgba(239, 68, 68, 0.1);
-  --warning: #d97706;
-  --warning-soft: rgba(217, 119, 6, 0.1);
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0c1222;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --sidebar-bg: #0f172a;
-  --sidebar-text: #cbd5e1;
-  --sidebar-hover: rgba(59, 130, 246, 0.1);
-  --sidebar-active: rgba(59, 130, 246, 0.18);
-  --panel-bg: #1e293b;
-  --panel-border: #334155;
-  --input-bg: #1e293b;
-  --input-border: #475569;
-  --btn-bg: #475569;
-  --btn-text: #f1f5f9;
-  --btn-primary: #3b82f6;
-  --btn-primary-text: #ffffff;
-  --card-bg: #1e293b;
-  --card-border: #334155;
-  --hover: #253348;
+
+  /* shadcn slate — dark */
+  /* Design tokens — dark. Warm near-black; --ui-card is lighter than the page,
+     as in the design (#1f1d1b on #131110). */
+  --ui-background: 20 8.6% 6.9%;          /* --bg    #131110 */
+  --ui-foreground: 24 17.2% 94.3%;        /* --ink   #f3f0ee */
+  --ui-card: 30 6.9% 11.4%;               /* --card  #1f1d1b */
+  --ui-card-foreground: 24 17.2% 94.3%;
+  --ui-popover: 30 6.9% 11.4%;
+  --ui-popover-foreground: 24 17.2% 94.3%;
+  --ui-primary: 219.6 64% 53.1%;
+  --ui-primary-foreground: 0 0% 100%;
+  --ui-secondary: 15 5.4% 14.5%;          /* --cardh #272423 */
+  --ui-secondary-foreground: 24 17.2% 94.3%;
+  --ui-muted: 15 5.4% 14.5%;
+  --ui-muted-foreground: 25 6.2% 62%;     /* --dim   #a49d98 */
+  --ui-accent: 15 5.4% 14.5%;
+  --ui-accent-foreground: 24 17.2% 94.3%;
+  --ui-border: 20 7.3% 16.1%;             /* --line  #2c2826 */
+  --ui-input: 17.1 6.4% 21.4%;            /* --line2 #3a3533 */
+  --ui-ring: var(--ui-primary);
+  --ui-sidebar: 20 6.1% 9.6%;             /* --panel #1a1817 */
+  --ui-scrim: 30 10% 3.9%;                /* deeper than the page, warm */
+  --ui-faint: 21.8 5% 43.3%;              /* --faint #746d69 */
+  --ui-destructive: 7.8 71.3% 57.6%;
+  --ui-destructive-foreground: 0 0% 100%;
+  --ui-warning: 37.7 92.1% 50.2%;
+  --ui-warning-foreground: 0 0% 9.1%;
+
   --shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
-  --accent: #60a5fa;
-  --accent-soft: rgba(96, 165, 250, 0.15);
-  --danger: #f87171;
-  --danger-soft: rgba(248, 113, 113, 0.15);
-  --warning: #f59e0b;
-  --warning-soft: rgba(245, 158, 11, 0.15);
 }
 
 /* ── Base ── */
+/* shadcn ships `@layer base { * { @apply border-border } }` in its globals.css.
+   We skipped it when namespacing the tokens, and the omission is not cosmetic:
+   Tailwind's `border` utility sets width only, so any element with `border` and
+   no border-<colour> falls back to preflight's #e5e7eb. That is invisible in
+   light mode (--ui-border is #e2e8f0) and a near-white 1px outline on every such
+   element in dark mode. The P5a review caught it on the bookmark cards; P6 will
+   produce many more `border`-without-colour class strings, so fix the root. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: hsl(var(--ui-border));
+  }
+}
+
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: -apple-system, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
-  color: var(--text);
-  background: var(--bg);
+  /* The design's stack. IBM Plex is not bundled yet, so these resolve to the
+     system fallbacks until the woff2 files are added; the cascade means adding
+     them later needs no code change. Noto Sans SC carries the CJK text. */
+  font-family: 'IBM Plex Sans', 'Noto Sans SC', -apple-system, system-ui, sans-serif;
+  /* The design is dense: 13px base, not the browser's 16px. */
+  font-size: 13px;
+  color: hsl(var(--ui-foreground));
+  background: hsl(var(--ui-background));
   -webkit-font-smoothing: antialiased;
 }
 
+/* URLs, counts and section labels are monospaced in the design — its strongest
+   identifying feature. Use the `font-mono` utility; this is just the fallback
+   chain for it. */
+code,
+kbd,
+samp {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
 /* ── Transitions ── */
-* {
+/* Theme-switch smoothing only. `transform` is deliberately NOT in this list:
+   Radix positions poppers with transform, and a blanket transform transition
+   makes menus/tooltips slide in from their previous position. Components that
+   want a transform transition declare it themselves (see [data-card-id]). */
+*,
+*::before,
+*::after {
   transition-property: color, background-color, border-color, box-shadow, opacity;
   transition-duration: 0.15s;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Exclude layout properties from auto-transition */
-*,
-*::before,
-*::after {
-  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+/* Radix popper wrapper must never animate its positioning transform. */
+[data-radix-popper-content-wrapper] {
+  transition: none !important;
 }
 
 /* ── Scrollbar ── */
@@ -95,7 +263,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--muted);
+  background: hsl(var(--ui-muted-foreground));
   opacity: 0.3;
   border-radius: 3px;
 }
@@ -109,11 +277,9 @@ body {
   transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
-[data-card-id]:hover {
-  background: var(--hover) !important;
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
+/* Hover is a surface + border change now (see CollectionCard), not a lift. The
+   old rule raised the card and added a shadow, and its !important beat the
+   component's own hover classes. */
 
 /* ── Drag states ── */
 .card-dragging {
@@ -124,7 +290,12 @@ body {
 
 /* ── Shimmer for loading skeletons ── */
 .skeleton {
-  background: linear-gradient(90deg, var(--panel-border) 25%, var(--hover) 50%, var(--panel-border) 75%);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--ui-border)) 25%,
+    hsl(var(--ui-accent)) 50%,
+    hsl(var(--ui-border)) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 0.5rem;
