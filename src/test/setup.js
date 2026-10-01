@@ -49,7 +49,9 @@ globalThis.chrome = {
   tabs: {
     update: createDispatchable(),
     query: createDispatchable(),
-    create: createDispatchable()
+    create: createDispatchable(),
+    remove: createDispatchable(),
+    getCurrent: createDispatchable()
   },
   storage: {
     local: {

@@ -10,6 +10,8 @@ import {
   exportCollections,
   getCardsForSource,
   getOpenTabs,
+  captureCurrentWindowTabs,
+  undoCapture,
   getTrashContents,
   importCollections,
   moveBookmark,
@@ -124,6 +126,8 @@ function App() {
   const [promptDialog, setPromptDialog] = useState(null);
   const [saveTabsState, setSaveTabsState] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [capturing, setCapturing] = useState(false);
+  const capturingRef = useRef(false);
   const [crossSourceResults, setCrossSourceResults] = useState([]);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -714,6 +718,39 @@ function App() {
     setSaveTabsState({ tabs: openTabs, folderName });
   }, [showUndo]);
 
+  // FEAT-2 one-click capture. Reuses the Save Tabs plumbing (active source root,
+  // showUndo, refresh); the empty case reuses the Save Tabs hint and creates no
+  // collection. Closing tabs happens only when `closeAfter` is passed explicitly.
+  const handleCapture = useCallback(
+    async ({ closeAfter = false } = {}) => {
+      if (capturingRef.current) return;
+      const rootId = activeSourceId || tabHubRootId;
+      if (!rootId) return;
+      capturingRef.current = true;
+      setCapturing(true);
+      try {
+        const result = await captureCurrentWindowTabs(rootId, { closeAfter: closeAfter === true });
+        if (!result.folder) {
+          showUndo(result.failed > 0 ? t('captureFailed') : t('noOpenTabsToSave'), null);
+          return;
+        }
+        const { folder, closedTabs } = result;
+        showUndo(
+          t('captureDone', result.saved, folder.title, closedTabs.length > 0, result.skipped, result.failed),
+          () => undoCapture(folder.id, closedTabs)
+        );
+      } catch (err) {
+        logError('handleCapture', err);
+        showUndo(t('captureFailed'), null);
+      } finally {
+        capturingRef.current = false;
+        setCapturing(false);
+        await refresh(activeSourceRef.current);
+      }
+    },
+    [activeSourceId, tabHubRootId, showUndo, refresh, activeSourceRef]
+  );
+
   const handleSaveTabsConfirm = useCallback(
     async ({ selectedTabIds, folderName, targetCollectionId }) => {
       if (!saveTabsState) return;
@@ -1285,7 +1322,8 @@ function App() {
     autoOrganizing,
     disabled: modalOpen,
     onEscape: handleEscape,
-    onTogglePalette: handleTogglePalette
+    onTogglePalette: handleTogglePalette,
+    onCapture: handleCapture
   });
 
   // --- Event handlers ---
@@ -1575,6 +1613,8 @@ function App() {
               activeSourceId={activeSourceId}
               tabHubRootId={tabHubRootId}
               onSaveTabs={handleSaveTabs}
+              onCapture={handleCapture}
+              capturing={capturing}
               manageMode={manageMode}
               onToggleManage={onToggleManage}
               autoOrganizing={autoOrganizing}
