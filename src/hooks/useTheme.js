@@ -3,6 +3,35 @@ import { storageGet, storageSet } from '../lib/storage';
 
 const THEME_STORAGE_KEY = 'tabhub_theme_mode';
 
+/**
+ * The theme-cycle button's next-mode rule.
+ *
+ * The naive fixed cycle (system -> light -> dark -> system) can land on
+ * `system` when `system` resolves to the same appearance the user is already
+ * looking at — e.g. an OS in dark mode, current mode `dark`, next `system`,
+ * which also renders dark. The click looks like a no-op (only the glyph
+ * changes), and the user needs two clicks to reach light.
+ *
+ * This skips `system` whenever it would not change what's on screen, so
+ * every click is a visible change, and all three modes stay reachable within
+ * two clicks:
+ *   - from `system`: always switches to the mode `system` is NOT currently
+ *     rendering (a visible change is guaranteed since we're leaving system).
+ *   - from `light`/`dark`: switches to `system` if `system` would render the
+ *     other appearance (a real change), otherwise skips straight past
+ *     `system` to the other fixed mode.
+ */
+export function nextThemeMode(current, resolvedSystem) {
+  if (current === 'system') {
+    return resolvedSystem === 'dark' ? 'light' : 'dark';
+  }
+  if (current === 'light') {
+    return resolvedSystem === 'dark' ? 'system' : 'dark';
+  }
+  // current === 'dark'
+  return resolvedSystem === 'light' ? 'system' : 'light';
+}
+
 export function useTheme() {
   const [themeMode, setThemeMode] = useState('system');
   const [systemTheme, setSystemTheme] = useState(
@@ -36,5 +65,5 @@ export function useTheme() {
     await storageSet(THEME_STORAGE_KEY, mode);
   };
 
-  return { themeMode, resolvedTheme, handleThemeModeChange };
+  return { themeMode, resolvedTheme, systemTheme, handleThemeModeChange };
 }

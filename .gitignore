@@ -5,3 +5,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Worktree helper: agents symlink this from the main checkout, and the
+# trailing-slash form above does not match a symlink.
+node_modules
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

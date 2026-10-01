@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AICategorizeModal } from '../components/AICategorizeModal';
+import { clickOverlay } from './dialogHelpers';
 
 describe('AICategorizeModal', () => {
   const defaultProps = {
@@ -10,9 +11,13 @@ describe('AICategorizeModal', () => {
     onClose: vi.fn()
   };
 
+  // The panel is portalled to document.body, so an assertion on RTL's container
+  // would pass whether or not the dialog rendered. Assert on the document.
   it('renders nothing when aiState is null', () => {
-    const { container } = render(<AICategorizeModal aiState={null} {...defaultProps} />);
-    expect(container.firstChild).toBeNull();
+    render(<AICategorizeModal aiState={null} {...defaultProps} />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.querySelector('[data-dialog-overlay]')).toBeNull();
+    expect(screen.queryByText('AI 智能分类')).not.toBeInTheDocument();
   });
 
   it('shows loading spinner when loading', () => {
@@ -51,8 +56,11 @@ describe('AICategorizeModal', () => {
 
     render(<AICategorizeModal aiState={aiState} {...defaultProps} />);
     expect(screen.getByText('My Repo')).toBeInTheDocument();
-    expect(screen.getByTitle('接受')).toBeInTheDocument();
-    expect(screen.getByTitle('拒绝')).toBeInTheDocument();
+    // P4 replaced the `title` attributes with a Radix tooltip, so these are now
+    // found by accessible name — which is what `aria-label` supplies, and what a
+    // tooltip (aria-describedby) could not.
+    expect(screen.getByRole('button', { name: '接受' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '拒绝' })).toBeInTheDocument();
   });
 
   it('calls onAcceptSuggestion when accept is clicked', () => {
@@ -67,7 +75,7 @@ describe('AICategorizeModal', () => {
     };
 
     render(<AICategorizeModal aiState={aiState} {...defaultProps} onAcceptSuggestion={onAccept} />);
-    fireEvent.click(screen.getByTitle('接受'));
+    fireEvent.click(screen.getByRole('button', { name: '接受' }));
     expect(onAccept).toHaveBeenCalledWith(0);
   });
 
@@ -83,7 +91,7 @@ describe('AICategorizeModal', () => {
     };
 
     render(<AICategorizeModal aiState={aiState} {...defaultProps} onRejectSuggestion={onReject} />);
-    fireEvent.click(screen.getByTitle('拒绝'));
+    fireEvent.click(screen.getByRole('button', { name: '拒绝' }));
     expect(onReject).toHaveBeenCalledWith(0);
   });
 
@@ -131,12 +139,16 @@ describe('AICategorizeModal', () => {
     expect(screen.getByText('Media')).toBeInTheDocument();
   });
 
-  it('calls onClose when backdrop is clicked', () => {
+  // Same user-visible behaviour as before, driven through the portalled
+  // backdrop instead of RTL's container: pressing the dim area closes the
+  // dialog. Radix dismisses on the real outside-pointer sequence, which
+  // clickOverlay() performs.
+  it('calls onClose when backdrop is clicked', async () => {
     const onClose = vi.fn();
     const aiState = { loading: false, suggestions: [], newCollections: [], error: null };
 
-    const { container } = render(<AICategorizeModal aiState={aiState} {...defaultProps} onClose={onClose} />);
-    fireEvent.click(container.firstChild);
+    render(<AICategorizeModal aiState={aiState} {...defaultProps} onClose={onClose} />);
+    await clickOverlay();
     expect(onClose).toHaveBeenCalled();
   });
 });
