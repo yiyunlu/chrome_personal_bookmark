@@ -148,6 +148,16 @@ const dictionaries = {
     // AI mock reasons
     aiReasonDomain: (hostname, category) => `${hostname} 属于${category}`,
     aiReasonTitle: (keyword) => `标题包含「${keyword}」`,
+    // One-click capture (FEAT-2)
+    capture: '一键捕获',
+    captureMore: '更多捕获选项',
+    captureAndClose: '捕获并关闭这些标签页',
+    shortcutCaptureKey: '快捷键: C（保存当前窗口全部标签页，不关闭）',
+    captureDone: (n, name, closed, skipped, failed) =>
+      `已${closed ? '捕获并关闭' : '捕获'} ${n} 个标签页到「${name}」` +
+      (skipped ? `，跳过 ${skipped} 个` : '') +
+      (failed ? `，${failed} 个保存失败（未关闭）` : ''),
+    captureFailed: '捕获失败：没有标签页被保存',
     // Shortcuts
     shortcutSaveKey: '快捷键: S',
     shortcutOrganizeKey: '快捷键: O',
@@ -389,6 +399,16 @@ const dictionaries = {
     // AI mock reasons
     aiReasonDomain: (hostname, category) => `${hostname} belongs to ${category}`,
     aiReasonTitle: (keyword) => `Title contains "${keyword}"`,
+    // One-click capture (FEAT-2)
+    capture: 'Capture',
+    captureMore: 'More capture options',
+    captureAndClose: 'Capture and close these tabs',
+    shortcutCaptureKey: 'Shortcut: C (save all tabs in this window, keep them open)',
+    captureDone: (n, name, closed, skipped, failed) =>
+      `${closed ? 'Captured and closed' : 'Captured'} ${n} tab${n === 1 ? '' : 's'} to "${name}"` +
+      (skipped ? `, skipped ${skipped}` : '') +
+      (failed ? `, ${failed} failed to save (not closed)` : ''),
+    captureFailed: 'Capture failed: no tabs were saved',
     // Shortcuts
     shortcutSaveKey: 'Shortcut: S',
     shortcutOrganizeKey: 'Shortcut: O',

@@ -110,6 +110,7 @@ The `App` component in `src/main.jsx` owns all state and business logic. Present
 - `getCollectionsPayload()` — fetch all bookmarks hierarchically
 - `subscribeBookmarksChanges()` — real-time sync listener
 - `saveCurrentWindowTabsToCollection()` — bulk save tabs
+- `captureCurrentWindowTabs(rootId, {closeAfter})` — FEAT-2 one-click capture: every http(s) tab of the current window → new `Captured · HH:mm` collection (`captureFolderName`), skips non-http(s) and TabHub's own tab (`chrome.tabs.getCurrent`), no folder when nothing is savable, sequential creates (tab order), closes ONLY successfully-saved tabs and ONLY when `closeAfter === true`. `undoCapture(folderId, closedTabs)` removes the folder and reopens closed tabs (`reopenTabs`). The Toolbar renders it as a split button (main = keep tabs open, chevron menu = close after)
 - CRUD: `moveBookmark()`, `updateBookmark()`, `renameCollectionFolder()`
 - `moveBookmarkToCardPosition()` — translates a card-relative position (SortableJS drop index among rendered cards) into the real chrome child index (which also counts subfolders); null/past-end appends. Use this for any card move driven by UI position.
 
@@ -179,7 +180,7 @@ TRASH_FOLDER_NAME = '.TabHub Trash'
 - Manage mode: batch select, move, **在新窗口打开** (opens every selected card's URL via `chrome.windows.create`), delete — via a bottom-docked batch bar shown while any card is selected
 - Soft delete to trash folder with undo (8-second toast)
 - Single cycling theme button in the sidebar's bottom bar (system → light → dark), tooltip names the mode you switch **to**
-- Keyboard shortcuts: `/` (search), `S` (save tabs), `O` (organize), `M` (manage), `Cmd/Ctrl+K` (command palette: one box over bookmarks, collections and open tabs; fires even inside inputs, refused while another overlay is open)
+- Keyboard shortcuts: `/` (search), `S` (save tabs), `O` (organize), `M` (manage), `C` (one-click capture: save-only, never closes tabs; ignored on key repeat and inside an open menu), `Cmd/Ctrl+K` (command palette: one box over bookmarks, collections and open tabs; fires even inside inputs, refused while another overlay is open)
 - Real-time bookmark sync across tabs via Chrome API subscription
 - Search filtering across titles and URLs
 - Collapsible sidebar with icon-only rail mode

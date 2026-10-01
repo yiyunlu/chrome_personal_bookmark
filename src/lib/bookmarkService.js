@@ -33,6 +33,8 @@ const removeTreeApi = chromeApi(globalThis.chrome?.bookmarks, 'removeTree');
 const updateTabApi = chromeApi(globalThis.chrome?.tabs, 'update');
 const queryTabsApi = chromeApi(globalThis.chrome?.tabs, 'query');
 const createTabApi = chromeApi(globalThis.chrome?.tabs, 'create');
+const removeTabApi = chromeApi(globalThis.chrome?.tabs, 'remove');
+const getCurrentTabApi = chromeApi(globalThis.chrome?.tabs, 'getCurrent');
 const getSubTreeApi = chromeApi(globalThis.chrome?.bookmarks, 'getSubTree');
 const getChildrenApi = chromeApi(globalThis.chrome?.bookmarks, 'getChildren');
 
@@ -292,6 +294,113 @@ export async function saveCurrentWindowTabsToCollection(rootId, { tabs, folderNa
   );
 
   return folder;
+}
+
+/* ── One-click capture (FEAT-2) ───────────────────────────────────────────────
+   Saves every savable tab of the current window into a NEW collection, in tab
+   order. Pure local: chrome.tabs + chrome.bookmarks only. */
+
+export const CAPTURE_FOLDER_PREFIX = 'Captured';
+
+/** Only real web pages are savable: chrome://, chrome-extension:// (TabHub's own
+ *  new-tab page included), about:, file:, data: … are all skipped. */
+export function isCapturableUrl(url) {
+  return typeof url === 'string' && /^https?:\/\//i.test(url);
+}
+
+/** "Captured · HH:mm" — local wall-clock, 24h. */
+export function captureFolderName(now = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${CAPTURE_FOLDER_PREFIX} · ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+/**
+ * Capture the current window. With zero savable tabs NO folder is created and
+ * `folder` is null (the caller shows the empty-save hint). Tabs are only closed
+ * when `closeAfter` is true, and only the ones whose bookmark was really created
+ * — a tab that failed to save is never closed. TabHub's own tab can never be
+ * closed: it is not http(s), and its id is excluded explicitly as well.
+ *
+ * @returns {{folder: object|null, saved: number, skipped: number, failed: number,
+ *            closedTabs: Array<{url: string, index: number, pinned: boolean}>}}
+ */
+export async function captureCurrentWindowTabs(rootId, { closeAfter = false, now = new Date() } = {}) {
+  const windowTabs = (await queryTabsApi({ currentWindow: true })) || [];
+  let selfTabId;
+  try {
+    selfTabId = (await getCurrentTabApi())?.id;
+  } catch {
+    selfTabId = undefined;
+  }
+
+  const candidates = windowTabs.filter((tab) => isCapturableUrl(tab.url) && tab.id !== selfTabId);
+  const skipped = windowTabs.length - candidates.length;
+  if (candidates.length === 0) {
+    return { folder: null, saved: 0, skipped, failed: 0, closedTabs: [] };
+  }
+
+  const folder = await createBookmark({ parentId: rootId, title: captureFolderName(now) });
+
+  // Sequential, not Promise.all: Chrome assigns the child index in call order,
+  // so this keeps the collection in tab order.
+  const savedTabs = [];
+  let failed = 0;
+  for (const tab of candidates) {
+    try {
+      await createBookmark({ parentId: folder.id, title: tab.title || tab.url, url: tab.url });
+      savedTabs.push(tab);
+    } catch (err) {
+      failed += 1;
+      logError('captureCurrentWindowTabs.createBookmark', err);
+    }
+  }
+
+  if (savedTabs.length === 0) {
+    // Nothing landed — do not leave an empty collection behind.
+    try {
+      await removeTreeApi(folder.id);
+    } catch (err) {
+      logError('captureCurrentWindowTabs.cleanup', err);
+    }
+    return { folder: null, saved: 0, skipped, failed, closedTabs: [] };
+  }
+
+  const closedTabs = [];
+  if (closeAfter) {
+    for (const tab of savedTabs) {
+      try {
+        await removeTabApi(tab.id);
+        closedTabs.push({ url: tab.url, index: tab.index, pinned: !!tab.pinned });
+      } catch (err) {
+        logError('captureCurrentWindowTabs.closeTab', err);
+      }
+    }
+  }
+
+  return { folder, saved: savedTabs.length, skipped, failed, closedTabs };
+}
+
+/** Undo helper for "capture and close": reopen what was closed, in place, in the background. */
+export async function reopenTabs(closedTabs = []) {
+  const ordered = [...closedTabs].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+  for (const tab of ordered) {
+    try {
+      await createTabApi({ url: tab.url, index: tab.index, pinned: !!tab.pinned, active: false });
+    } catch (err) {
+      logError('reopenTabs', err);
+    }
+  }
+}
+
+/** Undo for a capture: delete the created collection (its bookmarks go with it),
+ *  then — only if tabs were closed — reopen them. Reopen runs even if the folder
+ *  was already removed by hand, so Undo never strands closed tabs. */
+export async function undoCapture(folderId, closedTabs = []) {
+  try {
+    await removeTreeApi(folderId);
+  } finally {
+    if (closedTabs.length > 0) await reopenTabs(closedTabs);
+  }
 }
 
 export async function moveBookmark(bookmarkId, parentId, index) {
