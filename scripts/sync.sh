@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-click TabHub extension sync: pull current branch → npm ci (if needed) → build.
 # Run from anywhere; resolves to the repo root via this script's location.
-# Refuses a dirty worktree (any `git status --porcelain` output). Does not stash or reset.
+# Refuses when tracked files have staged/unstaged changes (`git status --porcelain --untracked-files=no`). Untracked files are ignored. Does not stash or reset.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -15,11 +15,11 @@ info() {
   printf 'sync: %s\n' "$*"
 }
 
-# Require a git repo and a clean worktree (tracked + untracked).
+# Require a git repo; refuse only when tracked files have staged/unstaged changes.
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not inside a git repository"
-if [ -n "$(git status --porcelain)" ]; then
-  printf 'sync: ERROR: working tree is not clean. Commit, stash, or discard changes first.\n' >&2
-  git status --porcelain >&2
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  printf 'sync: ERROR: tracked files have uncommitted changes. Commit, stash, or discard them first.\n' >&2
+  git status --porcelain --untracked-files=no >&2
   exit 1
 fi
 

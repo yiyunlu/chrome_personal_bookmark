@@ -53,7 +53,7 @@ A Chrome extension that replaces your new tab page with a powerful bookmark mana
 
 ## Development sync (Mac / Windows)
 
-Use these scripts to pull the **current branch**, install deps only when needed, and rebuild `dist/` so Chrome can reload the unpacked extension. They refuse a dirty worktree (any `git status --porcelain` output) and never stash or reset.
+Use these scripts to pull the **current branch**, install deps only when needed, and rebuild `dist/` so Chrome can reload the unpacked extension. They refuse only when **tracked** files have uncommitted changes (`git status --porcelain --untracked-files=no`); untracked files are ignored. They never stash or reset.
 
 ### First-time load
 
@@ -63,7 +63,7 @@ Use these scripts to pull the **current branch**, install deps only when needed,
 
 ### Daily sync
 
-Keep the extension pointing at the same `dist/` folder. From the repo root, with a **clean** worktree:
+Keep the extension pointing at the same `dist/` folder. From the repo root (tracked files must have no uncommitted changes; untracked files are fine):
 
 ```bash
 # Mac / Linux
@@ -77,7 +77,7 @@ Keep the extension pointing at the same `dist/` folder. From the repo root, with
 
 What the script does:
 
-1. Aborts if the worktree is dirty.
+1. Aborts if tracked files have uncommitted changes (untracked files do not block).
 2. `git fetch` then `git pull --ff-only` on the **current branch** (does not switch you to `main`).
 3. Runs `npm ci` only when `package-lock.json` changed since the pull, or when `node_modules` is missing.
 4. Runs `npm run build`.

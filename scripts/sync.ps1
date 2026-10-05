@@ -1,6 +1,6 @@
 # One-click TabHub extension sync (Windows): pull current branch → npm ci (if needed) → build.
 # Run via scripts/sync.cmd or: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync.ps1
-# Refuses a dirty worktree (any `git status --porcelain` output). Does not stash or reset.
+# Refuses when tracked files have staged/unstaged changes (`git status --porcelain --untracked-files=no`). Untracked files are ignored. Does not stash or reset.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -23,10 +23,10 @@ try {
   Die 'not inside a git repository'
 }
 
-$porcelain = git status --porcelain
+$porcelain = git status --porcelain --untracked-files=no
 if ($LASTEXITCODE -ne 0) { Die 'git status failed' }
 if (-not [string]::IsNullOrWhiteSpace($porcelain)) {
-  Write-Host 'sync: ERROR: working tree is not clean. Commit, stash, or discard changes first.' -ForegroundColor Red
+  Write-Host 'sync: ERROR: tracked files have uncommitted changes. Commit, stash, or discard them first.' -ForegroundColor Red
   Write-Host $porcelain
   exit 1
 }
