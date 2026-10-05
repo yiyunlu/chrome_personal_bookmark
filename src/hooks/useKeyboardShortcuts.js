@@ -7,13 +7,31 @@ export function useKeyboardShortcuts({
   onToggleManage,
   autoOrganizing,
   disabled = false,
-  onEscape
+  onEscape,
+  onTogglePalette
 }) {
   useEffect(() => {
     const onKeyDown = (event) => {
       // Escape works everywhere, including inside inputs and while overlays are open.
       if (event.key === 'Escape') {
         if (onEscape) onEscape();
+        return;
+      }
+
+      // Cmd/Ctrl+K toggles the command palette. Handled before the chord guard
+      // below and deliberately NOT gated on `disabled` or on the typing check:
+      // the palette itself is a "modal" (so `disabled` is true while it is open)
+      // and its own input is where the second press has to close it. Whether it
+      // may open (no other overlay up) is the callback's call, not the hook's.
+      if (
+        onTogglePalette &&
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === 'k'
+      ) {
+        event.preventDefault();
+        onTogglePalette();
         return;
       }
 
@@ -52,5 +70,5 @@ export function useKeyboardShortcuts({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [autoOrganizing, searchInputRef, onSaveTabs, onAutoOrganize, onToggleManage, disabled, onEscape]);
+  }, [autoOrganizing, searchInputRef, onSaveTabs, onAutoOrganize, onToggleManage, disabled, onEscape, onTogglePalette]);
 }
