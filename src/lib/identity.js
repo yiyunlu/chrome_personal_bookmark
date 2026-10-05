@@ -83,9 +83,8 @@ export function identityForUrl(url, title) {
     host = '';
   }
   if (!host) return identity(title);
-  // A LAN address has no registrable name, and its last octet is the only part
-  // that distinguishes one box from another — which matters here, since a home
-  // network folder is mostly 192.168.x.y.
+  // An IP literal has no registrable name; the last octet is the part that
+  // usually distinguishes one host from another on a private network.
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
     return { char: host.split('.').pop(), tint: identityTint(host) };
   }

@@ -12,7 +12,7 @@
 
 ## 前置
 
-1. 仓库：`<repo-root>`，分支 `ui/shadcn-migration`（或与待验 PR 相同 tip）。
+1. 仓库：`<repo-root>`（或 `$REPO_ROOT`），分支 `ui/shadcn-migration`（或与待验 PR 相同 tip）。
 2. `npm ci && npm run build`（或确认本地 `dist/` 与 tip 一致）。
 3. Chrome → `chrome://extensions` → 开发者模式 → **加载已解压的扩展程序** → 选仓库根下的 `dist/`。
 4. 打开一个新标签页（TabHub 新标签页）；开 **DevTools Console**，保持打开直到本轮结束。

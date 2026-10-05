@@ -8,8 +8,8 @@ describe('identity', () => {
   });
 
   it('spreads across the palette rather than collapsing onto one colour', () => {
-    const names = ['书签栏', 'Local Network', 'Cloud Services', 'Canada', 'My Sites',
-                   'Learning', 'RUN', 'Trading', 'FUN', '自由项目', 'KIDs', 'GAME'];
+    const names = ['书签栏', 'Local Network', 'Cloud Services', 'Travel Notes', 'My Sites',
+                   'Study Notes', 'WORK', 'Markets', 'Hobbies', '自由项目', 'Family', 'Games'];
     const tints = new Set(names.map(identityTint));
     // 12 names over a 9-colour palette: collisions are expected, a single
     // bucket is not.
@@ -18,7 +18,7 @@ describe('identity', () => {
 
   it('takes one glyph for CJK and initials for Latin', () => {
     expect(identityChar('自由项目')).toBe('自');
-    expect(identityChar('智能服务平台')).toBe('大');
+    expect(identityChar('智能服务平台')).toBe('智');
     expect(identityChar('Local Network')).toBe('LN');
     expect(identityChar('Global Finance Corp')).toBe('GF');
     expect(identityChar('YouTube')).toBe('Yo');
@@ -44,6 +44,7 @@ describe('identity', () => {
   });
 
   it('keeps the last octet of a LAN address, which is what distinguishes boxes', () => {
+    // RFC 5737 documentation addresses (TEST-NET-1); titles are neutral fixtures.
     expect(identityForUrl('http://192.0.2.10/', 'Git Server').char).toBe('10');
     expect(identityForUrl('http://192.0.2.11/', 'Media Server').char).toBe('11');
   });
