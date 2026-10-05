@@ -79,7 +79,7 @@ What the script does:
 
 1. Aborts if tracked files have uncommitted changes (untracked files do not block).
 2. `git fetch` then `git pull --ff-only` on the **current branch** (does not switch you to `main`).
-3. Runs `npm ci` only when `package-lock.json` changed since the pull, or when `node_modules` is missing.
+3. Runs `npm ci` when `node_modules` is missing, or when `package-lock.json` differs from `node_modules/.package-lock.json` (missing counts as differ).
 4. Runs `npm run build`.
 5. Prints the manifest version and short git SHA, then reminds you to reload at `chrome://extensions`.
 

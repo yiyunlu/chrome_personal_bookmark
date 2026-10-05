@@ -26,13 +26,6 @@ fi
 branch=$(git rev-parse --abbrev-ref HEAD)
 info "branch: $branch"
 
-before_sha=$(git rev-parse HEAD)
-if [ -f package-lock.json ]; then
-  before_lock=$(git hash-object package-lock.json)
-else
-  before_lock=""
-fi
-
 info "git fetch"
 git fetch || die "git fetch failed"
 
@@ -41,27 +34,30 @@ if ! git pull --ff-only; then
   die "git pull --ff-only failed (non-fast-forward or network error). Resolve manually, then re-run."
 fi
 
-after_sha=$(git rev-parse HEAD)
-if [ -f package-lock.json ]; then
-  after_lock=$(git hash-object package-lock.json)
-else
-  after_lock=""
-fi
-
+# Reinstall when node_modules is missing or its lock snapshot is stale/missing.
+# Do not rely on whether *this* script's pull changed package-lock.json (external pulls
+# or an outdated install would otherwise skip npm ci and break builds, e.g. missing vite).
+#
+# Freshness stamp: after npm ci we copy package-lock.json over
+# node_modules/.package-lock.json. npm's own hidden lockfile is a filtered install
+# snapshot (drops other-platform optionals, etc.) and is never a byte match for the
+# root lock — so without the copy, "lockfiles match -> skip" would never fire.
 need_ci=0
 if [ ! -d node_modules ]; then
-  info "node_modules missing → will run npm ci"
+  info "node_modules missing -> npm ci"
   need_ci=1
-elif [ "$before_lock" != "$after_lock" ]; then
-  info "package-lock.json changed ($before_sha → $after_sha) → will run npm ci"
+elif [ ! -f package-lock.json ] || [ ! -f node_modules/.package-lock.json ] || ! cmp -s package-lock.json node_modules/.package-lock.json; then
+  info "package-lock.json differs from node_modules/.package-lock.json -> npm ci"
   need_ci=1
 else
-  info "package-lock.json unchanged and node_modules present → skip npm ci"
+  info "lockfiles match -> skip npm ci"
 fi
 
 if [ "$need_ci" -eq 1 ]; then
   info "npm ci"
   npm ci || die "npm ci failed"
+  # Stamp: root lock bytes so a later sync can cmp for staleness (see comment above).
+  cp package-lock.json node_modules/.package-lock.json || die "failed to stamp node_modules/.package-lock.json"
 fi
 
 info "npm run build"
