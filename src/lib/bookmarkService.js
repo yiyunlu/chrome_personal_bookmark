@@ -1,5 +1,5 @@
 import { t } from './i18n';
-import { logError } from './utils';
+import { logError, normalizeUrlKey } from './utils';
 
 const TABHUB_ROOT_NAME = 'TabHub';
 const TRASH_FOLDER_NAME = '.TabHub Trash';
@@ -30,6 +30,7 @@ const createBookmark = chromeApi(globalThis.chrome?.bookmarks, 'create');
 const moveBookmarkApi = chromeApi(globalThis.chrome?.bookmarks, 'move');
 const updateBookmarkApi = chromeApi(globalThis.chrome?.bookmarks, 'update');
 const removeTreeApi = chromeApi(globalThis.chrome?.bookmarks, 'removeTree');
+const removeBookmarkApi = chromeApi(globalThis.chrome?.bookmarks, 'remove');
 const updateTabApi = chromeApi(globalThis.chrome?.tabs, 'update');
 const queryTabsApi = chromeApi(globalThis.chrome?.tabs, 'query');
 const createTabApi = chromeApi(globalThis.chrome?.tabs, 'create');
@@ -400,6 +401,40 @@ export async function undoCapture(folderId, closedTabs = []) {
     await removeTreeApi(folderId);
   } finally {
     if (closedTabs.length > 0) await reopenTabs(closedTabs);
+  }
+}
+
+/* ── Drag an open tab into a collection (FEAT-3) ──────────────────────────────
+   One tab → one bookmark in an existing folder (Unfiled is a real folder too, so
+   it is just another parentId). */
+
+/**
+ * Save `{title, url}` into `parentId`, unless that folder already holds the same
+ * URL. "Same" is `normalizeUrlKey` — the project's dedup key (scheme-insensitive,
+ * host lowercased, trailing slash and #fragment ignored) — and the check is
+ * per-folder, so the same page may live in two different collections. Children are
+ * read at call time, so two quick drops of one tab cannot both pass.
+ *
+ * @returns {Promise<{status: 'saved', bookmark: object} | {status: 'duplicate'} | {status: 'invalid'}>}
+ */
+export async function addOpenTabToCollection(parentId, tab) {
+  if (!parentId || !isCapturableUrl(tab?.url)) return { status: 'invalid' };
+  const children = (await getChildrenApi(parentId)) || [];
+  const key = normalizeUrlKey(tab.url);
+  if (children.some((node) => node.url && normalizeUrlKey(node.url) === key)) {
+    return { status: 'duplicate' };
+  }
+  const bookmark = await createBookmark({ parentId, title: tab.title || tab.url, url: tab.url });
+  return { status: 'saved', bookmark };
+}
+
+/** Undo for a tab drop: remove exactly the one bookmark that drop created (never a
+ *  folder, never its siblings). Already gone (deleted by hand meanwhile) is fine. */
+export async function undoAddedBookmark(bookmarkId) {
+  try {
+    await removeBookmarkApi(bookmarkId);
+  } catch (err) {
+    logError('undoAddedBookmark', err);
   }
 }
 
