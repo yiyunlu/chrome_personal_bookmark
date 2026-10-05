@@ -1,5 +1,7 @@
 # TabHub
 
+> 📦 **[安装与使用（Windows / Mac 新手安装指南）](./docs/INSTALL.md)** — 不懂开发也能照着从零安装、加载和更新 TabHub。
+
 A Chrome extension that replaces your new tab page with a powerful bookmark manager. Inspired by Toby, built on Chrome's native bookmarks API — no backend required, syncs via your Chrome account.
 
 ## Features
