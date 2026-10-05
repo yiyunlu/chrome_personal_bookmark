@@ -8,7 +8,8 @@ export function useKeyboardShortcuts({
   autoOrganizing,
   disabled = false,
   onEscape,
-  onTogglePalette
+  onTogglePalette,
+  onCapture
 }) {
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -46,6 +47,9 @@ export function useKeyboardShortcuts({
         const tag = target.tagName.toLowerCase();
         const typing = tag === 'input' || tag === 'textarea' || target.isContentEditable;
         if (typing) return;
+        // An open dropdown menu (the capture split button's) owns the keyboard:
+        // Radix typeahead there must not also fire a global action.
+        if (target.closest('[role="menu"]')) return;
       }
 
       const key = event.key.toLowerCase();
@@ -65,10 +69,14 @@ export function useKeyboardShortcuts({
       } else if (key === 'm') {
         event.preventDefault();
         onToggleManage();
+      } else if (key === 'c' && onCapture) {
+        // One-click capture. A held key must not re-fire it (each press creates a collection).
+        event.preventDefault();
+        if (!event.repeat) onCapture();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [autoOrganizing, searchInputRef, onSaveTabs, onAutoOrganize, onToggleManage, disabled, onEscape, onTogglePalette]);
+  }, [autoOrganizing, searchInputRef, onSaveTabs, onAutoOrganize, onToggleManage, disabled, onEscape, onTogglePalette, onCapture]);
 }
