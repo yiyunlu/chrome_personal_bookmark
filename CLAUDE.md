@@ -51,6 +51,7 @@
     │   ├── DeadLinkModal.jsx         # Dead link detection results
     │   ├── EditBookmarkModal.jsx     # Edit bookmark dialog
     │   ├── EmptyState.jsx            # Filtered-empty-state card (no search hits / empty collection)
+    │   ├── OpenTabsPanel.jsx         # FEAT-3 collapsed-by-default drag source: current-window http(s) tabs
     │   ├── PromptModal.jsx           # Prompt input dialog
     │   ├── SettingsModal.jsx         # Settings dialog (API key, preferences)
     │   ├── Sidebar.jsx               # Rail: source Select, all-collections, 分类 nav, bottom bar (theme/settings)
@@ -71,6 +72,8 @@
     │   ├── faviconProbe.js           # Tells a real favicon from Chrome's default globe (byte comparison)
     │   ├── identity.js               # Deterministic letter + tint tile for bookmarks and folders
     │   ├── i18n.js                   # Internationalization (zh-CN, en) + language detection
+    │   ├── openTabDrag.js            # FEAT-3 dataTransfer helpers (own MIME type, validated payload)
+    │   ├── openTabDrop.js            # FEAT-3 drop → bookmark → Undo toast orchestration
     │   ├── paletteSearch.js          # Pure ⌘K grouping over smartSearch (bookmarks / collections / tabs)
     │   ├── searchService.js          # Smart search with fuzzy + category matching
     │   ├── sortCards.js              # Sort comparators (manual/recent/title/domain) + drag-enabled rule
@@ -140,6 +143,9 @@ Managed by `useTheme` hook. The palette is the `--ui-*` token set in `index.css`
 
 ### Drag-and-drop
 SortableJS instances managed in `useRef(Map)` within `main.jsx`. Three scopes: nav sidebar, module (collection cards), and bookmark cards. After a card drop, the handler reverts SortableJS's DOM mutation before React reconciles (otherwise React's virtual DOM desyncs → removeChild crash), then persists the move via `moveBookmarkToCardPosition()` and refreshes state. There is no hard reload.
+
+### Drag an open tab into a collection (FEAT-3)
+Native HTML5 DnD, deliberately separate from SortableJS. `OpenTabsPanel` (rendered in `<main>`'s fixed header, OUTSIDE every Sortable host; rows use `data-open-tab-id`, never `data-card-id`) sets a custom `dataTransfer` type (`OPEN_TAB_DND_TYPE`, `src/lib/openTabDrag.js`). The drop target is the `CollectionCard` `<article>` (so collapsed/empty/Unfiled collections work and no wrapper is added); every handler bails unless the drag carries that type, so Sortable and native file drags are untouched. Highlight = `data-open-tab-over` + `bg-primary/5 ring-primary/40` driven by an enter/leave counter (no `setState` per `dragover`). `addOpenTabToCollection` dedups per folder with `normalizeUrlKey`; `undoAddedBookmark` removes only the created bookmark. Shared by main.jsx through `dropOpenTabIntoCollection` and the existing `showUndo`.
 
 ### Data model
 - **Sources** = top-level bookmark folders under the TabHub root
