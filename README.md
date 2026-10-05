@@ -51,6 +51,40 @@ A Chrome extension that replaces your new tab page with a powerful bookmark mana
    - Click **Load unpacked**
    - Select the `dist/` folder
 
+## Development sync (Mac / Windows)
+
+Use these scripts to pull the **current branch**, install deps only when needed, and rebuild `dist/` so Chrome can reload the unpacked extension. They refuse a dirty worktree (any `git status --porcelain` output) and never stash or reset.
+
+### First-time load
+
+1. Clone the repo and check out the branch you want (usually `main`).
+2. `npm install` (or `npm ci`) once, then `npm run build`.
+3. Chrome → `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select this repo's `dist/` folder.
+
+### Daily sync
+
+Keep the extension pointing at the same `dist/` folder. From the repo root, with a **clean** worktree:
+
+```bash
+# Mac / Linux
+./scripts/sync.sh
+```
+
+```powershell
+# Windows (PowerShell), or double-click scripts/sync.cmd
+.\scripts\sync.ps1
+```
+
+What the script does:
+
+1. Aborts if the worktree is dirty.
+2. `git fetch` then `git pull --ff-only` on the **current branch** (does not switch you to `main`).
+3. Runs `npm ci` only when `package-lock.json` changed since the pull, or when `node_modules` is missing.
+4. Runs `npm run build`.
+5. Prints the manifest version and short git SHA, then reminds you to reload at `chrome://extensions`.
+
+After a successful sync, open `chrome://extensions` and click **Reload** on TabHub.
+
 ## Development
 
 ```bash
