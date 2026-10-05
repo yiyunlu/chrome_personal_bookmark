@@ -44,6 +44,7 @@
     │   ├── BatchMoveModal.jsx        # Batch move dialog
     │   ├── BookmarkIcon.jsx          # Favicon, or a deterministic identity tile when Chrome has none
     │   ├── ChatPanel.jsx             # AI chat panel + toggle button
+    │   ├── CommandPalette.jsx        # Cmd/Ctrl+K search over bookmarks / collections / open tabs (DialogShell + Input, WAI-ARIA combobox; no cmdk)
     │   ├── CollectionCard.jsx        # Collection (sticky header, grid or list view) + BookmarkCard
     │   ├── ConfirmModal.jsx          # Confirmation (AlertDialog: no backdrop dismiss, autofocus Cancel)
     │   ├── ContextMenu.jsx           # Right-click menu (DropdownMenu on a virtual anchor)
@@ -70,6 +71,7 @@
     │   ├── faviconProbe.js           # Tells a real favicon from Chrome's default globe (byte comparison)
     │   ├── identity.js               # Deterministic letter + tint tile for bookmarks and folders
     │   ├── i18n.js                   # Internationalization (zh-CN, en) + language detection
+    │   ├── paletteSearch.js          # Pure ⌘K grouping over smartSearch (bookmarks / collections / tabs)
     │   ├── searchService.js          # Smart search with fuzzy + category matching
     │   ├── sortCards.js              # Sort comparators (manual/recent/title/domain) + drag-enabled rule
     │   ├── storage.js                # chrome.storage.local get/set wrappers
@@ -177,7 +179,7 @@ TRASH_FOLDER_NAME = '.TabHub Trash'
 - Manage mode: batch select, move, **在新窗口打开** (opens every selected card's URL via `chrome.windows.create`), delete — via a bottom-docked batch bar shown while any card is selected
 - Soft delete to trash folder with undo (8-second toast)
 - Single cycling theme button in the sidebar's bottom bar (system → light → dark), tooltip names the mode you switch **to**
-- Keyboard shortcuts: `/` (search), `S` (save tabs), `O` (organize), `M` (manage)
+- Keyboard shortcuts: `/` (search), `S` (save tabs), `O` (organize), `M` (manage), `Cmd/Ctrl+K` (command palette: one box over bookmarks, collections and open tabs; fires even inside inputs, refused while another overlay is open)
 - Real-time bookmark sync across tabs via Chrome API subscription
 - Search filtering across titles and URLs
 - Collapsible sidebar with icon-only rail mode
