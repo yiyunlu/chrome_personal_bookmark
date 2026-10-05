@@ -1,5 +1,7 @@
 # TabHub
 
+> 📦 **[安装与使用（Windows / Mac / Linux 新手安装指南）](./docs/INSTALL.md)** — 不懂开发也能照着从零安装、加载和更新 TabHub。
+
 A Chrome extension that replaces your new tab page with a powerful bookmark manager. Inspired by Toby, built on Chrome's native bookmarks API — no backend required, syncs via your Chrome account.
 
 ## Features
@@ -51,7 +53,7 @@ A Chrome extension that replaces your new tab page with a powerful bookmark mana
    - Click **Load unpacked**
    - Select the `dist/` folder
 
-## Development sync (Mac / Windows)
+## Development sync (Mac / Windows / Linux)
 
 Use these scripts to pull the **current branch**, install deps only when needed, and rebuild `dist/` so Chrome can reload the unpacked extension. They refuse only when **tracked** files have uncommitted changes (`git status --porcelain --untracked-files=no`); untracked files are ignored. They never stash or reset.
 
