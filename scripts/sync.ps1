@@ -1,4 +1,4 @@
-# One-click TabHub extension sync (Windows): pull current branch → npm ci (if needed) → build.
+# One-click TabHub extension sync (Windows): pull current branch -> npm ci (if needed) -> build.
 # Run via scripts/sync.cmd or: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync.ps1
 # Refuses when tracked files have staged/unstaged changes (`git status --porcelain --untracked-files=no`). Untracked files are ignored. Does not stash or reset.
 $ErrorActionPreference = 'Stop'
@@ -58,13 +58,13 @@ if (Test-Path -LiteralPath 'package-lock.json') {
 
 $needCi = $false
 if (-not (Test-Path -LiteralPath 'node_modules')) {
-  Info 'node_modules missing → will run npm ci'
+  Info 'node_modules missing -> will run npm ci'
   $needCi = $true
 } elseif ($beforeLock -ne $afterLock) {
-  Info "package-lock.json changed ($beforeSha → $afterSha) → will run npm ci"
+  Info "package-lock.json changed ($beforeSha -> $afterSha) -> will run npm ci"
   $needCi = $true
 } else {
-  Info 'package-lock.json unchanged and node_modules present → skip npm ci'
+  Info 'package-lock.json unchanged and node_modules present -> skip npm ci'
 }
 
 if ($needCi) {
@@ -94,5 +94,5 @@ if ($manifestPath) {
 $shortSha = (git rev-parse --short HEAD).Trim()
 
 Write-Host ''
-Info "build OK — manifest version $version, git $shortSha"
+Info "build OK - manifest version $version, git $shortSha"
 Info 'Reload the extension at chrome://extensions (click the reload icon on TabHub).'
