@@ -2,7 +2,9 @@ import React from 'react';
 import {
   AlertTriangle,
   Brain,
+  Camera,
   CheckSquare,
+  ChevronDown,
   Download,
   LayoutGrid,
   List,
@@ -12,6 +14,7 @@ import {
   Square
 } from 'lucide-react';
 import { Button } from './ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
@@ -95,6 +98,10 @@ export function Toolbar({
   activeSourceId,
   tabHubRootId,
   onSaveTabs,
+  /* FEAT-2. `onCapture({ closeAfter })`. Optional: without it the split
+     button is not rendered, so older call sites are unchanged. */
+  onCapture,
+  capturing = false,
   manageMode,
   onToggleManage,
   autoOrganizing,
@@ -199,6 +206,45 @@ export function Toolbar({
           <Download />
           <span>{t('saveTabs')}</span>
         </Button>
+
+        {onCapture && (
+          /* One-click capture, as a split button: the body captures and keeps the
+             tabs open; the chevron holds the explicit "…and close these tabs"
+             action. Closing is never the default and never on the shortcut. */
+          <div role="group" aria-label={t('capture')} className="ml-1 flex items-center">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-[30px] gap-1.5 rounded-r-none border-r-0 text-[12.5px] shadow-none"
+              onClick={() => onCapture({ closeAfter: false })}
+              disabled={capturing || (!activeSourceId && !tabHubRootId)}
+              title={t('shortcutCaptureKey')}
+            >
+              <Camera />
+              <span>{t('capture')}</span>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-[30px] w-[26px] rounded-l-none shadow-none"
+                  aria-label={t('captureMore')}
+                  disabled={capturing || (!activeSourceId && !tabHubRootId)}
+                >
+                  <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={() => onCapture({ closeAfter: true })}>
+                  {t('captureAndClose')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
 
         <Separator orientation="vertical" className="mx-[5px] h-[18px]" />
 
