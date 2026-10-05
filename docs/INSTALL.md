@@ -1,4 +1,4 @@
-# TabHub 安装与使用指南（Windows / Mac）
+# TabHub 安装与使用指南（Windows / Mac / Linux）
 
 本指南写给**没有开发经验**的用户：照着一步步做，就能从零把 TabHub 装进 Chrome，并在以后一键更新。
 
@@ -30,6 +30,7 @@ TabHub 是一个 Chrome 扩展：装好后，每次打开新标签页都会显�
 |------|----------|--------------|
 | **Windows** | 按键盘上的 `Win` 键，输入 `cmd`，点击「**命令提示符**」（Command Prompt） | 命令提示符 |
 | **Mac** | 按 `⌘ + 空格` 打开「聚焦搜索」（Spotlight），输入 `终端`（或 `Terminal`），按回车 | 终端 |
+| **Linux**（Ubuntu） | 按 `Ctrl + Alt + T`，或在应用菜单搜索「终端」（Terminal） | 终端 |
 
 > **Windows 用户请优先使用「命令提示符」(cmd)**，不要用 PowerShell。PowerShell 在很多电脑上默认禁止运行脚本，可能导致 `npm` 命令报错（见 [FAQ 9.3](#93-windowspowershell-提示禁止运行脚本--执行策略)）。
 >
@@ -51,8 +52,27 @@ TabHub 是一个 Chrome 扩展：装好后，每次打开新标签页都会显�
 
 ### 1.1 Google Chrome
 
+**Windows / Mac**
+
 - 下载：<https://www.google.com/chrome/>（中国大陆也可用 <https://www.google.cn/chrome/>）
 - 已安装的话，打开 Chrome，地址栏输入 `chrome://settings/help` 回车（「关于 Chrome」/ About Chrome），它会自动检查并更新到最新版。
+
+**Linux（Ubuntu 22.04 / 24.04，推荐 Google Chrome）**
+
+TabHub 按 **Google Chrome** 开发与测试。Ubuntu 自带的 **Chromium**（或 Snap 版 Chromium）也能打开扩展页面，但新标签页覆盖、扩展加载路径等行为可能与 Chrome 不完全一致，**建议安装官方 Google Chrome**。
+
+在终端逐行执行（需要 `sudo` 密码；适用于 64 位 amd64）：
+
+```bash
+cd ~/Downloads
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install -y ./google-chrome-stable_current_amd64.deb
+```
+
+- 安装成功后，可在应用菜单打开「Google Chrome」，或在终端运行 `google-chrome`。
+- 安装过程会自动加入 Google 的 apt 源，之后用系统更新即可升级 Chrome：`sudo apt update && sudo apt upgrade`。
+- 已安装的话，在 Chrome 地址栏输入 `chrome://settings/help` 回车，确认已是最新版。
+- 若没有 `wget`，可先 `sudo apt install -y wget`，或改用浏览器从 <https://www.google.com/chrome/> 下载 `.deb` 后，在下载目录执行上面的 `sudo apt install -y ./google-chrome-stable_current_amd64.deb`。
 
 ### 1.2 Git
 
@@ -71,7 +91,16 @@ TabHub 是一个 Chrome 扩展：装好后，每次打开新标签页都会显�
 3. 如果弹出窗口提示需要安装「命令行开发者工具」（command line developer tools），点「**安装**」（Install），同意协议，等待安装完成后重新打开终端。
 4. 也可以参考官网说明：<https://git-scm.com/downloads/mac>
 
-**检查（Windows 和 Mac 相同）**：重新打开终端，输入
+**Linux（Ubuntu）**
+
+在终端执行：
+
+```bash
+sudo apt update
+sudo apt install -y git
+```
+
+**检查（Windows / Mac / Linux 相同）**：重新打开终端，输入
 
 ```bash
 git --version
@@ -81,6 +110,8 @@ git --version
 
 ### 1.3 Node.js（会同时安装 npm）
 
+**Windows / Mac（图形安装包）**
+
 1. 打开 Node.js 官网下载页：<https://nodejs.org/zh-cn/download>
 2. 选择标注 **LTS** 的版本，下载对应系统的安装包：
    - **Windows**：Windows 安装程序（`.msi`），64 位
@@ -88,7 +119,36 @@ git --version
 3. 双击安装包，**全部保持默认选项**，一路「下一步 / 继续」直到完成。
    - Windows 安装过程中如果出现「Tools for Native Modules」（安装原生模块编译工具）的勾选项，**不需要勾选**，TabHub 用不到。
 
-**检查（Windows 和 Mac 相同）**：重新打开终端，依次输入
+**Linux（Ubuntu 22.04 / 24.04）——任选一种方式**
+
+> 不要用 Ubuntu 默认源的 `sudo apt install nodejs`：22.04 / 24.04 自带的 Node 往往**低于**本项目要求的 `20.19`，构建或测试可能失败。请用下面的 **NodeSource** 或 **nvm**。
+
+*方式 A：NodeSource（推荐，装完即可系统级使用 `node` / `npm`）*
+
+```bash
+sudo apt install -y curl
+curl -fsSL https://deb.nodesource.com/setup_24.x -o nodesource_setup.sh
+sudo -E bash nodesource_setup.sh
+sudo apt install -y nodejs
+```
+
+（`setup_24.x` 对应推荐的 LTS 24.x；若你明确需要 Node 20，可把地址里的 `setup_24.x` 改成 `setup_20.x`，并确认版本 ≥ `20.19`。）
+
+*方式 B：nvm（适合需要多版本 Node 的用户）*
+
+```bash
+sudo apt install -y curl
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh | bash
+```
+
+关掉终端再重新打开（或执行 `source ~/.bashrc`），然后安装 LTS：
+
+```bash
+nvm install --lts
+nvm use --lts
+```
+
+**检查（Windows / Mac / Linux 相同）**：重新打开终端，依次输入
 
 ```bash
 node -v
@@ -98,7 +158,7 @@ npm -v
 - `node -v` 应显示 `v24.x.x`（或任何不低于 `v20.19.0` 的版本）。
 - `npm -v` 显示任意版本号即可（如 `11.x.x`）。
 
-> 如果提示「`'node' 不是内部或外部命令`」（Windows）或「`command not found: node`」（Mac），请关掉终端重新打开；仍不行就重启电脑后再试。
+> 如果提示「`'node' 不是内部或外部命令`」（Windows）或「`command not found: node`」（Mac / Linux），请关掉终端重新打开；仍不行就重启电脑后再试。用 nvm 安装时，务必在**新开的**终端里检查（nvm 依赖 shell 启动脚本）。
 
 ---
 
@@ -110,6 +170,7 @@ npm -v
 |------|----------|
 | **Mac** | `~/code/chrome_personal_bookmark`（即 `/Users/<你的用户名>/code/chrome_personal_bookmark`） |
 | **Windows** | `C:\Users\<你的用户名>\code\chrome_personal_bookmark` |
+| **Linux** | `~/code/chrome_personal_bookmark`（即 `/home/<你的用户名>/code/chrome_personal_bookmark`） |
 
 ### Windows（在「命令提示符」里逐行执行）
 
@@ -123,7 +184,7 @@ cd chrome_personal_bookmark
 > `%USERPROFILE%` 会自动替换成 `C:\Users\<你的用户名>`。想知道具体路径，可以输入 `echo %USERPROFILE%` 查看。
 > 如果 `mkdir` 提示「子目录或文件已经存在」，说明文件夹已建好，忽略即可。
 
-### Mac（在「终端」里逐行执行）
+### Mac / Linux（在「终端」里逐行执行）
 
 ```bash
 mkdir -p ~/code
@@ -146,7 +207,7 @@ cd chrome_personal_bookmark
 
 ### 方式 A：手动执行两条命令（推荐第一次用，出错时更容易看清）
 
-确保终端当前位于代码目录（上一步最后的 `cd chrome_personal_bookmark` 已经进入了）。Windows 和 Mac 命令相同：
+确保终端当前位于代码目录（上一步最后的 `cd chrome_personal_bookmark` 已经进入了）。Windows / Mac / Linux 命令相同：
 
 ```bash
 npm ci
@@ -160,7 +221,7 @@ npm run build
 
 仓库自带「同步脚本」，第一次运行时因为还没有 `node_modules`，它会**自动执行 `npm ci`**，然后执行 `npm run build`：
 
-- **Mac**：
+- **Mac / Linux**：
   ```bash
   cd ~/code/chrome_personal_bookmark
   bash scripts/sync.sh
@@ -184,7 +245,7 @@ sync: Reload the extension at chrome://extensions (click the reload icon on TabH
 
 打开代码目录，确认有一个 `dist` 文件夹，里面有 `manifest.json`、`index.html` 等文件：
 
-- Mac：`~/code/chrome_personal_bookmark/dist`
+- Mac / Linux：`~/code/chrome_personal_bookmark/dist`
 - Windows：`C:\Users\<你的用户名>\code\chrome_personal_bookmark\dist`
 
 ---
@@ -211,6 +272,7 @@ chrome://extensions
 2. 在弹出的选择文件夹窗口中，找到并选中 **`dist`** 文件夹：
    - **Mac**：按 `⌘ + Shift + G`，粘贴 `~/code/chrome_personal_bookmark/dist`，回车，然后点「**选择**」（Select）。
    - **Windows**：在窗口顶部地址栏粘贴 `%USERPROFILE%\code\chrome_personal_bookmark\dist`（或 `C:\Users\<你的用户名>\code\chrome_personal_bookmark\dist`），回车，然后点「**选择文件夹**」（Select Folder）。
+   - **Linux**：在文件选择对话框中导航到 `~/code/chrome_personal_bookmark/dist`（或按 `Ctrl + L` 输入路径 `/home/<你的用户名>/code/chrome_personal_bookmark/dist`），选中 **`dist`** 后确认。
 3. 注意：要选的是 **`dist` 这个文件夹本身**（打开后能看到 `manifest.json`），不要选上一层的 `chrome_personal_bookmark`。
 
 成功后，扩展列表里会出现一张 **TabHub** 卡片（显示版本号，如 `0.1.0`），右下角开关为开启状态。
@@ -226,7 +288,7 @@ chrome://extensions
 
 ### 4.5 打开新标签页，并选择「保留」更改
 
-1. 按 `Ctrl + T`（Windows）或 `⌘ + T`（Mac）打开一个新标签页，应该能看到 TabHub 界面。
+1. 按 `Ctrl + T`（Windows / Linux）或 `⌘ + T`（Mac）打开一个新标签页，应该能看到 TabHub 界面。
 2. Chrome 可能会弹出一个提示，告诉你**有扩展更改了新标签页**（英文界面通常为 “Change back to Google?” / “Did you mean to change this page?”）。
 3. **请点击「保留」（Keep it）**，不要点「改回」（Change it back）。中文界面按钮的确切文字可能因 Chrome 版本略有不同，选择表示「保留更改」的那个即可。
 
@@ -249,7 +311,7 @@ chrome://extensions
 
 | 功能 | 怎么用 |
 |------|--------|
-| **全局搜索** | 按 `⌘K`（Mac）或 `Ctrl+K`（Windows），在一个输入框里同时搜索书签、集合和当前窗口已打开的标签页；`↑` `↓` 选择，`Enter` 打开，`Esc` 关闭 |
+| **全局搜索** | 按 `⌘K`（Mac）或 `Ctrl+K`（Windows / Linux），在一个输入框里同时搜索书签、集合和当前窗口已打开的标签页；`↑` `↓` 选择，`Enter` 打开，`Esc` 关闭 |
 | **页面内搜索** | 按 `/` 聚焦顶部搜索框，支持模糊搜索 |
 | **一键捕获** | 点工具栏「保存标签页」旁边的「**一键捕获**」，或在页面空白处按 `C`：把当前窗口所有网页标签页存进新集合「Captured · HH:mm」，**默认不关闭标签页**，8 秒内可撤销 |
 | **拖已打开标签进集合** | 展开工具栏下方的「**已打开标签**」面板，把某个标签页拖到任意集合上松开，就会在该集合里新建一条书签，8 秒内可撤销 |
@@ -269,7 +331,7 @@ chrome://extensions
 
 ### 6.1 运行同步脚本
 
-**Mac**（终端）：
+**Mac / Linux**（终端）：
 
 ```bash
 cd ~/code/chrome_personal_bookmark
@@ -340,8 +402,12 @@ bash scripts/sync.sh
 - 主题、语言等界面偏好和 Claude API Key 会被 Chrome 清除。
 - **删除代码文件夹**（可选）：
   - Mac：在访达（Finder）中把 `~/code/chrome_personal_bookmark` 拖到废纸篓；或在终端执行 `rm -rf ~/code/chrome_personal_bookmark`（会直接删除，无法从废纸篓恢复）。
+  - Linux：在文件管理器中删除 `~/code/chrome_personal_bookmark`；或在终端执行 `rm -rf ~/code/chrome_personal_bookmark`（会直接删除）。
   - Windows：在文件资源管理器中删除 `C:\Users\<你的用户名>\code\chrome_personal_bookmark` 文件夹。
-- Git 和 Node.js 如果其他地方用不到，也可以按普通软件的方式卸载（Windows：「设置 → 应用」；Mac 上 Node.js 无图形卸载程序，保留不影响使用）。
+- Git 和 Node.js 如果其他地方用不到，也可以按普通软件的方式卸载：
+  - Windows：「设置 → 应用」；
+  - Mac：Node.js 无图形卸载程序，保留不影响使用；
+  - Linux：若用 NodeSource 安装，可 `sudo apt purge -y nodejs`；若用 nvm，删除 `~/.nvm` 并清理 `~/.bashrc` 里 nvm 相关行即可。Git 可用 `sudo apt remove -y git`。Google Chrome 可用 `sudo apt purge -y google-chrome-stable`。
 
 ---
 
@@ -352,7 +418,7 @@ bash scripts/sync.sh
 完整报错类似：
 
 - Windows：`'vite' 不是内部或外部命令，也不是可运行的程序或批处理文件。`（英文系统：`'vite' is not recognized as an internal or external command, operable program or batch file.`）
-- Mac：`sh: vite: command not found`
+- Mac / Linux：`sh: vite: command not found` / `vite: command not found`
 
 **原因**：依赖没有安装，或安装得不完整（`node_modules` 缺失或过期）。
 
@@ -363,7 +429,7 @@ npm ci
 npm run build
 ```
 
-（Windows 先 `cd /d "%USERPROFILE%\code\chrome_personal_bookmark"`，Mac 先 `cd ~/code/chrome_personal_bookmark`。）然后去 `chrome://extensions` 点「重新加载」。
+（Windows 先 `cd /d "%USERPROFILE%\code\chrome_personal_bookmark"`，Mac / Linux 先 `cd ~/code/chrome_personal_bookmark`。）然后去 `chrome://extensions` 点「重新加载」。
 
 ### 9.2 同步脚本提示 `tracked files have uncommitted changes`
 
@@ -439,3 +505,13 @@ npm run build
 - 确认 `chrome://extensions` 里 TabHub 的开关是开启的；
 - 如果之前在提示里点了「改回」（Change it back），TabHub 会被停用，重新打开开关即可；
 - 如果同时装了其他会修改新标签页的扩展，它们会互相冲突，请停用其他新标签页扩展。
+
+### 9.8 Linux：用了 Ubuntu 自带的 `apt install nodejs`，版本太旧
+
+**现象**：`node -v` 显示低于 `v20.19.0`（例如 `v12` / `v18`），或 `npm ci` / 测试报错与 Node 版本有关。
+
+**解决**：按 [第 1.3 节](#13-nodejs会同时安装-npm) 用 **NodeSource**（`setup_24.x`）或 **nvm** 安装符合要求的 Node，装好后重新打开终端，再在代码目录执行 `npm ci` 与 `npm run build`（或 `bash scripts/sync.sh`）。
+
+### 9.9 Linux：用 Chromium 代替 Google Chrome 可以吗？
+
+可以尝试，但**不推荐作为正式使用路径**。Chromium（含 Snap 版）在新标签页覆盖提示、扩展「加载已解压的扩展程序」的文件对话框、以及部分企业策略上可能与 Google Chrome 不同。TabHub 文档与测试以 **Google Chrome** 为准；若新标签页没有变成 TabHub，或扩展加载异常，请改用官方 Chrome（见 [第 1.1 节](#11-google-chrome)），并对照 [FAQ 9.7](#97-打开新标签页还是-chrome-默认页面)。
