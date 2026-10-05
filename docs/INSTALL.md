@@ -168,15 +168,15 @@ npm -v
 
 | 系统 | 推荐位置 |
 |------|----------|
-| **Mac** | `~/Canada_DEV/chrome_personal_bookmark`（即 `/Users/<你的用户名>/Canada_DEV/chrome_personal_bookmark`） |
-| **Windows** | `C:\Users\<你的用户名>\Canada_DEV\chrome_personal_bookmark` |
-| **Linux** | `~/Canada_DEV/chrome_personal_bookmark`（即 `/home/<你的用户名>/Canada_DEV/chrome_personal_bookmark`） |
+| **Mac** | `~/code/chrome_personal_bookmark`（即 `/Users/<你的用户名>/code/chrome_personal_bookmark`） |
+| **Windows** | `C:\Users\<你的用户名>\code\chrome_personal_bookmark` |
+| **Linux** | `~/code/chrome_personal_bookmark`（即 `/home/<你的用户名>/code/chrome_personal_bookmark`） |
 
 ### Windows（在「命令提示符」里逐行执行）
 
 ```bat
-mkdir "%USERPROFILE%\Canada_DEV"
-cd /d "%USERPROFILE%\Canada_DEV"
+mkdir "%USERPROFILE%\code"
+cd /d "%USERPROFILE%\code"
 git clone https://github.com/yiyunlu/chrome_personal_bookmark.git
 cd chrome_personal_bookmark
 ```
@@ -187,13 +187,13 @@ cd chrome_personal_bookmark
 ### Mac / Linux（在「终端」里逐行执行）
 
 ```bash
-mkdir -p ~/Canada_DEV
-cd ~/Canada_DEV
+mkdir -p ~/code
+cd ~/code
 git clone https://github.com/yiyunlu/chrome_personal_bookmark.git
 cd chrome_personal_bookmark
 ```
 
-**成功的样子**：`git clone` 会显示 `Cloning into 'chrome_personal_bookmark'...` 和下载进度，最后没有出现 `fatal:` 字样的错误。之后在文件管理器里能看到 `Canada_DEV` 文件夹下多了 `chrome_personal_bookmark` 文件夹。
+**成功的样子**：`git clone` 会显示 `Cloning into 'chrome_personal_bookmark'...` 和下载进度，最后没有出现 `fatal:` 字样的错误。之后在文件管理器里能看到 `code` 文件夹下多了 `chrome_personal_bookmark` 文件夹。
 
 > 如果提示 `fatal: destination path 'chrome_personal_bookmark' already exists`，说明之前已经下载过，直接 `cd chrome_personal_bookmark` 进入，然后看 [第 6 节 更新](#6-以后如何更新) 即可。
 
@@ -223,12 +223,12 @@ npm run build
 
 - **Mac / Linux**：
   ```bash
-  cd ~/Canada_DEV/chrome_personal_bookmark
+  cd ~/code/chrome_personal_bookmark
   bash scripts/sync.sh
   ```
 - **Windows**（命令提示符）：
   ```bat
-  cd /d "%USERPROFILE%\Canada_DEV\chrome_personal_bookmark"
+  cd /d "%USERPROFILE%\code\chrome_personal_bookmark"
   scripts\sync.cmd
   ```
 
@@ -245,8 +245,8 @@ sync: Reload the extension at chrome://extensions (click the reload icon on TabH
 
 打开代码目录，确认有一个 `dist` 文件夹，里面有 `manifest.json`、`index.html` 等文件：
 
-- Mac / Linux：`~/Canada_DEV/chrome_personal_bookmark/dist`
-- Windows：`C:\Users\<你的用户名>\Canada_DEV\chrome_personal_bookmark\dist`
+- Mac / Linux：`~/code/chrome_personal_bookmark/dist`
+- Windows：`C:\Users\<你的用户名>\code\chrome_personal_bookmark\dist`
 
 ---
 
@@ -270,9 +270,9 @@ chrome://extensions
 
 1. 开启开发者模式后，页面左上方会出现一排按钮，点击「**加载已解压的扩展程序**」（Load unpacked）。
 2. 在弹出的选择文件夹窗口中，找到并选中 **`dist`** 文件夹：
-   - **Mac**：按 `⌘ + Shift + G`，粘贴 `~/Canada_DEV/chrome_personal_bookmark/dist`，回车，然后点「**选择**」（Select）。
-   - **Windows**：在窗口顶部地址栏粘贴 `%USERPROFILE%\Canada_DEV\chrome_personal_bookmark\dist`（或 `C:\Users\<你的用户名>\Canada_DEV\chrome_personal_bookmark\dist`），回车，然后点「**选择文件夹**」（Select Folder）。
-   - **Linux**：在文件选择对话框中导航到 `~/Canada_DEV/chrome_personal_bookmark/dist`（或按 `Ctrl + L` 输入路径 `/home/<你的用户名>/Canada_DEV/chrome_personal_bookmark/dist`），选中 **`dist`** 后确认。
+   - **Mac**：按 `⌘ + Shift + G`，粘贴 `~/code/chrome_personal_bookmark/dist`，回车，然后点「**选择**」（Select）。
+   - **Windows**：在窗口顶部地址栏粘贴 `%USERPROFILE%\code\chrome_personal_bookmark\dist`（或 `C:\Users\<你的用户名>\code\chrome_personal_bookmark\dist`），回车，然后点「**选择文件夹**」（Select Folder）。
+   - **Linux**：在文件选择对话框中导航到 `~/code/chrome_personal_bookmark/dist`（或按 `Ctrl + L` 输入路径 `/home/<你的用户名>/code/chrome_personal_bookmark/dist`），选中 **`dist`** 后确认。
 3. 注意：要选的是 **`dist` 这个文件夹本身**（打开后能看到 `manifest.json`），不要选上一层的 `chrome_personal_bookmark`。
 
 成功后，扩展列表里会出现一张 **TabHub** 卡片（显示版本号，如 `0.1.0`），右下角开关为开启状态。
@@ -334,17 +334,17 @@ chrome://extensions
 **Mac / Linux**（终端）：
 
 ```bash
-cd ~/Canada_DEV/chrome_personal_bookmark
+cd ~/code/chrome_personal_bookmark
 bash scripts/sync.sh
 ```
 
 **Windows**，两种方式任选：
 
-- **方式一（双击）**：在文件资源管理器中打开 `C:\Users\<你的用户名>\Canada_DEV\chrome_personal_bookmark\scripts`，**双击 `sync.cmd`**。
+- **方式一（双击）**：在文件资源管理器中打开 `C:\Users\<你的用户名>\code\chrome_personal_bookmark\scripts`，**双击 `sync.cmd`**。
   - 注意：脚本运行结束后窗口会**自动关闭**，来不及看结果。如果窗口一闪而过、或者更新后没有变化，请用方式二重新运行，看清提示。
 - **方式二（命令提示符，推荐）**：
   ```bat
-  cd /d "%USERPROFILE%\Canada_DEV\chrome_personal_bookmark"
+  cd /d "%USERPROFILE%\code\chrome_personal_bookmark"
   scripts\sync.cmd
   ```
 
@@ -401,9 +401,9 @@ bash scripts/sync.sh
   > ⚠️ 删除 `TabHub` 文件夹会同时删除里面的所有书签；如果开启了 Chrome 同步，其他设备上的也会一起被删除。删除前请确认。
 - 主题、语言等界面偏好和 Claude API Key 会被 Chrome 清除。
 - **删除代码文件夹**（可选）：
-  - Mac：在访达（Finder）中把 `~/Canada_DEV/chrome_personal_bookmark` 拖到废纸篓；或在终端执行 `rm -rf ~/Canada_DEV/chrome_personal_bookmark`（会直接删除，无法从废纸篓恢复）。
-  - Linux：在文件管理器中删除 `~/Canada_DEV/chrome_personal_bookmark`；或在终端执行 `rm -rf ~/Canada_DEV/chrome_personal_bookmark`（会直接删除）。
-  - Windows：在文件资源管理器中删除 `C:\Users\<你的用户名>\Canada_DEV\chrome_personal_bookmark` 文件夹。
+  - Mac：在访达（Finder）中把 `~/code/chrome_personal_bookmark` 拖到废纸篓；或在终端执行 `rm -rf ~/code/chrome_personal_bookmark`（会直接删除，无法从废纸篓恢复）。
+  - Linux：在文件管理器中删除 `~/code/chrome_personal_bookmark`；或在终端执行 `rm -rf ~/code/chrome_personal_bookmark`（会直接删除）。
+  - Windows：在文件资源管理器中删除 `C:\Users\<你的用户名>\code\chrome_personal_bookmark` 文件夹。
 - Git 和 Node.js 如果其他地方用不到，也可以按普通软件的方式卸载：
   - Windows：「设置 → 应用」；
   - Mac：Node.js 无图形卸载程序，保留不影响使用；
@@ -429,7 +429,7 @@ npm ci
 npm run build
 ```
 
-（Windows 先 `cd /d "%USERPROFILE%\Canada_DEV\chrome_personal_bookmark"`，Mac / Linux 先 `cd ~/Canada_DEV/chrome_personal_bookmark`。）然后去 `chrome://extensions` 点「重新加载」。
+（Windows 先 `cd /d "%USERPROFILE%\code\chrome_personal_bookmark"`，Mac / Linux 先 `cd ~/code/chrome_personal_bookmark`。）然后去 `chrome://extensions` 点「重新加载」。
 
 ### 9.2 同步脚本提示 `tracked files have uncommitted changes`
 

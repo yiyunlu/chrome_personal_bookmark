@@ -1,18 +1,18 @@
-# TabHub 精简 Smoke（无 Eddie）
+# TabHub 精简 Smoke（无坐镇用户）
 
-面向验收 / Bot：在 **不依赖 Eddie 坐镇** 的情况下，对 `ui/shadcn-migration` 构建产物做一轮可勾选的浏览器冒烟。
+面向验收 / Bot：在 **不依赖特定用户坐镇** 的情况下，对 `ui/shadcn-migration` 构建产物做一轮可勾选的浏览器冒烟。
 
 ## 边界（必读）
 
 - **本剧本不替代** `SHADCN_MIGRATION.md` 里的全量 Manual smoke list。
-- **全量手册 smoke 仍挡 merge**（含 PR #3 → `main`）。本剧本只证明「无 Eddie 也能独立跑完一批高风险项并留证据」。
+- **全量手册 smoke 仍挡 merge**（含 PR #3 → `main`）。本剧本只证明「无坐镇用户也能独立跑完一批高风险项并留证据」。
 - 自动化门禁（`npm test` / `scripts/verify-ui.sh` / CI）**测不到** 真拖拽、真实 popper 布局、扩展 runtime；下列项必须真人（或有 Chrome/扩展权限的验收）在本机点。
 
 条目来源：自 `SHADCN_MIGRATION.md` Manual smoke list 抽出的高信号项（拖↔右键、对话框+Undo、Select 高度、dark 描边、嵌套确认、关键对话框 console）。
 
 ## 前置
 
-1. 仓库：`/Users/eddielu/Canada_DEV/chrome_personal_bookmark`，分支 `ui/shadcn-migration`（或与待验 PR 相同 tip）。
+1. 仓库：`<repo-root>`（或 `$REPO_ROOT`），分支 `ui/shadcn-migration`（或与待验 PR 相同 tip）。
 2. `npm ci && npm run build`（或确认本地 `dist/` 与 tip 一致）。
 3. Chrome → `chrome://extensions` → 开发者模式 → **加载已解压的扩展程序** → 选仓库根下的 `dist/`。
 4. 打开一个新标签页（TabHub 新标签页）；开 **DevTools Console**，保持打开直到本轮结束。
@@ -123,6 +123,6 @@ HEAD:
 
 ## 不在本剧本内（提醒）
 
-- 视觉「好不好看」全面扫、真 favicon vs 字母 tile 字节比对、拖拽中 tooltip 抑制等：可抽样或合前 Eddie 抽查。
+- 视觉「好不好看」全面扫、真 favicon vs 字母 tile 字节比对、拖拽中 tooltip 抑制等：可抽样或合前由验收人抽查。
 - 键盘到达 Undo（对话框打开时 Tab 进 toast）：手册标明 **known unfixed**，本精简剧本不设为挡板项。
 - 全量 8 对话框逐一打开、identity tile、collapsed rail 节奏等：仍属全量 smoke。
