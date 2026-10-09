@@ -172,6 +172,16 @@ TRASH_FOLDER_NAME = '.TabHub Trash'
 - **Styling**: Tailwind token classes only, merged with `cn()`; no inline colour styles, no raw `<button>` (use `<Button>`), no stock Tailwind palette colours — see the Style contract in `SHADCN_MIGRATION.md`
 - **URL normalization**: `normalizeUrlKey()` strips protocol/trailing slashes for dedup
 
+## 云端开发布局
+
+1. **日常功能开发在云端机器进行**；Mac/Windows 本地不开 feature worktree。
+2. **路径约定**：
+   - 主仓库克隆：`/workspace/tabhub/repo`
+   - 工单分支 worktree：`/workspace/tabhub/wt/<ticket-id>`
+   - QA 检出：`/workspace/tabhub/qa/<sha>`
+3. **本地机器仅保留同步副本**；使用 `scripts/sync.sh`（Mac/Linux）或 `scripts/sync.cmd`（Windows）拉取并构建。
+4. **合并方式**：通过 PR 以 merge commit（`--merge`）合入 main；禁止直接 push main；除非明确授权，禁止 force-push。
+
 ## Key Features
 
 - Bookmark CRUD with drag-and-drop reordering (within/between collections), in **grid or list view** (toggle in the toolbar, persisted); tags render in list view only
