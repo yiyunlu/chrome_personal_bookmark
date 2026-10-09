@@ -1313,6 +1313,8 @@ function App() {
       setSettingsOpen(false);
     } else if (chatOpen) {
       setChatOpen(false);
+    } else if (manageMode) {
+      setManageMode(false);
     }
   }, [
     paletteOpen,
@@ -1326,7 +1328,8 @@ function App() {
     showTrash,
     saveTabsState,
     settingsOpen,
-    chatOpen
+    chatOpen,
+    manageMode
   ]);
 
   useKeyboardShortcuts({
