@@ -533,11 +533,10 @@ with the DevTools console open. Record the result in the status table's last col
   dialog — discarding the tab selection. `DialogShell` now ignores pointer-downs inside
   `[data-sonner-toaster]`; `src/test/dialogToastGuard.test.jsx` guards it and was
   mutation-checked, but only a browser exercises the real deferred-click path.
-- the same scenario with the keyboard: **known unfixed.** Radix's `FocusScope` is trapped
-  while a dialog is open, so the Undo button cannot be reached by `Tab` (nor by Sonner's
-  hotkey). The mouse path and the screen-reader announcement work; keyboard-only users
-  must close the dialog first. Fixing it means registering the toast as a Radix
-  dismissable *branch*, which is a larger change than this phase warranted.
+- the same scenario with the keyboard (UI-OPT-1): **fixed.** While a modal is open,
+  `UndoToast`'s `elevate` path installs `undoDialogFocus.js` — a capture-phase Tab loop
+  bridge plus a `focusin` guard so Radix `FocusScope` does not yank focus off the undo
+  chip. Mouse path unchanged (`DismissableLayerBranch` + `DialogShell` outside-click guard).
 - open Trash: `Escape` closes it, focus is trapped, focus returns to the opener, a
   backdrop click still dismisses, and a long trash list scrolls rather than clipping
   (its scroll region moved from `flex-1 overflow-y-auto` to `maxHeight: 60vh`). **No test

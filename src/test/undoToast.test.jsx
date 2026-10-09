@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { UndoToast } from '../components/UndoToast';
+import { getTabbables, handleUndoDialogTabKey } from '../lib/undoDialogFocus';
 import { EditBookmarkModal } from '../components/EditBookmarkModal';
 import { useUndoStack } from '../hooks/useUndoStack';
 import { tick } from './dialogHelpers';
@@ -207,6 +208,25 @@ describe('UndoToast reachability while a dialog is open', () => {
 
     fireEvent.click(undoButton());
     expect(onUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it('reaches Undo via Tab while the dialog is open (keyboard bridge)', async () => {
+    const onUndo = vi.fn();
+    await renderWithDialog(onUndo);
+
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    const last = getTabbables(dialog).at(-1);
+    last.focus();
+
+    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    handleUndoDialogTabKey(tabEvent);
+    const undo = undoButton();
+    expect(document.activeElement).toBe(undo);
+
+    fireEvent.click(undo);
+    expect(onUndo).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('stacks its body popover container above the dialog layers', async () => {
