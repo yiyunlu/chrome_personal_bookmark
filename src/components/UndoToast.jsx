@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { DismissableLayerBranch } from '@radix-ui/react-dismissable-layer';
 import { Undo2 } from 'lucide-react';
 import { t } from '../lib/i18n';
+import { installUndoDialogFocusBridge } from '../lib/undoDialogFocus';
 import { Button } from './ui/button';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -33,6 +34,10 @@ import { Button } from './ui/button';
    `shouldHandlePointerDownOutside` returns false and Save Tabs never starts
    the outside-dismiss flow when Undo is clicked (preventDefault alone was
    unreliable for HTML popover top-layer target/focus paths).
+
+   Keyboard (UI-OPT-1): `FocusScope` still traps Tab inside the dialog, so
+   `installUndoDialogFocusBridge` (see `undoDialogFocus.js`) extends the loop to
+   this button and blocks the trap's document `focusin` redirect while elevated.
    ──────────────────────────────────────────────────────────────────────────── */
 
 const TOAST_STYLE = {
@@ -109,6 +114,11 @@ export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false
   useLayoutEffect(() => {
     onUndoRef.current = onUndo;
   }, [onUndo]);
+
+  useLayoutEffect(() => {
+    if (!elevate || !undoToast) return undefined;
+    return installUndoDialogFocusBridge();
+  }, [elevate, undoToast]);
 
   useLayoutEffect(() => {
     const el = layerRef.current;
