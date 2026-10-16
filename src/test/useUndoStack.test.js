@@ -165,7 +165,12 @@ describe('useUndoStack', () => {
       const { result } = renderHook(() => useUndoStack());
       // Create a slow undo that we can control
       let resolveUndo;
-      const undoFn = vi.fn(() => new Promise((resolve) => { resolveUndo = resolve; }));
+      const undoFn = vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveUndo = resolve;
+          })
+      );
 
       act(() => {
         result.current.showUndo('Slow undo', undoFn);
@@ -212,6 +217,17 @@ describe('useUndoStack', () => {
       });
 
       expect(result.current.undoToast).toBeNull();
+    });
+
+    it('handleUndo is a no-op when undo is null (notice toast)', async () => {
+      const { result } = renderHook(() => useUndoStack());
+      act(() => {
+        result.current.showUndo('notice', null);
+      });
+      await act(async () => {
+        await result.current.handleUndo();
+      });
+      expect(result.current.undoToast).toMatchObject({ message: 'notice', undo: null, pending: false });
     });
   });
 });

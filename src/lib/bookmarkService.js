@@ -266,7 +266,7 @@ export async function getOpenTabs() {
 
 // Local wall-clock timestamp — toISOString() would label the folder in UTC,
 // so an evening save could show tomorrow's date.
-function defaultSaveFolderName(now = new Date()) {
+export function defaultSaveFolderName(now = new Date()) {
   const pad = (n) => String(n).padStart(2, '0');
   return (
     `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
@@ -284,15 +284,13 @@ export async function saveCurrentWindowTabsToCollection(rootId, { tabs, folderNa
     title: name
   });
 
-  await Promise.all(
-    savableTabs.map((tab) =>
-      createBookmark({
-        parentId: folder.id,
-        title: tab.title || tab.url,
-        url: tab.url
-      })
-    )
-  );
+  for (const tab of savableTabs) {
+    await createBookmark({
+      parentId: folder.id,
+      title: tab.title || tab.url,
+      url: tab.url
+    });
+  }
 
   return folder;
 }

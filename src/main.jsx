@@ -24,6 +24,7 @@ import {
   removeCollectionFolder,
   renameCollectionFolder,
   saveCurrentWindowTabsToCollection,
+  defaultSaveFolderName,
   updateBookmark
 } from './lib/bookmarkService';
 import { logError, normalizeUrlKey, sortSnapshots } from './lib/utils';
@@ -716,7 +717,7 @@ function App() {
     }
     // Do not touch the undo stack here: smoke 7 needs the delete-undo chip to
     // stay alive while Save Tabs is open (elevate restacks the popover chip).
-    const folderName = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const folderName = defaultSaveFolderName();
     setSaveTabsState({ tabs: openTabs, folderName });
   }, [showUndo]);
 
@@ -775,18 +776,22 @@ function App() {
       try {
         if (targetCollectionId) {
           // Save directly into an existing collection
-          await Promise.all(
-            selectedTabs.map((tab) => addBookmarkToFolder(targetCollectionId, tab.title || tab.url, tab.url))
-          );
+          for (const tab of selectedTabs) {
+            await addBookmarkToFolder(targetCollectionId, tab.title || tab.url, tab.url);
+          }
         } else {
           // New collection — create a named folder under the active source
           const rootId = activeSourceId || tabHubRootId;
           if (!rootId) return;
-          const name = folderName || new Date().toISOString().slice(0, 19).replace('T', ' ');
+          const name = folderName || defaultSaveFolderName();
           await saveCurrentWindowTabsToCollection(rootId, { tabs: selectedTabs, folderName: name });
         }
 
         showUndo(t('savedTabs', selectedTabs.length), null);
+        await refresh(activeSourceRef.current);
+      } catch (e) {
+        logError('handleSaveTabsConfirm', e);
+        showUndo(t('saveTabsFailed'), null);
         await refresh(activeSourceRef.current);
       } finally {
         setSaveTabsState(null);
@@ -1941,17 +1946,7 @@ function App() {
         undoToast={undoToast}
         onUndo={() => handleUndo(() => refresh(activeSourceRef.current))}
         theme={resolvedTheme}
-        elevate={Boolean(
-          paletteOpen ||
-          saveTabsState ||
-            editorState ||
-            settingsOpen ||
-            showTrash ||
-            confirmDialog ||
-            promptDialog ||
-            aiCategorizeState ||
-            deadLinkState
-        )}
+        elevate={modalOpen}
       />
     </>
   );
