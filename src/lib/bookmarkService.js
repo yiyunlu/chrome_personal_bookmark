@@ -450,13 +450,20 @@ export async function moveBookmark(bookmarkId, parentId, index) {
 // absolute index is correct for cross-folder and both same-folder directions.
 // A null/past-the-end position appends to the folder. Children are fetched at
 // call time, so this is also safe inside deferred undo callbacks.
-export async function moveBookmarkToCardPosition(bookmarkId, parentId, cardPosition) {
-  const children = await getChildrenApi(parentId);
+// `cardPosition` is the dragged card's final position among the rendered cards, which
+// equals its position in the card list with the dragged card removed.
+export function computeCardMoveIndex(children, bookmarkId, cardPosition) {
   const cards = children.filter((node) => !!node.url && node.id !== bookmarkId);
   const nextCard = cardPosition == null ? undefined : cards[cardPosition];
+  return nextCard ? nextCard.index : undefined;
+}
+
+export async function moveBookmarkToCardPosition(bookmarkId, parentId, cardPosition) {
+  const children = await getChildrenApi(parentId);
+  const index = computeCardMoveIndex(children, bookmarkId, cardPosition);
   return moveBookmarkApi(bookmarkId, {
     parentId,
-    ...(nextCard ? { index: nextCard.index } : {})
+    ...(index !== undefined ? { index } : {})
   });
 }
 

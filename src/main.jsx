@@ -560,28 +560,11 @@ function App() {
                 return;
               }
 
-              const draggedCard = cardById.get(bookmarkId);
-              const oldChromeIndex = draggedCard?.index ?? oldIndex;
-
-              // Translate DOM newIndex to Chrome bookmark index
-              const targetCollectionId = evt.to.getAttribute('data-cards-collection-id');
-              const targetCol = visibleCollections.find((c) => c.id === targetCollectionId);
-              let chromeNewIndex;
-              if (targetCol && targetCol.cards.length > 0) {
-                if (newIndex < targetCol.cards.length) {
-                  chromeNewIndex = targetCol.cards[newIndex].index;
-                } else {
-                  const lastCard = targetCol.cards[targetCol.cards.length - 1];
-                  chromeNewIndex = lastCard.index + 1;
-                }
-              } else {
-                chromeNewIndex = newIndex;
-              }
-
-              await moveBookmark(bookmarkId, newParentId, chromeNewIndex);
+              // newIndex is a card position, not a chrome child index
+              await moveBookmarkToCardPosition(bookmarkId, newParentId, newIndex);
 
               showUndo(t('movedBookmarks', 1), async () => {
-                await moveBookmark(bookmarkId, oldParentId, oldChromeIndex);
+                await moveBookmarkToCardPosition(bookmarkId, oldParentId, oldIndex);
               });
 
               for (const s of cardSortablesRef.current.values()) {
@@ -613,7 +596,7 @@ function App() {
       cancelAnimationFrame(rafId);
       safeDestroyAll();
     };
-  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo, refresh, cardById]);
+  }, [cardDragEnabled, visibleCollections, collapsedCollectionIds, showUndo, refresh]);
 
   // --- Business logic ---
 
