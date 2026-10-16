@@ -53,12 +53,14 @@
     │   ├── EmptyState.jsx            # Filtered-empty-state card (no search hits / empty collection)
     │   ├── OpenTabsPanel.jsx         # FEAT-3 collapsed-by-default drag source: current-window http(s) tabs
     │   ├── PromptModal.jsx           # Prompt input dialog
+    │   ├── SaveTabsModal.jsx         # Save current-window tabs to a collection
     │   ├── SettingsModal.jsx         # Settings dialog (API key, preferences)
     │   ├── Sidebar.jsx               # Rail: source Select, all-collections, 分类 nav, bottom bar (theme/settings)
     │   ├── Toolbar.jsx               # Search + view toggle + 管理 row, then actions row; BatchToolbar
-    │   ├── UndoToast.jsx             # Sonner toaster (takes `theme` as a prop; no next-themes)
+    │   ├── UndoToast.jsx             # Undo chip: HTML popover (top layer), not Sonner; takes `theme` as a prop
     │   └── WelcomeCard.jsx           # Onboarding card
     ├── hooks/
+    │   ├── useCollections.js         # Collections/sources loading + bookmark sync subscription
     │   ├── useKeyboardShortcuts.js   # Keyboard event handler (shortcuts + Escape)
     │   ├── useTheme.js               # Theme detection, persistence, toggling
     │   └── useUndoStack.js           # Undo snapshot + timer logic
@@ -79,6 +81,7 @@
     │   ├── sortCards.js              # Sort comparators (manual/recent/title/domain) + drag-enabled rule
     │   ├── storage.js                # chrome.storage.local get/set wrappers
     │   ├── taxonomy.js               # Category taxonomy for AI categorization
+    │   ├── undoDialogFocus.js        # Keeps the Undo toast keyboard-reachable while a dialog is open
     │   ├── types.js                  # Shared type definitions / constants
     │   └── utils.js                  # faviconCandidates, normalizeUrlKey, sortSnapshots
     └── test/                         # Vitest suites + Chrome API mock (setup.js)
@@ -136,7 +139,7 @@ Returns `{suggestions: [{bookmarkId, targetCollectionTitle, reason}], newCollect
 `src/lib/chatService.js` parses natural language commands (search, move, delete, find duplicates, organize, info/stats) and executes them against bookmark data. Falls back to Claude API for NLU when API key is set.
 
 ### Theming
-Managed by `useTheme` hook. The palette is the `--ui-*` token set in `index.css` (light on `:root`, dark on `:root[data-theme='dark']`), toggled via the `data-theme` attribute on `<html>` — Tailwind's `darkMode` keys off that attribute, not a `.dark` class. Preference persisted to `chrome.storage.local`. The theme control is an icon-only segmented control (system / light / dark) in the sidebar's bottom bar. Visuals follow the Claude Design file `TabHub.dc.html` (warm neutral, blue accent, IBM Plex, 13px base); behaviour follows the existing app — `SHADCN_MIGRATION.md` records the split.
+Managed by `useTheme` hook. The palette is the `--ui-*` token set in `index.css` (light on `:root`, dark on `:root[data-theme='dark']`), toggled via the `data-theme` attribute on `<html>` — Tailwind's `darkMode` keys off that attribute, not a `.dark` class. Preference persisted to `chrome.storage.local`. The theme control is a single icon button in the sidebar's bottom bar that cycles system → light → dark. Visuals follow the Claude Design file `TabHub.dc.html` (warm neutral, blue accent, IBM Plex, 13px base); behaviour follows the existing app — `SHADCN_MIGRATION.md` records the split.
 
 ### Styling approach
 **Token classes only.** Every colour is a Tailwind class mapped to a `--ui-*` token in `tailwind.config.js` (`bg-card`, `text-muted-foreground`, `text-faint`, `border-border`, `bg-primary/10`, `shadow-panel`, `bg-scrim/40` …). There is **no** legacy `--accent` / `--panel-bg` alias layer any more and **no** inline `style={{ color: 'var(--…)' }}` — gate 12 counts both at 0. Compose vendored `src/components/ui/*` primitives; never edit them. Class merging goes through `cn()` from `src/lib/cn.js`, and tailwind-merge has five documented ways to silently drop a class you meant to keep (a later `text-*` deletes `leading-*`; an arbitrary value loses to a named one; custom utilities only merge because `cn.js` registers them; a responsive prefix is its own group; a `hover:` variant is its own group) — **resolve the merged string through `cn()` before believing an override works**. The full contract (colour table, radius scale, control-relative icon sizes, Button variants, typography) is the "Style contract" section of `SHADCN_MIGRATION.md`.

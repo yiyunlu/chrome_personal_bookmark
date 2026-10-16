@@ -124,5 +124,5 @@ HEAD:
 ## 不在本剧本内（提醒）
 
 - 视觉「好不好看」全面扫、真 favicon vs 字母 tile 字节比对、拖拽中 tooltip 抑制等：可抽样或合前由验收人抽查。
-- 键盘到达 Undo（对话框打开时 Tab 进 toast）：手册标明 **known unfixed**，本精简剧本不设为挡板项。
+- 键盘到达 Undo（对话框打开时 Tab 进 toast）：已由 UI-OPT-1 修复；本精简剧本仍不设为挡板项，可在全量 smoke 中抽查。
 - 全量 8 对话框逐一打开、identity tile、collapsed rail 节奏等：仍属全量 smoke。
