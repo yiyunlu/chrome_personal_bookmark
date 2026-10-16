@@ -140,14 +140,15 @@ describe('Toolbar — the behaviour the redesign must not change', () => {
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(t('saveTabs')) }));
     fireEvent.click(screen.getByRole('button', { name: new RegExp(t('autoOrganize')) }));
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(t('aiCategorize')) }));
     fireEvent.click(deadLinkButton());
     fireEvent.click(screen.getByRole('button', { name: new RegExp(t('newCollection')) }));
     fireEvent.click(screen.getByRole('button', { name: new RegExp(t('enterManageMode')) }));
 
     expect(handlers.onSaveTabs).toHaveBeenCalledTimes(1);
     expect(handlers.onAutoOrganize).toHaveBeenCalledTimes(1);
-    expect(handlers.onAICategorize).toHaveBeenCalledTimes(1);
+    // AI categorize entry point is hidden (HIDE-AI-1)
+    expect(screen.queryByRole('button', { name: new RegExp(t('aiCategorize')) })).toBeNull();
+    expect(handlers.onAICategorize).not.toHaveBeenCalled();
     expect(handlers.onCheckDeadLinks).toHaveBeenCalledTimes(1);
     expect(handlers.onNewCollection).toHaveBeenCalledTimes(1);
     expect(handlers.onToggleManage).toHaveBeenCalledTimes(1);
