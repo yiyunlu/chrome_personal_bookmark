@@ -15,6 +15,9 @@ export function useKeyboardShortcuts({
     const onKeyDown = (event) => {
       // Escape works everywhere, including inside inputs and while overlays are open.
       if (event.key === 'Escape') {
+        // Radix layers (Select, Popover ...) preventDefault on Esc without stopping
+        // propagation; that Esc already belonged to them.
+        if (event.defaultPrevented) return;
         if (onEscape) onEscape();
         return;
       }

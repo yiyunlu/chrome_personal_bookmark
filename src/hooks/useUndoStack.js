@@ -23,7 +23,7 @@ export function useUndoStack() {
       clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
     }
-    setUndoToast({ id, message, undo, pending: false });
+    setUndoToast({ id, message, undo: undo ?? null, pending: false });
     undoTimerRef.current = setTimeout(() => {
       setUndoToast((prev) => (prev?.id === id ? null : prev));
       undoTimerRef.current = null;
@@ -32,7 +32,7 @@ export function useUndoStack() {
 
   const handleUndo = useCallback(
     async (onAfterUndo) => {
-      if (!undoToast || undoToast.pending) return;
+      if (!undoToast || undoToast.pending || typeof undoToast.undo !== 'function') return;
       const action = undoToast;
       setUndoToast((prev) => (prev ? { ...prev, pending: true } : prev));
       try {

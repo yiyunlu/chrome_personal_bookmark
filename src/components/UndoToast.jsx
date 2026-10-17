@@ -59,16 +59,18 @@ function UndoToastBody({ message, pending, onUndo }) {
   return (
     <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5 text-card-foreground shadow-panel">
       <span className="text-sm">{message}</span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={onUndo}
-        className="h-auto gap-1 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary [&_svg]:size-3"
-      >
-        <Undo2 />
-        {pending ? t('undoing') : t('undo')}
-      </Button>
+      {onUndo ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onUndo}
+          className="h-auto gap-1 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary [&_svg]:size-3"
+        >
+          <Undo2 />
+          {pending ? t('undoing') : t('undo')}
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -154,7 +156,7 @@ export function UndoToast({ undoToast, onUndo, theme = 'system', elevate = false
         <UndoToastBody
           message={undoToast.message}
           pending={!!undoToast.pending}
-          onUndo={() => onUndoRef.current?.()}
+          onUndo={undoToast.undo === null ? null : () => onUndoRef.current?.()}
         />
       ) : null}
     </DismissableLayerBranch>,

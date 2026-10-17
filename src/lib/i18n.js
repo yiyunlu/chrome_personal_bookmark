@@ -166,6 +166,7 @@ const dictionaries = {
     openTabSaved: (title, collection) => `已保存「${title}」到「${collection}」`,
     openTabDuplicate: (title, collection) => `「${collection}」中已有「${title}」，已跳过`,
     openTabSaveFailed: '保存失败：标签页没有被添加',
+    saveTabsFailed: '保存标签页失败',
     // Shortcuts
     shortcutSaveKey: '快捷键: S',
     shortcutOrganizeKey: '快捷键: O',
@@ -425,6 +426,7 @@ const dictionaries = {
     openTabSaved: (title, collection) => `Saved "${title}" to "${collection}"`,
     openTabDuplicate: (title, collection) => `Already saved "${title}" in "${collection}", skipped`,
     openTabSaveFailed: 'Save failed: the tab was not added',
+    saveTabsFailed: 'Failed to save tabs',
     // Shortcuts
     shortcutSaveKey: 'Shortcut: S',
     shortcutOrganizeKey: 'Shortcut: O',

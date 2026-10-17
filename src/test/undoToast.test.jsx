@@ -110,6 +110,24 @@ describe('UndoToast', () => {
     expect(onUndo).toHaveBeenCalledTimes(1);
   });
 
+  it('renders a notice (showUndo(msg, null)) without an Undo button', () => {
+    function Host() {
+      const { undoToast, showUndo } = useUndoStack();
+      return (
+        <>
+          <button type="button" onClick={() => showUndo('仅提示', null)}>
+            go
+          </button>
+          <UndoToast undoToast={undoToast} onUndo={vi.fn()} theme="light" />
+        </>
+      );
+    }
+    render(<Host />);
+    fireEvent.click(screen.getByRole('button', { name: 'go' }));
+    expect(screen.getByText('仅提示')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '撤销' })).toBeNull();
+  });
+
   it('updates the same toast in place when the action goes pending', async () => {
     const state = undoState();
     const { rerender } = render(<UndoToast undoToast={state} onUndo={vi.fn()} theme="light" />);
@@ -255,9 +273,7 @@ describe('UndoToast reachability while a dialog is open', () => {
 
   it('restacks with hide+show when elevate flips on after the chip is already open', async () => {
     const state = undoState();
-    const { rerender } = render(
-      <UndoToast undoToast={state} onUndo={vi.fn()} theme="light" elevate={false} />
-    );
+    const { rerender } = render(<UndoToast undoToast={state} onUndo={vi.fn()} theme="light" elevate={false} />);
     await tick();
 
     const layer = document.querySelector('[data-tabhub-undo-toast]');
@@ -285,7 +301,15 @@ describe('UndoToast reachability while a dialog is open', () => {
 /* Sonner publishes a creation through setTimeout and a dismissal through
    requestAnimationFrame; vitest's default `toFake` list covers the former but
    not the latter, so a faked clock would never take the toast back down. */
-const FAKE_TIMER_APIS = ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'requestAnimationFrame', 'cancelAnimationFrame'];
+const FAKE_TIMER_APIS = [
+  'setTimeout',
+  'clearTimeout',
+  'setInterval',
+  'clearInterval',
+  'Date',
+  'requestAnimationFrame',
+  'cancelAnimationFrame'
+];
 
 describe('the 8s undo window survives the migration', () => {
   const advance = (ms) =>
