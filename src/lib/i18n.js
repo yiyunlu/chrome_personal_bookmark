@@ -257,6 +257,9 @@ const dictionaries = {
     welcomeCreateCollection: '创建集合',
     welcomeConnectAI: '连接 AI',
     welcomeDismiss: '不再显示',
+    chromeFooterHint:
+      '底部那条是 Chrome 自带的页脚，TabHub 无法移除。关闭方法：右键它选「在新标签页上隐藏页脚」，或点「自定义 Chrome」→ 页脚 → 关闭「在新标签页上显示页脚」。',
+    chromeFooterHintDismiss: '知道了',
     // Cross-source search
     otherSourceResults: '其他来源的结果',
     fromSource: (name) => `来自 ${name}`
@@ -517,6 +520,9 @@ const dictionaries = {
     welcomeCreateCollection: 'Create a Collection',
     welcomeConnectAI: 'Connect AI',
     welcomeDismiss: "Don't show again",
+    chromeFooterHint:
+      "The bar at the bottom is Chrome's own footer; TabHub cannot remove it. To turn it off, right-click it and choose 'Hide footer on New Tab page', or click 'Customize Chrome' → Footer → turn off 'Show footer on New Tab page'.",
+    chromeFooterHintDismiss: 'Got it',
     // Cross-source search
     otherSourceResults: 'Results from other sources',
     fromSource: (name) => `From ${name}`

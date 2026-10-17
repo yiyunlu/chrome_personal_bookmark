@@ -30,6 +30,7 @@ import {
 import { logError, normalizeUrlKey, sortSnapshots } from './lib/utils';
 import { smartSearch } from './lib/searchService';
 import { storageGet, storageSet } from './lib/storage';
+import { ChromeFooterHint } from './components/ChromeFooterHint';
 import { sortCards, isSortMode, isCardDragEnabled, DEFAULT_SORT_MODE, SORT_STORAGE_KEY } from './lib/sortCards';
 
 import { initLanguage, getLanguageSetting, setLanguage as setI18nLanguage, t } from './lib/i18n';
@@ -1760,6 +1761,8 @@ function App() {
               onClearSelections={clearSelections}
             />
           )}
+
+          <ChromeFooterHint manageMode={manageMode} />
         </main>
       </div>
 
