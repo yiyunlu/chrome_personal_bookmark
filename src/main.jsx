@@ -52,6 +52,7 @@ import { DialogShell } from './components/DialogShell';
 import { EditBookmarkModal } from './components/EditBookmarkModal';
 import { BatchMoveModal } from './components/BatchMoveModal';
 import { AICategorizeModal } from './components/AICategorizeModal';
+import { AI_CATEGORIZE_ENABLED } from './lib/features';
 import { DeadLinkModal } from './components/DeadLinkModal';
 import { ChatPanel, ChatToggle } from './components/ChatPanel';
 import { UndoToast } from './components/UndoToast';
@@ -1795,13 +1796,15 @@ function App() {
         onClose={() => setDeadLinkState(null)}
       />
 
-      <AICategorizeModal
-        aiState={aiCategorizeState}
-        onAcceptSuggestion={handleAcceptSuggestion}
-        onRejectSuggestion={handleRejectSuggestion}
-        onApplyAll={handleApplyAISuggestions}
-        onClose={() => setAICategorizeState(null)}
-      />
+      {AI_CATEGORIZE_ENABLED && (
+        <AICategorizeModal
+          aiState={aiCategorizeState}
+          onAcceptSuggestion={handleAcceptSuggestion}
+          onRejectSuggestion={handleRejectSuggestion}
+          onApplyAll={handleApplyAISuggestions}
+          onClose={() => setAICategorizeState(null)}
+        />
+      )}
 
       <SaveTabsModal
         open={!!saveTabsState}

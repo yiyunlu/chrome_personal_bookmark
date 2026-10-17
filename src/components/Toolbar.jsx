@@ -21,6 +21,7 @@ import { Separator } from './ui/separator';
 import { SORT_MODES, DEFAULT_SORT_MODE } from '../lib/sortCards';
 import { t } from '../lib/i18n';
 import { cn } from '../lib/cn';
+import { AI_CATEGORIZE_ENABLED } from '../lib/features';
 
 /* S2 — the header from TabHub.dc.html, expressed in token classes.
 
@@ -261,17 +262,19 @@ export function Toolbar({
           <span>{autoOrganizing ? t('autoOrganizing') : t('autoOrganize')}</span>
         </Button>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className={GHOST_ACTION_CLASS}
-          onClick={onAICategorize}
-          title={t('shortcutAICategorize')}
-        >
-          <Brain />
-          <span>{t('aiCategorize')}</span>
-        </Button>
+        {AI_CATEGORIZE_ENABLED && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={GHOST_ACTION_CLASS}
+            onClick={onAICategorize}
+            title={t('shortcutAICategorize')}
+          >
+            <Brain />
+            <span>{t('aiCategorize')}</span>
+          </Button>
+        )}
 
         <Button
           type="button"
