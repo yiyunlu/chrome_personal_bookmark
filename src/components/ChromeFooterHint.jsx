@@ -30,10 +30,12 @@ export function ChromeFooterHint({ manageMode }) {
     storageSet(DISMISS_KEY, true).catch(logError);
   };
 
+  /* Right padding (pr-20 = 80px) reserves the fixed chat FAB's space:
+     right-4 (16px) + w-12 (48px) + a 16px gap, so "Got it" never sits under it. */
   return (
     <div
       role="note"
-      className="flex shrink-0 items-center gap-3 border-t border-border bg-muted px-[22px] py-1.5"
+      className="flex shrink-0 items-center gap-3 border-t border-border bg-muted py-1.5 pl-[22px] pr-20"
     >
       <p className="min-w-0 flex-1 text-[11.5px] text-muted-foreground">{t('chromeFooterHint')}</p>
       <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={dismiss}>
