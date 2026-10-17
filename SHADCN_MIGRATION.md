@@ -138,10 +138,10 @@ now simply: **the design decides the scale, and the scale is set once in
 labels — the mono is the design's strongest identifying feature, not decoration. Base size
 is **13px**, not the browser's 16px; the design is dense throughout.
 
-**The woff2 files are not bundled yet**, so the stack currently resolves to system
-fallbacks. Adding them later needs no code change, only the font files and an `@font-face`
-block. Loading them from Google Fonts instead would put a network request on every new tab
-open, which is why it is not done that way.
+**The IBM Plex Sans / Mono woff2 files are bundled** (`src/fonts/`, declared with
+`@font-face` in `src/index.css`, emitted to `dist/assets/` by the build). Loading them from
+Google Fonts instead would put a network request on every new tab open, which is why it is
+not done that way. `Noto Sans SC` is not bundled (see below).
 
 ### The tailwind-merge hazard — read this before overriding any vendored class
 
@@ -682,9 +682,8 @@ V2-A, V2-B, V2-C and V2-D are all merged as of 2026-09-13. Deferred, not built:
 - **Sub-menus were not previewed** — the design file has no nested-menu surface to check
   the migration against, so `ContextMenu` sub-menu styling (if any is ever added) is
   unverified against `TabHub-v2.dc.html`.
-- **CJK fonts are not bundled.** `Noto Sans SC` still resolves to system fallbacks, same
-  as the unbundled `IBM Plex Sans`/`IBM Plex Mono` noted earlier in this document — no
-  code change is needed to add the files later.
+- **CJK fonts are not bundled.** `Noto Sans SC` still resolves to system fallbacks
+  (IBM Plex Sans/Mono are bundled) — no code change is needed to add the files later.
 - **V2-B evaluator note — theme glyph at 16px.** The bottom bar's cycling theme button
   renders its Monitor/Sun/Moon glyph at the default 16px rather than a bottom-bar-scaled
   12–13px; left as shipped since the icon table treats 16px as the safe default and 26px
