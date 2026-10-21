@@ -125,3 +125,25 @@ Do not treat every "AI" label as fully wired Claude: mock mode is the default un
 ## License
 
 Private project.
+
+## 本地开发与测试命令
+
+以下命令均在仓库根目录执行。
+
+```bash
+npm ci                      # 按 package-lock.json 安装依赖（干净、可复现）
+npm run dev                 # 启动 Vite 开发服务器
+npm run lint                # ESLint 检查 src/
+npm run lint:fix            # ESLint 自动修复 src/
+npm test                    # Vitest 单元/组件测试（单次运行）
+npm run test:watch          # Vitest 监听模式，改文件即重跑
+npm run build               # 生产构建，产物输出到 dist/
+bash scripts/verify-ui.sh    # UI 验收门禁（12 项检查）
+```
+
+- **`npm ci`** — 安装依赖。首次克隆或 `package-lock.json` 变化时使用；它严格按锁文件安装并清空既有 `node_modules`，比 `npm install` 更适合 CI 与复现问题。
+- **`npm run dev`** — 启动 Vite 开发服务器（热更新）。调试扩展本体时仍需 `npm run build` 后在 `chrome://extensions` 加载 `dist/`。
+- **`npm run lint` / `npm run lint:fix`** — 前者只报告问题，后者自动修复可修复项；提交前应确保 `lint` 通过。
+- **`npm test` / `npm run test:watch`** — 运行 Vitest 测试套件；改代码时用 watch 模式更快拿到反馈。
+- **`npm run build`** — 生产构建，输出到 `dist/`，供 Chrome「加载已解压的扩展程序」使用。
+- **`bash scripts/verify-ui.sh`** — UI 验收门禁，覆盖单元测试、lint、生产构建、设计 token 层、SortableJS DOM 约束、i18n、打包体积与样式棘轮等 12 项检查。任何 UI 改动提交前必须让它以退出码 0 结束（输出 `ALL GATES PASSED`）。
