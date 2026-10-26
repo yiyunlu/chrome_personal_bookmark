@@ -11,6 +11,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { t } from '../lib/i18n';
+import { collectOpenAllUrls, openAllTitle } from '../lib/bookmarkService';
 import { logError } from '../lib/utils';
 import { generateTags } from '../lib/enrichmentService';
 import { cn } from '../lib/cn';
@@ -426,7 +427,7 @@ export const CollectionCard = React.memo(function CollectionCard({
             // merge group and would repaint this glyph near-black under the pointer.
             className="h-[26px] w-[26px] flex-shrink-0 rounded-md text-primary hover:text-primary opacity-0 transition-opacity group-hover:opacity-60 hover:!opacity-100"
             aria-label={t('openAllTabs')}
-            title={t('openAllTabs')}
+            title={openAllTitle(collectOpenAllUrls(collection.cards).length)}
             onClick={(e) => {
               e.stopPropagation();
               onOpenAll(collection.id);

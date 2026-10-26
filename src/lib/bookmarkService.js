@@ -520,8 +520,46 @@ export async function openBookmarkInNewTab(url) {
   return createTabApi({ url, active: false });
 }
 
-export async function openAllInNewTabs(urls) {
-  return Promise.all(urls.map((url) => createTabApi({ url, active: false })));
+/** URLs "Open all" will open for a collection's cards (empty/missing urls dropped). */
+export function collectOpenAllUrls(cards) {
+  return (cards || []).map((card) => card.url).filter(Boolean);
+}
+
+/** Button title for "Open all": label plus how many URLs will open. */
+export function openAllTitle(count) {
+  return count > 0 ? t('openAllTabsCount', count) : t('openAllTabs');
+}
+
+/** Tabs "Open all" may close afterwards: http(s) only (so chrome://, extension
+ *  pages and the new-tab page are never touched), minus TabHub's own tab. */
+export function tabsEligibleToClose(tabs, selfTabId) {
+  return (tabs || []).filter((tab) => isCapturableUrl(tab.url) && tab.id !== selfTabId);
+}
+
+export const CLOSE_OTHERS_STORAGE_KEY = 'tabhub_open_all_close_others';
+
+export async function openAllInNewTabs(urls, { closeOthers = false } = {}) {
+  // Snapshot BEFORE opening so the tabs we create can never be in the close list.
+  let toClose = [];
+  if (closeOthers) {
+    const windowTabs = (await queryTabsApi({ currentWindow: true })) || [];
+    let selfTabId;
+    try {
+      selfTabId = (await getCurrentTabApi())?.id;
+    } catch {
+      selfTabId = undefined;
+    }
+    toClose = tabsEligibleToClose(windowTabs, selfTabId);
+  }
+  const opened = await Promise.all(urls.map((url) => createTabApi({ url, active: false })));
+  for (const tab of toClose) {
+    try {
+      await removeTabApi(tab.id);
+    } catch (err) {
+      logError('openAllInNewTabs.closeTab', err);
+    }
+  }
+  return opened;
 }
 
 /* V2-D batch bar — 在新窗口打开. Deliberately not run through `chromeApi()`
