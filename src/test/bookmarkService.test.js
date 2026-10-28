@@ -576,3 +576,36 @@ describe('bookmarkService', () => {
     });
   });
 });
+
+describe('Open all (ECO-32)', () => {
+  it('collectOpenAllUrls drops cards without a url', async () => {
+    const { collectOpenAllUrls } = await import('../lib/bookmarkService');
+    expect(collectOpenAllUrls([{ url: 'https://a.example' }, { url: '' }, {}])).toEqual([
+      'https://a.example'
+    ]);
+    expect(collectOpenAllUrls(undefined)).toEqual([]);
+  });
+
+  it('openAllTitle shows the count, falling back to the plain label at 0', async () => {
+    const { openAllTitle } = await import('../lib/bookmarkService');
+    const { t } = await import('../lib/i18n');
+    expect(openAllTitle(3)).toBe(t('openAllTabsCount', 3));
+    expect(openAllTitle(3)).toContain('3');
+    expect(openAllTitle(0)).toBe(t('openAllTabs'));
+  });
+
+  it('tabsEligibleToClose keeps only http(s) tabs and never TabHub itself', async () => {
+    const { tabsEligibleToClose } = await import('../lib/bookmarkService');
+    const tabs = [
+      { id: 1, url: 'https://a.example' },
+      { id: 2, url: 'http://b.example' },
+      { id: 3, url: 'chrome://settings' },
+      { id: 4, url: 'chrome://newtab/' },
+      { id: 5, url: 'chrome-extension://abc/index.html' },
+      { id: 6, url: 'https://self.example' },
+      { id: 7 }
+    ];
+    expect(tabsEligibleToClose(tabs, 6).map((t) => t.id)).toEqual([1, 2]);
+    expect(tabsEligibleToClose(undefined)).toEqual([]);
+  });
+});

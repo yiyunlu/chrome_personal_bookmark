@@ -17,6 +17,8 @@ import {
   moveBookmark,
   moveBookmarkToCardPosition,
   openAllInNewTabs,
+  collectOpenAllUrls,
+  CLOSE_OTHERS_STORAGE_KEY,
   openBookmarkInCurrentTab,
   openBookmarkInNewTab,
   openCardsInNewWindow,
@@ -138,6 +140,7 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [view, setView] = useState('grid');
   const [sortMode, setSortMode] = useState(DEFAULT_SORT_MODE);
+  const [closeOthersOnOpenAll, setCloseOthersOnOpenAll] = useState(false);
   const [langReady, setLangReady] = useState(false);
   const [languageSetting, setLanguageSetting] = useState('auto');
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
@@ -200,13 +203,18 @@ function App() {
     })();
 
     (async () => {
-      const [savedCollection, savedCollapsed, savedOnboarding, savedView, savedSort] = await Promise.all([
+      const [savedCollection, savedCollapsed, savedOnboarding, savedView, savedSort, savedCloseOthers] = await Promise.all([
         storageGet('tabhub_active_collection').catch(() => undefined),
         storageGet('tabhub_sidebar_collapsed').catch(() => undefined),
         storageGet('tabhub_onboarding_dismissed').catch(() => undefined),
         storageGet(VIEW_STORAGE_KEY).catch(() => undefined),
-        storageGet(SORT_STORAGE_KEY).catch(() => undefined)
+        storageGet(SORT_STORAGE_KEY).catch(() => undefined),
+        storageGet(CLOSE_OTHERS_STORAGE_KEY).catch(() => undefined)
       ]);
+
+      if (savedCloseOthers === true) {
+        setCloseOthersOnOpenAll(true);
+      }
 
       if (typeof savedCollapsed === 'boolean') {
         setSidebarCollapsed(savedCollapsed);
@@ -1051,6 +1059,11 @@ function App() {
     return userCollections.length === 0;
   }, [onboardingDismissed, loading, collections]);
 
+  const handleCloseOthersChange = useCallback(async (next) => {
+    setCloseOthersOnOpenAll(next);
+    await storageSet(CLOSE_OTHERS_STORAGE_KEY, next).catch(logError);
+  }, []);
+
   const handleExport = useCallback(() => {
     const jsonString = exportCollections(collections);
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -1491,12 +1504,12 @@ function App() {
     async (collectionId) => {
       const collection = collections.find((c) => c.id === collectionId);
       if (!collection || collection.cards.length === 0) return;
-      const urls = collection.cards.map((card) => card.url).filter(Boolean);
+      const urls = collectOpenAllUrls(collection.cards);
       if (urls.length > 0) {
-        await openAllInNewTabs(urls);
+        await openAllInNewTabs(urls, { closeOthers: closeOthersOnOpenAll });
       }
     },
-    [collections]
+    [collections, closeOthersOnOpenAll]
   );
 
   const handleOpenInNewTab = async () => {
@@ -1843,6 +1856,8 @@ function App() {
         onClose={() => setSettingsOpen(false)}
         onExport={handleExport}
         onImport={handleImport}
+        closeOthersOnOpenAll={closeOthersOnOpenAll}
+        onCloseOthersOnOpenAllChange={handleCloseOthersChange}
       />
 
       {/* The ninth overlay. P1 owned the dialog sweep but was forbidden to touch

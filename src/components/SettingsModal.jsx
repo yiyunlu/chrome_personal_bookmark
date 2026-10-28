@@ -3,6 +3,7 @@ import { Download, Eye, EyeOff, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '../lib/cn';
 import { t } from '../lib/i18n';
 import { getApiKey, setApiKey } from '../lib/aiService';
@@ -46,7 +47,14 @@ const FIELD_LABEL_CLASS = 'mb-1.5 block text-xs font-medium leading-none text-fo
 const SECTION_HEADING_CLASS = 'mb-2 block text-xs font-medium leading-none text-foreground';
 const DATA_HEADING_ID = 'tabhub-settings-data-heading';
 
-export function SettingsModal({ open, onClose, onExport, onImport }) {
+export function SettingsModal({
+  open,
+  onClose,
+  onExport,
+  onImport,
+  closeOthersOnOpenAll = false,
+  onCloseOthersOnOpenAllChange
+}) {
   const [apiKey, setApiKeyLocal] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [testStatus, setTestStatus] = useState(null);
@@ -158,6 +166,22 @@ export function SettingsModal({ open, onClose, onExport, onImport }) {
             <span className="text-xs text-foreground">
               {apiKey.trim() ? t('aiModeActive') : t('aiModeMock')}
             </span>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Label htmlFor="tabhub-close-others" className="text-xs font-medium text-foreground">
+                {t('closeOthersOnOpenAll')}
+              </Label>
+              <p className="mt-1 text-xs text-muted-foreground">{t('closeOthersOnOpenAllHint')}</p>
+            </div>
+            <Switch
+              id="tabhub-close-others"
+              checked={closeOthersOnOpenAll}
+              onCheckedChange={(v) => onCloseOthersOnOpenAllChange?.(v)}
+            />
           </div>
         </div>
 

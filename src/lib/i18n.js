@@ -213,6 +213,9 @@ const dictionaries = {
     invalidImportFile: '无效的导入文件',
     // Open tabs
     openAllTabs: '全部打开',
+    openAllTabsCount: (n) => `全部打开（${n} 个）`,
+    closeOthersOnOpenAll: '全部打开后关闭本窗口其他网页标签页',
+    closeOthersOnOpenAllHint: '仅关闭 http(s) 页面，不会关闭 chrome:// 页面、扩展页面和新标签页',
     openInNewTab: '在新标签页中打开',
     // Group header
     collapseCollection: '收起分类',
@@ -476,6 +479,9 @@ const dictionaries = {
     invalidImportFile: 'Invalid import file',
     // Open tabs
     openAllTabs: 'Open All',
+    openAllTabsCount: (n) => `Open All (${n} ${n === 1 ? 'tab' : 'tabs'})`,
+    closeOthersOnOpenAll: 'Close other web tabs in this window after Open All',
+    closeOthersOnOpenAllHint: 'Only http(s) pages are closed — never chrome:// pages, extension pages or the new tab page',
     openInNewTab: 'Open in New Tab',
     // Group header
     collapseCollection: 'Collapse category',
