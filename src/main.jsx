@@ -31,7 +31,7 @@ import {
 } from './lib/bookmarkService';
 import { logError, normalizeUrlKey, sortSnapshots } from './lib/utils';
 import { smartSearch } from './lib/searchService';
-import { storageGet, storageSet } from './lib/storage';
+import { storageGet, storageSet, prefGet, prefSet } from './lib/storage';
 import { ChromeFooterHint } from './components/ChromeFooterHint';
 import { sortCards, isSortMode, isCardDragEnabled, DEFAULT_SORT_MODE, SORT_STORAGE_KEY } from './lib/sortCards';
 
@@ -206,9 +206,9 @@ function App() {
       const [savedCollection, savedCollapsed, savedOnboarding, savedView, savedSort, savedCloseOthers] = await Promise.all([
         storageGet('tabhub_active_collection').catch(() => undefined),
         storageGet('tabhub_sidebar_collapsed').catch(() => undefined),
-        storageGet('tabhub_onboarding_dismissed').catch(() => undefined),
-        storageGet(VIEW_STORAGE_KEY).catch(() => undefined),
-        storageGet(SORT_STORAGE_KEY).catch(() => undefined),
+        prefGet('tabhub_onboarding_dismissed').catch(() => undefined),
+        prefGet(VIEW_STORAGE_KEY).catch(() => undefined),
+        prefGet(SORT_STORAGE_KEY).catch(() => undefined),
         storageGet(CLOSE_OTHERS_STORAGE_KEY).catch(() => undefined)
       ]);
 
@@ -1048,7 +1048,7 @@ function App() {
 
   const handleDismissOnboarding = useCallback(async () => {
     setOnboardingDismissed(true);
-    await storageSet('tabhub_onboarding_dismissed', true).catch(logError);
+    await prefSet('tabhub_onboarding_dismissed', true).catch(logError);
   }, []);
 
   // Show onboarding when there are zero user-created collections and not dismissed
@@ -1200,7 +1200,7 @@ function App() {
   const handleViewChange = useCallback(async (next) => {
     if (next !== 'grid' && next !== 'list') return;
     setView(next);
-    await storageSet(VIEW_STORAGE_KEY, next).catch(logError);
+    await prefSet(VIEW_STORAGE_KEY, next).catch(logError);
   }, []);
 
   // Toolbar's sort Select (V2-A, new). Purely a view preference — it never
@@ -1208,7 +1208,7 @@ function App() {
   const handleSortChange = useCallback(async (next) => {
     if (!isSortMode(next)) return;
     setSortMode(next);
-    await storageSet(SORT_STORAGE_KEY, next).catch(logError);
+    await prefSet(SORT_STORAGE_KEY, next).catch(logError);
   }, []);
 
   // Every overlay that traps focus must disable the single-key shortcuts. Before

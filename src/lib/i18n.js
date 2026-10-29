@@ -1,3 +1,5 @@
+import { prefGet, prefSet } from './storage';
+
 const LANG_STORAGE_KEY = 'tabhub_language';
 
 const dictionaries = {
@@ -545,43 +547,19 @@ function resolveLanguage(setting) {
   return 'en';
 }
 
-export function initLanguage() {
-  return new Promise((resolve) => {
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      chrome.storage.local.get([LANG_STORAGE_KEY], (result) => {
-        const saved = result?.[LANG_STORAGE_KEY];
-        currentLang = resolveLanguage(saved || 'auto');
-        resolve(currentLang);
-      });
-    } else {
-      currentLang = resolveLanguage('auto');
-      resolve(currentLang);
-    }
-  });
+export async function initLanguage() {
+  const saved = await prefGet(LANG_STORAGE_KEY).catch(() => undefined);
+  currentLang = resolveLanguage(saved || 'auto');
+  return currentLang;
 }
 
-export function getLanguageSetting() {
-  return new Promise((resolve) => {
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      chrome.storage.local.get([LANG_STORAGE_KEY], (result) => {
-        resolve(result?.[LANG_STORAGE_KEY] || 'auto');
-      });
-    } else {
-      resolve('auto');
-    }
-  });
+export async function getLanguageSetting() {
+  return (await prefGet(LANG_STORAGE_KEY).catch(() => undefined)) || 'auto';
 }
 
-export function setLanguage(lang) {
-  const resolved = resolveLanguage(lang);
-  currentLang = resolved;
-  return new Promise((resolve) => {
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      chrome.storage.local.set({ [LANG_STORAGE_KEY]: lang }, () => resolve());
-    } else {
-      resolve();
-    }
-  });
+export async function setLanguage(lang) {
+  currentLang = resolveLanguage(lang);
+  await prefSet(LANG_STORAGE_KEY, lang).catch(() => {});
 }
 
 export function getCurrentLang() {
