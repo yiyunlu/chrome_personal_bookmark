@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { storageGet, storageSet } from '../lib/storage';
+import { prefGet, prefSet } from '../lib/storage';
 
 const THEME_STORAGE_KEY = 'tabhub_theme_mode';
 
@@ -42,7 +42,7 @@ export function useTheme() {
 
   useEffect(() => {
     (async () => {
-      const savedMode = await storageGet(THEME_STORAGE_KEY);
+      const savedMode = await prefGet(THEME_STORAGE_KEY);
       if (savedMode === 'light' || savedMode === 'dark' || savedMode === 'system') {
         setThemeMode(savedMode);
       }
@@ -62,7 +62,7 @@ export function useTheme() {
 
   const handleThemeModeChange = async (mode) => {
     setThemeMode(mode);
-    await storageSet(THEME_STORAGE_KEY, mode);
+    await prefSet(THEME_STORAGE_KEY, mode);
   };
 
   return { themeMode, resolvedTheme, systemTheme, handleThemeModeChange };
