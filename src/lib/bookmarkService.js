@@ -110,6 +110,16 @@ function collectNestedCollections(rootFolder, includeEmpty = true, hiddenFolderI
   return result;
 }
 
+/** Ids of every `.TabHub Trash` folder anywhere under `node` (legacy nested trash included). */
+function collectTrashFolderIds(node, acc = []) {
+  for (const child of node?.children || []) {
+    if (child.url) continue;
+    if (child.title === TRASH_FOLDER_NAME) acc.push(child.id);
+    collectTrashFolderIds(child, acc);
+  }
+  return acc;
+}
+
 function collectAllFolders(nodes = [], acc = []) {
   for (const node of nodes) {
     if (!node.url) {
@@ -160,6 +170,7 @@ export async function getCollectionsPayload(preferredSourceId) {
   if (!tabHubRoot) {
     tabHubRoot = await ensureTabHubRootFolder();
     tree = await getTree();
+    tabHubRoot = findNodeById(tree, tabHubRoot.id) || tabHubRoot;
   }
 
   const roots = (tree[0]?.children || []).filter((node) => !node.url);
@@ -196,8 +207,11 @@ export async function getCollectionsPayload(preferredSourceId) {
     // another window / by sync); degrade to the already-fetched tree snapshot.
   }
   const rootNode = activeRoot || findNodeById(tree, activeSourceId) || { children: [] };
-  const trashFolder = (rootNode.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
-  const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
+  // The canonical trash always lives directly under the TabHub root, whichever
+  // source is active, so switching sources never changes trashFolderId.
+  const trashFolder = (tabHubRoot.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
+  const hiddenFolderIds = new Set(collectTrashFolderIds(rootNode));
+  if (trashFolder) hiddenFolderIds.add(trashFolder.id);
   const collections = collectNestedCollections(rootNode, true, hiddenFolderIds);
 
   return {
@@ -217,8 +231,7 @@ export async function getCardsForSource(sourceId) {
   try {
     const [sourceRoot] = await getSubTreeApi(sourceId);
     if (!sourceRoot) return [];
-    const trashFolder = (sourceRoot.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
-    const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
+    const hiddenFolderIds = new Set(collectTrashFolderIds(sourceRoot));
     const collections = collectNestedCollections(sourceRoot, false, hiddenFolderIds);
     return collections.flatMap((col) =>
       col.cards.map((card) => ({
@@ -505,6 +518,19 @@ export async function ensureTrashFolder(rootId) {
     parentId: rootId,
     title: TRASH_FOLDER_NAME
   });
+}
+
+const trashEnsureInFlight = new Map();
+
+/** Single-flight `ensureTrashFolder`: concurrent callers for one root share one create. */
+export function ensureTrashFolderOnce(rootId) {
+  const inFlight = trashEnsureInFlight.get(rootId);
+  if (inFlight) return inFlight;
+  const promise = ensureTrashFolder(rootId).finally(() => {
+    trashEnsureInFlight.delete(rootId);
+  });
+  trashEnsureInFlight.set(rootId, promise);
+  return promise;
 }
 
 export async function openBookmarkInCurrentTab(url) {
