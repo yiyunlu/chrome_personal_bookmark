@@ -178,12 +178,19 @@ TRASH_FOLDER_NAME = '.TabHub Trash'
 ## 云端开发布局
 
 1. **日常功能开发在云端机器进行**；Mac/Windows 本地不开 feature worktree。
-2. **路径约定**：
+2. **工单与分支句柄**：
+   - 工单 SoT：Plane CE 项目 **TH**（TabHub），显示 ID 为 `TH-n`。
+   - 分支：`wip/<TH-n>`（例：`wip/TH-4`）；worktree：`/workspace/tabhub/wt/<TH-n>`。
+   - Linear `ECO-n` 仅作历史对照（如 ECO-32 ↔ TH-2）；新工单一律使用 TH 编号。
+   - 链接：
+     - [Plane 项目列表](https://plane.ecomm101.cc/ecomm101/projects/)
+     - [生产线 Canvas / 说明书](https://pm-vs-t3-tu6o.pages.grok.bot/)（Canvas id `b1a08213-f2cc-4e1f-b2f5-e5a8fea6d936`）
+3. **路径约定**：
    - 主仓库克隆：`/workspace/tabhub/repo`
-   - 工单分支 worktree：`/workspace/tabhub/wt/<ticket-id>`
+   - 工单分支 worktree：`/workspace/tabhub/wt/<TH-n>`
    - QA 检出：`/workspace/tabhub/qa/<sha>`
-3. **本地机器仅保留同步副本**；使用 `scripts/sync.sh`（Mac/Linux）或 `scripts/sync.cmd`（Windows）拉取并构建。
-4. **合并方式**：通过 PR 以 merge commit（`--merge`）合入 main；禁止直接 push main；除非明确授权，禁止 force-push。
+4. **本地机器仅保留同步副本**；使用 `scripts/sync.sh`（Mac/Linux）或 `scripts/sync.cmd`（Windows）拉取并构建。
+5. **合并方式**：通过 PR 以 merge commit（`--merge`）合入 main；禁止直接 push main；除非明确授权，禁止 force-push。
 
 ## Key Features
 

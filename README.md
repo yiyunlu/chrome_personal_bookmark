@@ -130,6 +130,8 @@ Private project.
 
 以下命令均在仓库根目录执行。
 
+> 工单与分支约定：工单以 [Plane](https://plane.ecomm101.cc/ecomm101/projects/) 的 **TH** 项目为准（显示 ID `TH-n`），分支命名为 `wip/TH-n`；详见 `CLAUDE.md` 的「云端开发布局」。
+
 ```bash
 npm ci                      # 按 package-lock.json 安装依赖（干净、可复现）
 npm run dev                 # 启动 Vite 开发服务器
