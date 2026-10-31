@@ -4,6 +4,7 @@ import {
   exportCollections,
   importCollections,
   ensureTrashFolder,
+  ensureTrashFolderOnce,
   ensureTabHubRootFolder,
   subscribeBookmarksChanges,
   openCardsInNewWindow
@@ -456,6 +457,46 @@ describe('bookmarkService', () => {
 
       await ensureTrashFolder('root');
       expect(createCalls.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('ensureTrashFolderOnce', () => {
+    it('shares one create across concurrent callers for the same root', async () => {
+      chrome.bookmarks.getSubTree._impl = (_id, cb) =>
+        setTimeout(() => cb([{ id: 'root', children: [{ id: '51', title: 'Dev', children: [] }] }]), 10);
+
+      const [a, b] = await Promise.all([ensureTrashFolderOnce('root'), ensureTrashFolderOnce('root')]);
+
+      expect(createCalls).toEqual([{ parentId: 'root', title: '.TabHub Trash' }]);
+      expect(a.id).toBe(b.id);
+    });
+
+    it('allows a fresh ensure once the previous one has settled', async () => {
+      chrome.bookmarks.getSubTree._impl = (_id, cb) => cb([{ id: 'root', children: [] }]);
+
+      await ensureTrashFolderOnce('root');
+      await ensureTrashFolderOnce('root');
+
+      expect(createCalls).toHaveLength(2);
+    });
+  });
+
+  describe('getCollectionsPayload trash root', () => {
+    it('reads trashFolderId from the TabHub root even when another source is active', async () => {
+      const tree = buildTree([
+        {
+          id: '10',
+          title: 'TabHub',
+          children: [{ id: '99', title: '.TabHub Trash', children: [] }]
+        }
+      ]);
+      setMockTree(tree);
+
+      const result = await getCollectionsPayload();
+
+      expect(result.activeSourceId).toBe('1');
+      expect(result.trashFolderId).toBe('99');
+      expect(result.collections.some((c) => c.id === '99')).toBe(false);
     });
   });
 

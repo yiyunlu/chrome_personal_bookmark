@@ -196,8 +196,15 @@ export async function getCollectionsPayload(preferredSourceId) {
     // another window / by sync); degrade to the already-fetched tree snapshot.
   }
   const rootNode = activeRoot || findNodeById(tree, activeSourceId) || { children: [] };
-  const trashFolder = (rootNode.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
+  // Canonical trash always lives directly under the TabHub root, regardless of
+  // which source is active, so source switches keep the same trashFolderId.
+  const tabHubNode = findNodeById(tree, tabHubRoot.id) || tabHubRoot;
+  const trashFolder = (tabHubNode.children || []).find((node) => !node.url && node.title === TRASH_FOLDER_NAME);
   const hiddenFolderIds = new Set(trashFolder ? [trashFolder.id] : []);
+  // Also hide a stray legacy trash folder sitting directly under the active source.
+  for (const node of rootNode.children || []) {
+    if (!node.url && node.title === TRASH_FOLDER_NAME) hiddenFolderIds.add(node.id);
+  }
   const collections = collectNestedCollections(rootNode, true, hiddenFolderIds);
 
   return {
@@ -505,6 +512,19 @@ export async function ensureTrashFolder(rootId) {
     parentId: rootId,
     title: TRASH_FOLDER_NAME
   });
+}
+
+const trashEnsureInFlight = new Map();
+
+/** Single-flight `ensureTrashFolder`: concurrent callers for one root share one create. */
+export function ensureTrashFolderOnce(rootId) {
+  const inFlight = trashEnsureInFlight.get(rootId);
+  if (inFlight) return inFlight;
+  const promise = ensureTrashFolder(rootId).finally(() => {
+    trashEnsureInFlight.delete(rootId);
+  });
+  trashEnsureInFlight.set(rootId, promise);
+  return promise;
 }
 
 export async function openBookmarkInCurrentTab(url) {
