@@ -4,6 +4,7 @@ import {
   exportCollections,
   importCollections,
   ensureTrashFolder,
+  ensureTrashFolderOnce,
   ensureTabHubRootFolder,
   subscribeBookmarksChanges,
   openCardsInNewWindow
@@ -213,6 +214,51 @@ describe('bookmarkService', () => {
         ])
       );
       expect(result.tabHubRootId).toBeDefined();
+    });
+
+    it('reads trashFolderId from the TabHub root, not the active source', async () => {
+      const tree = buildTree([
+        {
+          id: '10',
+          title: 'TabHub',
+          children: [
+            { id: '99', title: '.TabHub Trash', children: [] },
+            { id: '20', title: 'Development', children: [] }
+          ]
+        }
+      ]);
+      setMockTree(tree);
+
+      const onBar = await getCollectionsPayload('1');
+      expect(onBar.activeSourceId).toBe('1');
+      expect(onBar.trashFolderId).toBe('99');
+
+      const onHub = await getCollectionsPayload('10');
+      expect(onHub.trashFolderId).toBe('99');
+      expect(onHub.collections.some((c) => c.id === '99')).toBe(false);
+    });
+
+    it('hides nested legacy trash folders and the canonical trash from collections', async () => {
+      const tree = buildTree([
+        {
+          id: '10',
+          title: 'TabHub',
+          children: [
+            { id: '99', title: '.TabHub Trash', children: [] },
+            { id: '41', title: 'Docs', children: [{ id: '42', title: '.TabHub Trash', children: [] }] },
+            { id: '40', title: '.TabHub Trash', children: [] }
+          ]
+        }
+      ]);
+      setMockTree(tree);
+
+      const result = await getCollectionsPayload('10');
+      const ids = result.collections.map((c) => c.id);
+      expect(ids).toContain('41');
+      expect(ids).not.toContain('40');
+      expect(ids).not.toContain('42');
+      expect(ids).not.toContain('99');
+      expect(result.trashFolderId).toBe('99');
     });
 
     it('includes collections with their bookmark cards', async () => {
@@ -456,6 +502,28 @@ describe('bookmarkService', () => {
 
       await ensureTrashFolder('root');
       expect(createCalls.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('ensureTrashFolderOnce', () => {
+    it('creates one trash folder for concurrent callers and shares the result', async () => {
+      chrome.bookmarks.getSubTree._impl = (_id, cb) => {
+        setTimeout(() => cb([{ id: 'root', children: [{ id: '51', title: 'Dev', children: [] }] }]), 10);
+      };
+
+      const [a, b] = await Promise.all([ensureTrashFolderOnce('root'), ensureTrashFolderOnce('root')]);
+
+      expect(createCalls).toEqual([{ parentId: 'root', title: '.TabHub Trash' }]);
+      expect(a.id).toBe(b.id);
+    });
+
+    it('clears the in-flight entry so a later call re-checks', async () => {
+      chrome.bookmarks.getSubTree._impl = (_id, cb) => cb([{ id: 'root', children: [] }]);
+
+      await ensureTrashFolderOnce('root');
+      await ensureTrashFolderOnce('root');
+
+      expect(createCalls).toHaveLength(2);
     });
   });
 
