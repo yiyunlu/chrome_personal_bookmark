@@ -178,12 +178,18 @@ TRASH_FOLDER_NAME = '.TabHub Trash'
 ## 云端开发布局
 
 1. **日常功能开发在云端机器进行**；Mac/Windows 本地不开 feature worktree。
-2. **路径约定**：
+2. **工单编号（Ticket SoT）**：以 Plane CE 项目 **TH**（TabHub）为准，显示编号为 `TH-n`（如 `TH-6`）。
+   - Linear 的 `ECO-n` 仅作**历史对照**（例：ECO-32 ↔ TH-2），新工单一律使用 TH 编号。
+3. **分支与路径约定**（`<TH-n>` 即工单显示编号，如 `TH-6`）：
    - 主仓库克隆：`/workspace/tabhub/repo`
-   - 工单分支 worktree：`/workspace/tabhub/wt/<ticket-id>`
+   - 工单分支：`wip/<TH-n>`（如 `wip/TH-6`）
+   - 工单分支 worktree：`/workspace/tabhub/wt/<TH-n>`（如 `/workspace/tabhub/wt/TH-6`）
    - QA 检出：`/workspace/tabhub/qa/<sha>`
-3. **本地机器仅保留同步副本**；使用 `scripts/sync.sh`（Mac/Linux）或 `scripts/sync.cmd`（Windows）拉取并构建。
-4. **合并方式**：通过 PR 以 merge commit（`--merge`）合入 main；禁止直接 push main；除非明确授权，禁止 force-push。
+4. **本地机器仅保留同步副本**；使用 `scripts/sync.sh`（Mac/Linux）或 `scripts/sync.cmd`（Windows）拉取并构建。
+5. **合并方式**：通过 PR 以 merge commit（`--merge`）合入 main；禁止直接 push main；除非明确授权，禁止 force-push。
+6. **链接**：
+   - [Plane 项目列表](https://plane.ecomm101.cc/ecomm101/projects/)（工单 SoT，项目 TH）
+   - [生产线 Canvas / 说明书](https://pm-vs-t3-tu6o.pages.grok.bot/)（Canvas id `b1a08213-f2cc-4e1f-b2f5-e5a8fea6d936`）
 
 ## Key Features
 

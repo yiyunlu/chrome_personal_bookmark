@@ -128,7 +128,7 @@ Private project.
 
 ## 本地开发与测试命令
 
-以下命令均在仓库根目录执行。
+以下命令均在仓库根目录执行。云端开发的工单以 Plane 项目 **TH**（`TH-n`）为准，分支命名为 `wip/TH-n`，详见 [CLAUDE.md](./CLAUDE.md) 的「云端开发布局」。
 
 ```bash
 npm ci                      # 按 package-lock.json 安装依赖（干净、可复现）
