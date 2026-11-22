@@ -46,9 +46,11 @@ const CHAT_INPUT_CLASS = cn(
   'focus-visible:ring-2 focus-visible:ring-primary'
 );
 
-export function ChatPanel({ open, onClose, onSendMessage, messages }) {
+export function ChatPanel({ open, onClose, onSendMessage, onOpenResult, messages }) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [pendingConfirms, setPendingConfirms] = useState(() => new Set());
+  const [completedConfirms, setCompletedConfirms] = useState(() => new Set());
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -74,9 +76,34 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
   };
 
   const handleKeyDown = (e) => {
+    // An IME (Chinese/Japanese) uses Enter to commit candidates; never submit mid-composition.
+    if (e.nativeEvent?.isComposing || e.keyCode === 229) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleConfirm = async (confirmKey, onConfirm) => {
+    if (!onConfirm || pendingConfirms.has(confirmKey) || completedConfirms.has(confirmKey)) return;
+    setPendingConfirms((prev) => {
+      const next = new Set(prev);
+      next.add(confirmKey);
+      return next;
+    });
+    try {
+      await onConfirm();
+      setCompletedConfirms((prev) => {
+        const next = new Set(prev);
+        next.add(confirmKey);
+        return next;
+      });
+    } finally {
+      setPendingConfirms((prev) => {
+        const next = new Set(prev);
+        next.delete(confirmKey);
+        return next;
+      });
     }
   };
 
@@ -122,8 +149,12 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
 
         {messages.map((msg, idx) => {
           const mine = msg.role === 'user';
+          const confirmKey = msg.id ?? idx;
+          const isConfirmed = Boolean(msg.confirmed) || completedConfirms.has(confirmKey);
+          const isPending = pendingConfirms.has(confirmKey);
+
           return (
-            <div key={idx} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
+            <div key={msg.id ?? idx} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
               <div
                 className={cn(
                   'max-w-[85%] rounded-xl px-3 py-2 text-sm',
@@ -134,25 +165,58 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
 
                 {msg.results && msg.results.length > 0 && (
                   <div className="mt-2 space-y-1">
-                    {msg.results.map((r, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          'flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs',
-                          // The old rgba(255,255,255,0.1) reads as a tint only on
-                          // the filled bubble; --ui-primary-foreground IS white,
-                          // so `/10` reproduces it exactly there and the other
-                          // side gets a real surface token instead.
-                          mine ? 'bg-primary-foreground/10' : 'bg-background'
-                        )}
-                      >
-                        <ExternalLink size={12} className="flex-shrink-0" />
-                        <span className="truncate">{r.title}</span>
-                        {r.collection && (
-                          <span className="flex-shrink-0 opacity-60">({r.collection})</span>
-                        )}
-                      </div>
-                    ))}
+                    {msg.results.map((r, i) => {
+                      const clickable = Boolean(r.url && onOpenResult);
+                      if (clickable) {
+                        return (
+                          <Button
+                            key={r.id ?? i}
+                            type="button"
+                            variant="ghost"
+                            title={r.url}
+                            onClick={(e) => onOpenResult(r.url, { newTab: e.ctrlKey || e.metaKey })}
+                            onAuxClick={(e) => {
+                              if (e.button === 1) {
+                                e.preventDefault();
+                                onOpenResult(r.url, { newTab: true });
+                              }
+                            }}
+                            className={cn(
+                              'h-auto w-full justify-start gap-1.5 rounded-sm px-2 py-1 text-left text-xs font-normal [&_svg]:size-3',
+                              mine
+                                ? 'bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground'
+                                : 'bg-background text-foreground hover:bg-accent hover:text-foreground'
+                            )}
+                          >
+                            <ExternalLink className="flex-shrink-0" />
+                            <span className="min-w-0 flex-1 truncate">{r.title}</span>
+                            {r.collection && (
+                              <span className="flex-shrink-0 opacity-60">({r.collection})</span>
+                            )}
+                          </Button>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={r.id ?? i}
+                          className={cn(
+                            'flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs',
+                            // The old rgba(255,255,255,0.1) reads as a tint only on
+                            // the filled bubble; --ui-primary-foreground IS white,
+                            // so `/10` reproduces it exactly there and the other
+                            // side gets a real surface token instead.
+                            mine ? 'bg-primary-foreground/10' : 'bg-background'
+                          )}
+                        >
+                          <ExternalLink size={12} className="flex-shrink-0" />
+                          <span className="truncate">{r.title}</span>
+                          {r.collection && (
+                            <span className="flex-shrink-0 opacity-60">({r.collection})</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -161,11 +225,13 @@ export function ChatPanel({ open, onClose, onSendMessage, messages }) {
                     {msg.onConfirm && (
                       <Button
                         type="button"
+                        variant={isConfirmed ? 'secondary' : 'default'}
                         size="sm"
-                        className="h-auto px-2 py-0.5 text-xs"
-                        onClick={msg.onConfirm}
+                        className="h-auto px-2 py-0.5 text-xs shadow-none"
+                        disabled={isConfirmed || isPending}
+                        onClick={() => handleConfirm(confirmKey, msg.onConfirm)}
                       >
-                        {t('chatConfirm')}
+                        {isConfirmed ? t('chatConfirmed') : t('chatConfirm')}
                       </Button>
                     )}
                   </div>

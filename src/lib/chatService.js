@@ -131,7 +131,7 @@ export function executeCommand(command, context) {
       return {
         message: t('chatWillMove', matches.length, target.title),
         action: 'move',
-        results: matches.map((c) => ({ id: c.id, title: c.title })),
+        results: matches.map((c) => ({ id: c.id, title: c.title, url: c.url })),
         targetCollectionId: target.id,
         targetCollectionTitle: target.title
       };
