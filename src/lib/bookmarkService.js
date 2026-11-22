@@ -478,6 +478,67 @@ export async function moveBookmarkToCardPosition(bookmarkId, parentId, cardPosit
   });
 }
 
+export function compareBookmarksByTitle(a, b) {
+  const ta = (a.title || '').toLowerCase();
+  const tb = (b.title || '').toLowerCase();
+  if (ta !== tb) return ta.localeCompare(tb);
+  return (a.url || '').localeCompare(b.url || '');
+}
+
+/**
+ * Plan the sequence of `chrome.bookmarks.move` operations to sort only URL
+ * bookmarks inside a folder while keeping every subfolder pinned at its exact
+ * original child index (never moving any folder).
+ *
+ * Each move is `{ id, index }`, where `index === undefined` appends to the end
+ * of the folder (`chrome.bookmarks.move(id, { parentId })`).
+ */
+export function planBookmarkSortMoves(children = [], compareFn = compareBookmarksByTitle) {
+  const current = [...children];
+  const cards = current.filter((node) => !!node.url);
+  if (cards.length < 2) return [];
+
+  const sortedCards = [...cards].sort(compareFn);
+  if (cards.every((card, idx) => card.id === sortedCards[idx].id)) {
+    return [];
+  }
+
+  let cardCursor = 0;
+  const desired = current.map((node) => (node.url ? sortedCards[cardCursor++] : node));
+
+  const moves = [];
+  for (let k = 0; k < desired.length; k += 1) {
+    while (current[k].id !== desired[k].id) {
+      if (desired[k].url) {
+        const oldIdx = current.findIndex((node) => node.id === desired[k].id);
+        if (oldIdx === -1) break;
+        const [item] = current.splice(oldIdx, 1);
+        current.splice(k, 0, item);
+        moves.push({ id: item.id, index: k });
+      } else {
+        if (!current[k].url) break;
+        const [blocking] = current.splice(k, 1);
+        current.push(blocking);
+        moves.push({ id: blocking.id, index: undefined });
+      }
+    }
+  }
+
+  return moves;
+}
+
+export async function sortFolderBookmarks(parentId, compareFn = compareBookmarksByTitle) {
+  const children = (await getChildrenApi(parentId)) || [];
+  const moves = planBookmarkSortMoves(children, compareFn);
+  for (const move of moves) {
+    await moveBookmarkApi(move.id, {
+      parentId,
+      ...(move.index !== undefined ? { index: move.index } : {})
+    });
+  }
+  return moves.length;
+}
+
 export async function updateBookmark(bookmarkId, changes) {
   return updateBookmarkApi(bookmarkId, changes);
 }

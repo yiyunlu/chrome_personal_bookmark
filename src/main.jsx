@@ -26,6 +26,7 @@ import {
   removeCollectionFolder,
   renameCollectionFolder,
   saveCurrentWindowTabsToCollection,
+  sortFolderBookmarks,
   defaultSaveFolderName,
   updateBookmark
 } from './lib/bookmarkService';
@@ -824,27 +825,11 @@ function App() {
 
       const duplicateIdSet = new Set(duplicates.map((card) => card.id));
       const keptCards = cardsBefore.filter((card) => !duplicateIdSet.has(card.id));
-      const byCollection = new Map();
-      for (const card of keptCards) {
-        const list = byCollection.get(card.parentId) || [];
-        list.push(card);
-        byCollection.set(card.parentId, list);
-      }
+      const parentIds = new Set(keptCards.map((card) => card.parentId));
 
       let sortedMoves = 0;
-      for (const [parentId, cards] of byCollection.entries()) {
-        const sorted = [...cards].sort((a, b) => {
-          const ta = (a.title || '').toLowerCase();
-          const tb = (b.title || '').toLowerCase();
-          if (ta !== tb) return ta.localeCompare(tb);
-          return (a.url || '').localeCompare(b.url || '');
-        });
-        const alreadySorted = cards.every((card, idx) => card.id === sorted[idx].id);
-        if (alreadySorted) continue;
-        for (let i = 0; i < sorted.length; i += 1) {
-          await moveBookmark(sorted[i].id, parentId, i);
-          sortedMoves += 1;
-        }
+      for (const parentId of parentIds) {
+        sortedMoves += await sortFolderBookmarks(parentId);
       }
 
       const snapshotById = new Map(cardsBefore.map((card) => [card.id, card]));
