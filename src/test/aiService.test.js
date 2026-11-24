@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { categorizeBookmarks, getApiKey, setApiKey } from '../lib/aiService';
+import {
+  applyCategorizeSuggestions,
+  categorizeBookmarks,
+  getApiKey,
+  setApiKey,
+  undoCategorizeSuggestions
+} from '../lib/aiService';
 
 describe('aiService', () => {
   beforeEach(() => {
@@ -181,6 +187,114 @@ describe('aiService', () => {
       vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 401, text: async () => 'unauthorized' })));
 
       await expect(categorizeBookmarks(bookmarks, existingCollections)).rejects.toThrow('Claude API error: 401');
+    });
+  });
+
+  describe('applyCategorizeSuggestions & undoCategorizeSuggestions (issue #29)', () => {
+    let nextId;
+    let createCalls;
+    let moveCalls;
+    let removeTreeCalls;
+    let childrenByParent;
+
+    beforeEach(() => {
+      nextId = 500;
+      createCalls = [];
+      moveCalls = [];
+      removeTreeCalls = [];
+      childrenByParent = {
+        c1: [
+          { id: 'sub1', title: 'Subfolder', parentId: 'c1', index: 0 },
+          { id: 'x1', title: 'Existing', url: 'https://x.example', parentId: 'c1', index: 1 }
+        ]
+      };
+      chrome.runtime.lastError = null;
+      chrome.bookmarks.create._impl = (props, cb) => {
+        createCalls.push(props);
+        const node = { id: String(++nextId), ...props };
+        childrenByParent[node.id] = [];
+        cb(node);
+      };
+      chrome.bookmarks.getChildren._impl = (parentId, cb) => {
+        cb(childrenByParent[parentId] || []);
+      };
+      chrome.bookmarks.move._impl = (id, dest, cb) => {
+        moveCalls.push({ id, ...dest });
+        cb({ id, ...dest });
+      };
+      chrome.bookmarks.removeTree._impl = (id, cb) => {
+        removeTreeCalls.push(id);
+        cb();
+      };
+    });
+
+    it('creates newly suggested collections once and moves all accepted bookmarks into them', async () => {
+      const allCards = [
+        { id: 'b1', parentId: 'unfiled', index: 0 },
+        { id: 'b2', parentId: 'unfiled', index: 1 },
+        { id: 'b3', parentId: 'unfiled', index: 2 }
+      ];
+      const collections = [{ id: 'c1', title: 'Development' }];
+
+      const result = await applyCategorizeSuggestions({
+        suggestions: [
+          { bookmarkId: 'b1', targetCollectionTitle: 'Design' },
+          { bookmarkId: 'b2', targetCollectionTitle: 'design' }, // case-insensitive reuse
+          { bookmarkId: 'b3', targetCollectionTitle: 'Development' }
+        ],
+        allCards,
+        collections,
+        rootId: 'root1'
+      });
+
+      expect(createCalls).toEqual([{ parentId: 'root1', title: 'Design' }]);
+      expect(result.createdFolderIds).toEqual(['501']);
+      expect(result.movedCount).toBe(3);
+      expect(moveCalls).toEqual([
+        { id: 'b1', parentId: '501' },
+        { id: 'b2', parentId: '501' },
+        { id: 'b3', parentId: 'c1' }
+      ]);
+      expect(result.snapshots).toEqual([
+        { id: 'b1', parentId: 'unfiled', index: 0 },
+        { id: 'b2', parentId: 'unfiled', index: 1 },
+        { id: 'b3', parentId: 'unfiled', index: 2 }
+      ]);
+    });
+
+    it('skips missing cards and cards already in the target collection', async () => {
+      const result = await applyCategorizeSuggestions({
+        suggestions: [
+          { bookmarkId: 'missing', targetCollectionTitle: 'Design' },
+          { bookmarkId: 'b1', targetCollectionTitle: 'Development' }
+        ],
+        allCards: [{ id: 'b1', parentId: 'c1', index: 0 }],
+        collections: [{ id: 'c1', title: 'Development' }],
+        rootId: 'root1'
+      });
+
+      expect(createCalls).toEqual([]);
+      expect(moveCalls).toEqual([]);
+      expect(result.movedCount).toBe(0);
+    });
+
+    it('undo restores bookmarks and removes newly created folders only if empty', async () => {
+      childrenByParent['501'] = [];
+      childrenByParent['502'] = [{ id: 'user-added', title: 'Keep me', url: 'https://keep.example' }];
+
+      await undoCategorizeSuggestions({
+        snapshots: [
+          { id: 'b2', parentId: 'unfiled', index: 1 },
+          { id: 'b1', parentId: 'unfiled', index: 0 }
+        ],
+        createdFolderIds: ['501', '502']
+      });
+
+      expect(moveCalls).toEqual([
+        { id: 'b1', parentId: 'unfiled', index: 0 },
+        { id: 'b2', parentId: 'unfiled', index: 1 }
+      ]);
+      expect(removeTreeCalls).toEqual(['501']);
     });
   });
 });

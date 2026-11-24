@@ -478,6 +478,10 @@ export async function moveBookmarkToCardPosition(bookmarkId, parentId, cardPosit
   });
 }
 
+export async function getFolderChildren(folderId) {
+  return (await getChildrenApi(folderId)) || [];
+}
+
 export function compareBookmarksByTitle(a, b) {
   const ta = (a.title || '').toLowerCase();
   const tb = (b.title || '').toLowerCase();
