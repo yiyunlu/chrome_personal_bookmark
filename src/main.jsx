@@ -1112,20 +1112,38 @@ function App() {
     });
   }, [trashFolderId, showUndo, refresh]);
 
+  const handleChatOpenResult = useCallback((url, { newTab } = {}) => {
+    if (!url) return;
+    if (newTab) {
+      openBookmarkInNewTab(url);
+    } else {
+      openBookmarkInCurrentTab(url);
+    }
+  }, []);
+
   const handleChatMessage = useCallback(
     async (text) => {
+      const nextId = () => `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
       // Add user message
-      setChatMessages((prev) => [...prev, { role: 'user', text }]);
+      setChatMessages((prev) => [...prev, { id: nextId(), role: 'user', text }]);
 
       const context = { collections, allCards };
       const result = await processChat(text, context);
 
       // Build assistant message
+      const msgId = nextId();
       const assistantMsg = {
+        id: msgId,
         role: 'assistant',
         text: result.message,
         results: result.results,
-        action: result.action
+        action: result.action,
+        confirmed: false
+      };
+
+      const markConfirmed = () => {
+        setChatMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, confirmed: true } : m)));
       };
 
       // Add confirm handler for actionable results. Confirms run later (or
@@ -1136,6 +1154,7 @@ function App() {
         assistantMsg.onConfirm = async () => {
           if (executed) return;
           executed = true;
+          markConfirmed();
           const currentMap = cardByIdRef.current;
           const cards = result.results
             .map((r) => currentMap.get(r.id))
@@ -1144,7 +1163,7 @@ function App() {
             await moveCardsWithUndo(cards, result.targetCollectionId, t('movedBookmarks', cards.length));
             setChatMessages((prev) => [
               ...prev,
-              { role: 'assistant', text: t('chatMovedBookmarks', cards.length, result.targetCollectionTitle) }
+              { id: nextId(), role: 'assistant', text: t('chatMovedBookmarks', cards.length, result.targetCollectionTitle) }
             ]);
           }
         };
@@ -1153,6 +1172,7 @@ function App() {
         assistantMsg.onConfirm = async () => {
           if (executed) return;
           executed = true;
+          markConfirmed();
           const currentMap = cardByIdRef.current;
           const cards = result.results
             .map((r) => currentMap.get(r.id))
@@ -1161,7 +1181,7 @@ function App() {
             await moveCardsToTrash(cards);
             setChatMessages((prev) => [
               ...prev,
-              { role: 'assistant', text: t('chatDeletedBookmarks', cards.length) }
+              { id: nextId(), role: 'assistant', text: t('chatDeletedBookmarks', cards.length) }
             ]);
           }
         };
@@ -1828,6 +1848,7 @@ function App() {
           open={chatOpen}
           onClose={() => setChatOpen(false)}
           onSendMessage={handleChatMessage}
+          onOpenResult={handleChatOpenResult}
           messages={chatMessages}
         />
       ) : (
