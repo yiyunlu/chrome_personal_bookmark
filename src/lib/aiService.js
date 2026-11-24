@@ -9,8 +9,15 @@
  */
 
 import { getDomainCategory, TITLE_KEYWORDS } from './taxonomy';
-import { logError } from './utils';
+import { logError, sortSnapshots } from './utils';
 import { t, getCurrentLang } from './i18n';
+import {
+  createCollectionFolder,
+  getFolderChildren,
+  moveBookmark,
+  moveBookmarkToCardPosition,
+  removeCollectionFolder
+} from './bookmarkService';
 
 const AI_API_KEY_STORAGE = 'tabhub_ai_api_key';
 
@@ -180,4 +187,87 @@ async function mockCategorize(bookmarks, existingCollections) {
     suggestions,
     newCollections: Array.from(newCollectionsSet)
   };
+}
+
+/**
+ * Apply accepted AI categorization suggestions:
+ * - Creates any missing target collections under `rootId` (once per unique name, case-insensitive).
+ * - Appends moved bookmarks using `moveBookmarkToCardPosition(..., null)` so subfolder indices stay intact.
+ * - Returns undo metadata (`snapshots` for actually-moved bookmarks and `createdFolderIds`).
+ *
+ * @param {{
+ *   suggestions: Array<{bookmarkId: string, targetCollectionTitle: string}>,
+ *   allCards: Array<{id: string, parentId: string, index?: number}>,
+ *   collections: Array<{id: string, title: string, folderTitle?: string}>,
+ *   rootId: string
+ * }} params
+ * @returns {Promise<{movedCount: number, snapshots: Array<{id: string, parentId: string, index?: number}>, createdFolderIds: string[]}>}
+ */
+export async function applyCategorizeSuggestions({ suggestions, allCards, collections, rootId }) {
+  const cardById = new Map((allCards || []).map((c) => [c.id, c]));
+  const collectionByTitle = new Map();
+  for (const col of collections || []) {
+    if (col.folderTitle) {
+      const folderKey = col.folderTitle.trim().toLowerCase();
+      if (folderKey && !collectionByTitle.has(folderKey)) {
+        collectionByTitle.set(folderKey, col);
+      }
+    }
+    if (col.title) {
+      collectionByTitle.set(col.title.trim().toLowerCase(), col);
+    }
+  }
+
+  const snapshots = [];
+  const createdFolderIds = [];
+
+  for (const suggestion of suggestions || []) {
+    const card = cardById.get(suggestion.bookmarkId);
+    if (!card) continue;
+
+    const targetTitle = String(suggestion.targetCollectionTitle || '').trim();
+    if (!targetTitle) continue;
+    const key = targetTitle.toLowerCase();
+
+    let target = collectionByTitle.get(key);
+    if (!target) {
+      if (!rootId) continue;
+      const folder = await createCollectionFolder(rootId, targetTitle);
+      target = { id: folder.id, title: folder.title || targetTitle };
+      collectionByTitle.set(key, target);
+      createdFolderIds.push(folder.id);
+    }
+
+    if (card.parentId === target.id) continue;
+
+    snapshots.push({ id: card.id, parentId: card.parentId, index: card.index });
+    await moveBookmarkToCardPosition(card.id, target.id, null);
+  }
+
+  return {
+    movedCount: snapshots.length,
+    snapshots,
+    createdFolderIds
+  };
+}
+
+/**
+ * Undo an AI categorization batch: restore moved bookmarks to their original
+ * positions, then remove any folders created during apply if they are now empty.
+ */
+export async function undoCategorizeSuggestions({ snapshots = [], createdFolderIds = [] }) {
+  for (const snapshot of sortSnapshots(snapshots)) {
+    await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
+  }
+
+  for (const folderId of createdFolderIds) {
+    try {
+      const remaining = await getFolderChildren(folderId);
+      if (remaining.length === 0) {
+        await removeCollectionFolder(folderId);
+      }
+    } catch (err) {
+      logError('aiService.undoCategorizeSuggestions', err);
+    }
+  }
 }

@@ -42,7 +42,11 @@ import { useTheme } from './hooks/useTheme';
 import { useUndoStack } from './hooks/useUndoStack';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
-import { categorizeBookmarks } from './lib/aiService';
+import {
+  applyCategorizeSuggestions,
+  categorizeBookmarks,
+  undoCategorizeSuggestions
+} from './lib/aiService';
 import { checkDeadLinks } from './lib/enrichmentService';
 import { processChat } from './lib/chatService';
 
@@ -934,31 +938,19 @@ function App() {
     const accepted = aiCategorizeState.suggestions.filter((s) => s.status === 'accepted');
     if (accepted.length === 0) return;
 
+    const rootId = activeSourceId || tabHubRootId;
+
     try {
-      const snapshots = [];
-      for (const suggestion of accepted) {
-        const card = allCards.find((c) => c.id === suggestion.bookmarkId);
-        if (card) {
-          snapshots.push({ id: card.id, parentId: card.parentId, index: card.index });
-        }
-      }
-
-      const collectionByTitle = new Map(collections.map((c) => [c.title.toLowerCase(), c]));
-      let movedCount = 0;
-
-      for (const suggestion of accepted) {
-        const target = collectionByTitle.get(suggestion.targetCollectionTitle.toLowerCase());
-        if (target) {
-          await moveBookmark(suggestion.bookmarkId, target.id, target.cards.length + movedCount);
-          movedCount++;
-        }
-      }
+      const { movedCount, snapshots, createdFolderIds } = await applyCategorizeSuggestions({
+        suggestions: accepted,
+        allCards,
+        collections,
+        rootId
+      });
 
       if (movedCount > 0) {
         showUndo(t('aiCategorizeComplete', movedCount), async () => {
-          for (const snapshot of sortSnapshots(snapshots)) {
-            await moveBookmark(snapshot.id, snapshot.parentId, snapshot.index ?? 0);
-          }
+          await undoCategorizeSuggestions({ snapshots, createdFolderIds });
         });
       }
     } catch (err) {
@@ -967,7 +959,7 @@ function App() {
       setAICategorizeState(null);
       await refresh(activeSourceRef.current);
     }
-  }, [aiCategorizeState, allCards, collections, showUndo, refresh]);
+  }, [aiCategorizeState, activeSourceId, tabHubRootId, allCards, collections, showUndo, refresh]);
 
   const handleCheckDeadLinks = useCallback(async () => {
     const allBookmarks = collections.flatMap((c) => c.cards);
