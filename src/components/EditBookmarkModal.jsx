@@ -99,7 +99,9 @@ export function EditBookmarkModal({ editorState, setEditorState, filteredTargets
                 id="tabhub-edit-title"
                 className={FIELD_CLASS}
                 value={editorState.title}
-                onChange={(e) => setEditorState((prev) => (prev ? { ...prev, title: e.target.value } : prev))}
+                onChange={(e) =>
+                  setEditorState((prev) => (prev ? { ...prev, title: e.target.value, error: '' } : prev))
+                }
                 onKeyDown={handleFieldKeyDown}
               />
             </div>
@@ -110,10 +112,18 @@ export function EditBookmarkModal({ editorState, setEditorState, filteredTargets
               <Input
                 id="tabhub-edit-url"
                 className={FIELD_CLASS}
+                aria-invalid={!!editorState.error}
                 value={editorState.url}
-                onChange={(e) => setEditorState((prev) => (prev ? { ...prev, url: e.target.value } : prev))}
+                onChange={(e) =>
+                  setEditorState((prev) => (prev ? { ...prev, url: e.target.value, error: '' } : prev))
+                }
                 onKeyDown={handleFieldKeyDown}
               />
+              {editorState.error && (
+                <p role="alert" className="mt-1.5 text-xs text-destructive">
+                  {editorState.error}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="tabhub-edit-folder" className={FIELD_LABEL_CLASS}>
