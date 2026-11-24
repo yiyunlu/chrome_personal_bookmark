@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { faviconCandidates, normalizeUrlKey, sortSnapshots } from '../lib/utils';
+import { faviconCandidates, normalizeBookmarkUrl, normalizeUrlKey, sortSnapshots } from '../lib/utils';
 
 describe('faviconCandidates', () => {
   it('returns extension favicon and a domain-only Google fallback', () => {
@@ -84,5 +84,32 @@ describe('sortSnapshots', () => {
     const sorted = sortSnapshots(items);
     expect(sorted[0].index).toBeUndefined();
     expect(sorted[1].index).toBe(1);
+  });
+});
+
+describe('normalizeBookmarkUrl (issue #30)', () => {
+  it('accepts valid http/https and browser-native URLs as-is', () => {
+    expect(normalizeBookmarkUrl('https://github.com/org/repo')).toBe('https://github.com/org/repo');
+    expect(normalizeBookmarkUrl('http://localhost:3000/test?a=1')).toBe('http://localhost:3000/test?a=1');
+    expect(normalizeBookmarkUrl('chrome://extensions')).toBe('chrome://extensions');
+  });
+
+  it('auto-prepends https:// for plausible bare domains and localhost', () => {
+    expect(normalizeBookmarkUrl('example.com')).toBe('https://example.com');
+    expect(normalizeBookmarkUrl('  docs.example.org/guide?v=2  ')).toBe('https://docs.example.org/guide?v=2');
+    expect(normalizeBookmarkUrl('example.com:8080/api')).toBe('https://example.com:8080/api');
+    expect(normalizeBookmarkUrl('localhost:5173')).toBe('https://localhost:5173');
+    expect(normalizeBookmarkUrl('127.0.0.1:8080/app')).toBe('https://127.0.0.1:8080/app');
+  });
+
+  it('rejects blank strings, bare words, whitespace, broken schemes, and javascript: URLs', () => {
+    expect(normalizeBookmarkUrl('')).toBeNull();
+    expect(normalizeBookmarkUrl('   ')).toBeNull();
+    expect(normalizeBookmarkUrl('hello')).toBeNull();
+    expect(normalizeBookmarkUrl('foo:bar')).toBeNull();
+    expect(normalizeBookmarkUrl('not a url')).toBeNull();
+    expect(normalizeBookmarkUrl('https://')).toBeNull();
+    expect(normalizeBookmarkUrl('javascript:alert(1)')).toBeNull();
+    expect(normalizeBookmarkUrl('data:text/html,hi')).toBeNull();
   });
 });

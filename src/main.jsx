@@ -30,7 +30,7 @@ import {
   defaultSaveFolderName,
   updateBookmark
 } from './lib/bookmarkService';
-import { logError, normalizeUrlKey, sortSnapshots } from './lib/utils';
+import { logError, normalizeBookmarkUrl, normalizeUrlKey, sortSnapshots } from './lib/utils';
 import { smartSearch } from './lib/searchService';
 import { storageGet, storageSet, prefGet, prefSet } from './lib/storage';
 import { ChromeFooterHint } from './components/ChromeFooterHint';
@@ -697,7 +697,8 @@ function App() {
       currentParentId: card.parentId,
       targetParentId: card.parentId,
       folderQuery: '',
-      saving: false
+      saving: false,
+      error: ''
     });
   }, []);
 
@@ -1023,11 +1024,16 @@ function App() {
       defaultValue: '',
       onConfirm: async (value) => {
         setPromptDialog(null);
-        await createCollectionFolder(rootId, value);
-        await refresh(activeSourceRef.current);
+        try {
+          await createCollectionFolder(rootId, value);
+          await refresh(activeSourceRef.current);
+        } catch (err) {
+          logError('handleNewCollection', err);
+          showUndo(t('createCollectionFailed'), null);
+        }
       }
     });
-  }, [activeSourceId, tabHubRootId, refresh]);
+  }, [activeSourceId, tabHubRootId, refresh, activeSourceRef, showUndo]);
 
   const handleDismissOnboarding = useCallback(async () => {
     setOnboardingDismissed(true);
@@ -1448,8 +1454,13 @@ function App() {
       defaultValue: current.folderTitle || current.title,
       onConfirm: async (value) => {
         setPromptDialog(null);
-        await renameCollectionFolder(current.id, value);
-        await refresh(activeSourceRef.current);
+        try {
+          await renameCollectionFolder(current.id, value);
+          await refresh(activeSourceRef.current);
+        } catch (err) {
+          logError('handleRenameCollection', err);
+          showUndo(t('renameCollectionFailed'), null);
+        }
       }
     });
   };
@@ -1465,11 +1476,16 @@ function App() {
       danger: true,
       onConfirm: async () => {
         setConfirmDialog(null);
-        await removeCollectionFolder(current.id);
-        if (activeCollectionId === current.id) {
-          setActiveCollectionId('all');
+        try {
+          await removeCollectionFolder(current.id);
+          if (activeCollectionId === current.id) {
+            setActiveCollectionId('all');
+          }
+          await refresh(activeSourceRef.current);
+        } catch (err) {
+          logError('handleDeleteCollection', err);
+          showUndo(t('deleteCollectionFailed'), null);
         }
-        await refresh(activeSourceRef.current);
       }
     });
   };
@@ -1529,10 +1545,19 @@ function App() {
     const before = cardById.get(editorState.cardId);
     const targetCollection = collections.find((c) => c.id === editorState.targetParentId);
     const nextTitle = editorState.title.trim();
-    const nextUrl = editorState.url.trim();
-    if (!nextTitle || !nextUrl || !before) return;
+    if (!before) return;
+    if (!nextTitle) {
+      setEditorState((prev) => (prev ? { ...prev, error: t('titleRequired') } : prev));
+      return;
+    }
 
-    setEditorState((prev) => (prev ? { ...prev, saving: true } : prev));
+    const nextUrl = normalizeBookmarkUrl(editorState.url);
+    if (!nextUrl) {
+      setEditorState((prev) => (prev ? { ...prev, error: t('invalidBookmarkUrl') } : prev));
+      return;
+    }
+
+    setEditorState((prev) => (prev ? { ...prev, saving: true, error: '' } : prev));
     try {
       await updateBookmark(editorState.cardId, { title: nextTitle, url: nextUrl });
 
@@ -1549,6 +1574,9 @@ function App() {
 
       await refresh(activeSourceRef.current);
       setEditorState(null);
+    } catch (err) {
+      logError('handleEditorSave', err);
+      setEditorState((prev) => (prev ? { ...prev, error: err?.message || t('saveBookmarkFailed') } : prev));
     } finally {
       setEditorState((prev) => (prev ? { ...prev, saving: false } : prev));
     }

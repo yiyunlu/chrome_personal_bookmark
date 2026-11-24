@@ -165,6 +165,29 @@ describe('Label / control association', () => {
     expect(screen.getByLabelText(t('moveToFolder'))).toHaveAttribute('placeholder', t('searchFolder'));
   });
 
+  it('EditBookmarkModal: renders inline alert on error and clears it when editing title or URL', () => {
+    function Harness() {
+      const [state, setState] = useState({ ...editorState, error: t('invalidBookmarkUrl') });
+      return (
+        <EditBookmarkModal
+          editorState={state}
+          setEditorState={setState}
+          filteredTargets={[]}
+          onSave={vi.fn()}
+          onClose={vi.fn()}
+        />
+      );
+    }
+
+    render(<Harness />);
+    expect(screen.getByRole('alert')).toHaveTextContent(t('invalidBookmarkUrl'));
+    expect(screen.getByLabelText('URL')).toHaveAttribute('aria-invalid', 'true');
+
+    fireEvent.change(screen.getByLabelText('URL'), { target: { value: 'https://valid.example' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByLabelText('URL')).toHaveAttribute('aria-invalid', 'false');
+  });
+
   it('BatchMoveModal: the folder filter is reachable by its label and edits reach the owner state', () => {
     // App owns `batchMoveState`, so the round trip only shows up with a real
     // state owner: the field is controlled and would snap back otherwise.
